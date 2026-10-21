@@ -31,6 +31,7 @@ class CodexExecutor:
             [self.binary, "--version"],
             capture_output=True,
             check=False,
+            stdin=subprocess.DEVNULL,
             text=True,
             timeout=20,
         )
@@ -69,6 +70,7 @@ class CodexExecutor:
                 command,
                 capture_output=True,
                 check=False,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=self.timeout_seconds,
             )

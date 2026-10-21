@@ -5,13 +5,14 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.base import Base
 from app.integrations.codex import CodexResult
-from app.models import Instrument, JobRun, ValuationReport
+from app.models import AiRun, Instrument, JobRun, ValuationReport
 from app.services.importer import import_legacy_cards
 from app.services.queries import get_valuation_detail
 from app.services.revaluation import run_valuation_refresh
@@ -66,6 +67,28 @@ class FakeCodexExecutor:
         )
 
 
+class FailingCodexExecutor:
+    def run(
+        self,
+        cwd: Path,
+        prompt: str,
+        output_schema: Path,
+        manifest_path: Path,
+    ) -> CodexResult:
+        del prompt, output_schema, manifest_path
+        stdout_path = cwd / "failed.stdout"
+        stderr_path = cwd / "failed.stderr"
+        stdout_path.write_text("", encoding="utf-8")
+        stderr_path.write_text("sandbox and approval options conflict", encoding="utf-8")
+        return CodexResult(
+            exit_code=2,
+            version="codex-fake 1.0",
+            stdout_path=stdout_path,
+            stderr_path=stderr_path,
+            manifest_path=cwd / "missing-manifest.json",
+        )
+
+
 def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
     engine = create_engine(f"sqlite:///{tmp_path / 'candidate.db'}")
     Base.metadata.create_all(engine)
@@ -98,7 +121,7 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
             session,
             job,
             settings,
-            executor=FakeCodexExecutor(settings),  # type: ignore[arg-type]
+            executor=FakeCodexExecutor(settings),
         )
         assert report.status == "needs_review"
         assert report.source == "codex"
@@ -112,6 +135,55 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert session.query(ValuationReport).filter_by(status="published").count() > 0
         detail = get_valuation_detail(session, published.markets[0].id)
         assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "quality_scorecard"
+
+
+def test_codex_failure_keeps_published_valuation(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{tmp_path / 'candidate-failure.db'}")
+    Base.metadata.create_all(engine)
+    settings = Settings(
+        storage_root=tmp_path / "storage",
+        timezone="Asia/Shanghai",
+    )
+
+    with Session(engine) as session:
+        import_legacy_cards(session, data_dir=LEGACY_DATA_DIR, settings=settings)
+        instrument = session.scalar(select(Instrument).where(Instrument.name == "中国移动"))
+        assert instrument is not None
+        original_verdict = instrument.verdict
+        published_before = session.query(ValuationReport).filter_by(
+            instrument_id=instrument.id,
+            status="published",
+        ).count()
+        job = JobRun(
+            job_type="valuation_refresh",
+            trigger="manual",
+            scope=f"instrument:{instrument.id}",
+            status="running",
+            phase="valuing",
+            idempotency_key="candidate-failure-test",
+        )
+        session.add(job)
+        session.commit()
+
+        with pytest.raises(RuntimeError, match="Codex 退出码 2"):
+            run_valuation_refresh(
+                session,
+                job,
+                settings,
+                executor=FailingCodexExecutor(),
+            )
+
+        session.refresh(instrument)
+        assert instrument.verdict == original_verdict
+        assert session.query(ValuationReport).filter_by(
+            instrument_id=instrument.id,
+            status="published",
+        ).count() == published_before
+        assert session.query(ValuationReport).filter_by(status="needs_review").count() == 0
+        failed_run = session.query(AiRun).filter_by(job_id=job.id).one()
+        assert failed_run.status == "rejected"
+        assert failed_run.exit_code == 2
+        assert "sandbox and approval options conflict" in failed_run.stderr
 
 
 def _quality_presentation() -> dict:

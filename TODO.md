@@ -21,7 +21,7 @@
 - [x] 后端接受 value-investing `schema_version: 1.1`
 - [x] 候选数据卡导入时将 `presentation` 保存为详情 `detail_json`
 - [x] 前端消费 schema 1.1 的 `quality_scorecard`
-- [ ] 用真实 Codex CLI 完成至少一次隔离重估、校验、待复核和批准发布 smoke test
+- [x] 2026-10-22 用真实 Codex CLI 完成中国移动隔离重估，生成 schema 1.1 候选卡、进入待复核并批准发布
 
 ## P1：自动更新可靠性
 
@@ -50,4 +50,4 @@
 - [x] 整轮 0 条有效行情时才判失败，并展示 provider 的具体错误
 - [x] 更新中心能看懂最近任务实际执行到哪一步
 - [x] schema 1.1 候选卡能进入待复核，批准后详情页展示新结构化章节
-- [ ] 真实 Codex 重估失败时，错误可定位，旧估值不受影响
+- [x] 真实 Codex 重估失败时，错误可定位，旧估值不受影响

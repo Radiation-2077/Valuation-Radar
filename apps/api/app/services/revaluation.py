@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import shutil
 from datetime import UTC, date, datetime
-from typing import Any
+from pathlib import Path
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -24,11 +25,21 @@ from app.services.importer import import_candidate_card, validate_card
 from app.services.macro import latest_macro_values
 
 
+class RevaluationExecutor(Protocol):
+    def run(
+        self,
+        cwd: Path,
+        prompt: str,
+        output_schema: Path,
+        manifest_path: Path,
+    ) -> CodexResult: ...
+
+
 def run_valuation_refresh(
     session: Session,
     job: JobRun,
     settings: Settings,
-    executor: CodexExecutor | None = None,
+    executor: RevaluationExecutor | None = None,
 ) -> ValuationReport:
     instrument_id = _instrument_id(job.scope)
     instrument = session.get(Instrument, instrument_id)
@@ -264,6 +275,9 @@ def _record_result(ai_run: AiRun, result: CodexResult) -> None:
     ai_run.cli_version = result.version
     ai_run.exit_code = result.exit_code
     ai_run.output_path = str(result.manifest_path)
+    if result.stderr_path.is_file():
+        stderr = result.stderr_path.read_text(encoding="utf-8", errors="replace")
+        ai_run.stderr = stderr[-20_000:]
     ai_run.metadata_json = {
         **ai_run.metadata_json,
         "stdout_path": str(result.stdout_path),
