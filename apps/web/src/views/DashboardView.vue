@@ -4,8 +4,6 @@ import {
   NAlert,
   NButton,
   NCard,
-  NCollapse,
-  NCollapseItem,
   NDataTable,
   NDrawer,
   NDrawerContent,
@@ -163,6 +161,50 @@ const columns = computed<DataTableColumns<RankingItem>>(() => [
         NText,
         { type: row.stale_days > 7 ? "warning" : undefined },
         { default: () => formatDate(row.analysis_date) },
+      ),
+  },
+]);
+
+const excludedColumns = computed<DataTableColumns<RankingItem>>(() => [
+  {
+    title: "标的",
+    key: "name",
+    minWidth: 160,
+    render: (row) =>
+      h(NSpace, { vertical: true, size: 2 }, {
+        default: () => [
+          h(NText, { strong: true }, { default: () => row.name }),
+          h(NText, { depth: 3 }, { default: () => `${row.market} · ${row.code}` }),
+        ],
+      }),
+  },
+  {
+    title: "行业 / 路径",
+    key: "industry",
+    minWidth: 140,
+    render: (row) => `${row.industry} / ${pathLabels[row.path] ?? row.path}`,
+  },
+  {
+    title: "综合分",
+    key: "score",
+    width: 100,
+    render: (row) => formatNumber(row.score.total, 1),
+  },
+  {
+    title: "数据日期",
+    key: "date",
+    width: 100,
+    render: (row) => formatDate(row.analysis_date),
+  },
+  {
+    title: "排除 / 观察原因",
+    key: "reason",
+    minWidth: 420,
+    render: (row) =>
+      h(
+        NText,
+        { depth: 3, style: "white-space:normal;line-height:1.65" },
+        { default: () => row.excluded_reasons.join("；") },
       ),
   },
 ]);
@@ -334,22 +376,27 @@ function rowProps(row: RankingItem) {
         </NSpace>
       </NCard>
 
-      <NCollapse v-if="query.data.value.excluded.length">
-        <NCollapseItem
-          :title="`排除 / 观察区（${query.data.value.excluded.length}）`"
-          name="excluded"
-        >
-          <NButton
-            v-for="item in query.data.value.excluded"
-            :key="item.valuation_market_id"
-            block
-            text
-            @click="openValuation(item.valuation_market_id)"
-          >
-            {{ item.name }} {{ item.market }} · {{ item.excluded_reasons.join("；") }}
-          </NButton>
-        </NCollapseItem>
-      </NCollapse>
+      <NCard v-if="query.data.value.excluded.length" class="ranking-card">
+        <NSpace vertical :size="16">
+          <NSpace align="center" justify="space-between">
+            <NH2>排除 / 观察区</NH2>
+            <NTag size="small" :bordered="false">
+              {{ query.data.value.excluded.length }} 条
+            </NTag>
+          </NSpace>
+          <NDataTable
+            class="excluded-table"
+            size="small"
+            :columns="excludedColumns"
+            :data="query.data.value.excluded"
+            :row-props="rowProps"
+            :bordered="false"
+            :single-line="false"
+            :pagination="false"
+            :scroll-x="980"
+          />
+        </NSpace>
+      </NCard>
     </template>
 
     <NDrawer

@@ -7,7 +7,7 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     page.getByRole("heading", { name: "把估值结论，压缩成可执行的排序。" }),
   ).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("table").first()).toBeVisible();
 
   await page.locator(".n-radio-button").filter({ hasText: "进取" }).click();
   await expect(page).toHaveURL(/profile=aggressive/);
@@ -35,6 +35,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   ).toBeChecked();
   await expect(page.locator(".status-card")).toBeVisible();
   await expect(page.locator(".top-card").first()).toBeVisible();
+  await expect(page.locator(".excluded-table")).toBeVisible();
 
   await page.locator(".top-card").first().click();
   await expect(page.locator(".n-drawer")).toBeVisible();
