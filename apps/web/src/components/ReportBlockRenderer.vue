@@ -19,6 +19,7 @@ import {
 
 import type { ReportDetailBlock } from "@/api/types";
 import MetricGauge from "@/components/MetricGauge.vue";
+import PremiumDonutChart from "@/components/PremiumDonutChart.vue";
 import RangePositionChart from "@/components/RangePositionChart.vue";
 import ReturnStackChart from "@/components/ReturnStackChart.vue";
 import ScenarioBarChart from "@/components/ScenarioBarChart.vue";
@@ -39,6 +40,7 @@ defineOptions({ name: "ReportBlockRenderer" });
 defineProps<{
   blocks: ReportDetailBlock[];
   alignScoresWithTable?: boolean;
+  donutLabels?: string[];
 }>();
 
 function calloutType(tone: string): "success" | "warning" | "error" | "info" {
@@ -84,6 +86,26 @@ function gridPairsScoresWithTable(block: ReportDetailBlock): boolean {
     columns.some((column) => column.some((item) => item.type === "scores")) &&
     columns.some((column) => column.some((item) => item.type === "table"))
   );
+}
+
+function gridDonutLabels(block: ReportDetailBlock): string[] {
+  for (const column of blockColumns(block)) {
+    const table = column.find((item) => item.type === "table");
+    if (!table) continue;
+    const headers = tableHeaders(table);
+    const percentageIndex = headers.findIndex(
+      (header) => header.includes("%") || header.includes("占比"),
+    );
+    if (percentageIndex < 0) continue;
+    const labelIndex = headers.findIndex((header) =>
+      ["成因", "项目", "类别", "维度"].some((name) => header.includes(name)),
+    );
+    if (labelIndex < 0) continue;
+    return tableRows(table)
+      .map((row) => row[labelIndex] ?? "")
+      .filter(Boolean);
+  }
+  return [];
 }
 </script>
 
@@ -193,6 +215,7 @@ function gridPairsScoresWithTable(block: ReportDetailBlock): boolean {
         <ReportBlockRenderer
           :blocks="column"
           :align-scores-with-table="gridPairsScoresWithTable(block)"
+          :donut-labels="gridDonutLabels(block)"
         />
       </NGridItem>
     </NGrid>
@@ -288,8 +311,17 @@ function gridPairsScoresWithTable(block: ReportDetailBlock): boolean {
       </NGridItem>
     </NGrid>
 
+    <PremiumDonutChart
+      v-else-if="block.type === 'donut'"
+      :value="blockText(block, 'center_value') || blockText(block, 'value')"
+      :label="blockText(block, 'center_label') || blockText(block, 'label')"
+      :background="blockText(block, 'background')"
+      :context="blockText(block, 'context')"
+      :labels="donutLabels"
+    />
+
     <NGrid
-      v-else-if="block.type === 'position_block' || block.type === 'donut'"
+      v-else-if="block.type === 'position_block'"
       responsive="screen"
       cols="1 m:2"
       :x-gap="20"

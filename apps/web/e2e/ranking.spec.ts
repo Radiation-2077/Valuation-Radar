@@ -131,6 +131,18 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /A\/H 溢价分解：/ }),
   ).toBeVisible();
+  const premiumDonut = page.locator(".n-drawer .premium-donut-chart").first();
+  const premiumDonutBox = await premiumDonut.boundingBox();
+  const premiumDonutCanvasBox = await premiumDonut.locator("canvas").boundingBox();
+  expect(premiumDonutBox).not.toBeNull();
+  expect(premiumDonutCanvasBox).not.toBeNull();
+  expect(Math.abs(premiumDonutBox!.width - premiumDonutCanvasBox!.width)).toBeLessThan(1);
+  expect(Math.abs(premiumDonutBox!.height - premiumDonutCanvasBox!.height)).toBeLessThan(1);
+  const premiumDonutLabel = await premiumDonut.getAttribute("aria-label");
+  for (const label of ["贴现率差", "市场分割与筹码", "股息税差", "残余（真实相对贵贱）"]) {
+    expect(premiumDonutLabel).toContain(label);
+  }
+  if (page.viewportSize()!.width > 720) expect(premiumDonutBox!.width).toBeGreaterThan(450);
   await expect(page.getByRole("heading", { name: /A 股估值/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /H 股估值/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();

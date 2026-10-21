@@ -1,5 +1,24 @@
 import type { ReportDetailBlock, ReportDetailSection } from "@/api/types";
 
+export interface ConicGradientSegment {
+  color: string;
+  value: number;
+}
+
+export function parseConicGradient(background: string): ConicGradientSegment[] {
+  const match = background.match(/conic-gradient\((.*)\)/i);
+  if (!match) return [];
+
+  const segments: ConicGradientSegment[] = [];
+  const stopPattern =
+    /(#[0-9a-f]{3,8}|rgba?\([^)]*\))\s+([\d.]+)%?\s+([\d.]+)%/gi;
+  for (const stop of match[1].matchAll(stopPattern)) {
+    const value = Number.parseFloat(stop[3]) - Number.parseFloat(stop[2]);
+    if (value > 0) segments.push({ color: stop[1], value });
+  }
+  return segments;
+}
+
 export function visibleReportSections(
   sections: ReportDetailSection[],
   market: string,
