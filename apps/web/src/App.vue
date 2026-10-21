@@ -16,7 +16,7 @@ import {
   zhCN,
   type ScrollbarInst,
 } from "naive-ui";
-import { AnalyticsOutline, PulseOutline, SyncOutline } from "@vicons/ionicons5";
+import { PulseOutline, SyncOutline, TrophyOutline } from "@vicons/ionicons5";
 import { computed, h, nextTick, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
@@ -29,7 +29,7 @@ const menuOptions = [
   {
     label: "性价比排名",
     key: "/",
-    icon: () => h(NIcon, null, { default: () => h(AnalyticsOutline) }),
+    icon: () => h(NIcon, null, { default: () => h(TrophyOutline) }),
   },
   {
     label: "更新中心",
