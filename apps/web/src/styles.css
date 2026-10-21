@@ -252,24 +252,41 @@ h2 {
 }
 
 .profile-tabs {
-  padding: 0.35rem;
-  border: 1px solid var(--line);
+  gap: 6px;
+  padding: 0;
+  border: 0;
   border-radius: 16px;
-  background: rgba(7, 19, 31, 0.65);
+  background: transparent;
 }
 
 .profile-tabs .n-radio-button {
+  display: inline-flex;
+  align-items: center;
   min-width: 130px;
-  padding: 0.7rem 1rem;
+  min-height: 56px;
+  padding: 0.55rem 1rem;
   border-radius: 12px;
   text-align: left;
   transition: 180ms ease;
+}
+
+.profile-tabs .n-radio-group__splitor {
+  display: none;
+}
+
+.profile-tabs .n-radio__label {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.25;
 }
 
 .profile-tabs small {
   display: block;
   margin-top: 0.2rem;
   font-size: 0.64rem;
+  white-space: nowrap;
 }
 
 .ghost-button,
@@ -1704,11 +1721,12 @@ h2 {
   }
 
   .profile-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    width: 100%;
   }
 
   .profile-tabs .n-radio-button {
+    flex: 1;
     min-width: 0;
     padding: 0.65rem 0.55rem;
     text-align: center;

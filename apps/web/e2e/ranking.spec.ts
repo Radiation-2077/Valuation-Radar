@@ -42,3 +42,14 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(page.getByText("关键风险与反证")).toBeVisible();
   await expect(page).toHaveURL(/profile=balanced/);
 });
+
+test("risk profile controls do not overlap the freshness bar", async ({ page }) => {
+  await page.setViewportSize({ width: 960, height: 720 });
+  await page.goto("/?profile=conservative");
+
+  const profileBox = await page.locator(".profile-tabs").boundingBox();
+  const freshnessBox = await page.locator(".freshness-bar").boundingBox();
+  expect(profileBox).not.toBeNull();
+  expect(freshnessBox).not.toBeNull();
+  expect(profileBox!.y + profileBox!.height).toBeLessThan(freshnessBox!.y);
+});
