@@ -17,6 +17,8 @@ import {
   NSpace,
   NSpin,
   NStatistic,
+  NStep,
+  NSteps,
   NSwitch,
   NTag,
   NText,
@@ -158,7 +160,11 @@ function jobTypeLabel(value: string): string {
 function phaseLabel(value: string): string {
   const labels: Record<string, string> = {
     queued: "排队",
-    fetching: "取数",
+    fetching: "行情抓取",
+    saving_quotes: "写入行情",
+    loading_macro: "更新宏观",
+    rebuilding_ranking: "重算排名",
+    finalizing: "收尾",
     valuing: "模型估值",
     awaiting_review: "待复核",
     completed: "完成",
@@ -197,7 +203,7 @@ const jobColumns = computed<DataTableColumns<Job>>(() => [
   {
     title: "行情写入",
     key: "quotes_saved",
-    render: (job) => String(job.details.quotes_saved ?? "—"),
+    render: quoteWriteLabel,
   },
   {
     title: "开始",
@@ -221,6 +227,122 @@ const jobColumns = computed<DataTableColumns<Job>>(() => [
     },
   },
 ]);
+
+type WorkflowStatus = "wait" | "process" | "finish" | "error";
+
+interface WorkflowStep {
+  title: string;
+  description: string;
+  status: WorkflowStatus;
+}
+
+const workflowJob = computed(() => activeJob.value ?? jobs.value[0]);
+const workflowErrors = computed(() => {
+  const job = workflowJob.value;
+  if (!job) return [];
+  const errors = job.details.errors;
+  const items = Array.isArray(errors)
+    ? errors.filter((item): item is string => typeof item === "string")
+    : [];
+  if (items.length) return items;
+  return job.error ? [job.error] : [];
+});
+const workflowSteps = computed<WorkflowStep[]>(() => {
+  const job = workflowJob.value;
+  if (!job) {
+    return [
+      { title: "交易日检查", description: "等待更新任务", status: "wait" },
+      { title: "行情抓取", description: "等待更新任务", status: "wait" },
+      { title: "写入快照", description: "等待更新任务", status: "wait" },
+      { title: "排名处理", description: "等待更新任务", status: "wait" },
+    ];
+  }
+
+  const titles =
+    job.job_type === "valuation_refresh"
+      ? ["交易日检查", "模型估值", "候选校验", "等待复核"]
+      : ["交易日检查", "行情抓取", "写入快照", "排名处理"];
+  const descriptions =
+    job.job_type === "valuation_refresh"
+      ? valuationStepDescriptions(job)
+      : marketStepDescriptions(job);
+  const currentIndex = workflowIndex(job);
+  const failed = ["failed", "cancelled"].includes(job.status);
+  const completed = ["succeeded", "partial"].includes(job.status);
+
+  return titles.map((title, index) => {
+    let status: WorkflowStatus = "wait";
+    if (completed || index < currentIndex) status = "finish";
+    if (!completed && index === currentIndex) status = failed ? "error" : "process";
+    return { title, description: descriptions[index], status };
+  });
+});
+
+function detailNumber(job: Job, key: string): number | null {
+  const value = job.details[key];
+  return typeof value === "number" ? value : null;
+}
+
+function quoteWriteLabel(job: Job): string {
+  if (job.job_type !== "market_refresh") return "—";
+  const fetched = detailNumber(job, "quotes_fetched");
+  const saved = detailNumber(job, "quotes_saved");
+  const unchanged = detailNumber(job, "quotes_unchanged");
+  if (fetched === null && saved === null && unchanged === null) return "—";
+  return `抓取 ${fetched ?? "—"} · 新增 ${saved ?? "—"} · 未变化 ${unchanged ?? "—"}`;
+}
+
+function marketStepDescriptions(job: Job): string[] {
+  const fetched = detailNumber(job, "quotes_fetched");
+  const saved = detailNumber(job, "quotes_saved");
+  const unchanged = detailNumber(job, "quotes_unchanged");
+  const rankingRuns = detailNumber(job, "ranking_runs");
+  const listingCount = detailNumber(job, "listings");
+  const quoteAt = job.details.latest_quote_at;
+  return [
+    job.trigger === "manual" ? "手动触发，无需等待交易日窗口" : "已通过交易日计划检查",
+    fetched === null
+      ? listingCount === null
+        ? "正在读取标的列表"
+        : `覆盖 ${listingCount} 个上市标的`
+      : `取得 ${fetched} 条有效行情`,
+    saved === null
+      ? "正在写入行情快照"
+      : `新增 ${saved} · 未变化 ${unchanged ?? 0}`,
+    rankingRuns
+      ? `已重算 ${rankingRuns} 套排名`
+      : job.details.ranking_reused === true
+        ? "行情未变化，复用现有排名"
+        : typeof quoteAt === "string"
+          ? `最新行情 ${formatDateTime(quoteAt)}`
+          : "正在检查排名",
+  ];
+}
+
+function valuationStepDescriptions(job: Job): string[] {
+  const instrument = job.details.instrument;
+  return [
+    "已创建单标的估值任务",
+    typeof instrument === "string" ? `Codex 分析 ${instrument}` : "Codex 正在生成候选估值",
+    job.details.review_required === true ? "候选数据卡已通过校验" : "等待候选数据卡",
+    job.details.report_id ? `候选版本 #${String(job.details.report_id)}` : "尚未进入复核",
+  ];
+}
+
+function workflowIndex(job: Job): number {
+  const phase =
+    typeof job.details.failed_phase === "string" ? job.details.failed_phase : job.phase;
+  if (job.job_type === "valuation_refresh") {
+    if (["valuing", "awaiting_review"].includes(phase)) return 1;
+    if (phase === "completed") return 3;
+    return 0;
+  }
+  if (phase === "queued") return 0;
+  if (phase === "fetching") return 1;
+  if (["saving_quotes", "loading_macro"].includes(phase)) return 2;
+  if (["rebuilding_ranking", "finalizing", "completed"].includes(phase)) return 3;
+  return 0;
+}
 
 function save() {
   saveMutation.mutate({ ...form });
@@ -362,15 +484,35 @@ function openMarket(id: number) {
 
         <NGridItem>
         <NCard class="schedule-summary" :bordered="false">
-          <NH2>执行链路</NH2>
-          <NForm label-placement="left" :show-feedback="false">
-            <NGrid :cols="1" :y-gap="12">
-              <NGridItem><NTag :bordered="false">01 交易日检查</NTag></NGridItem>
-              <NGridItem><NTag :bordered="false">02 行情抓取</NTag></NGridItem>
-              <NGridItem><NTag :bordered="false">03 写入快照</NTag></NGridItem>
-              <NGridItem><NTag :bordered="false">04 排名重算</NTag></NGridItem>
-            </NGrid>
-          </NForm>
+          <NSpace vertical :size="16">
+            <NSpace class="card-heading" align="center" justify="space-between">
+              <NH2>执行链路</NH2>
+              <NTag
+                v-if="workflowJob"
+                size="small"
+                :bordered="false"
+                :type="statusType(workflowJob.status)"
+              >
+                #{{ workflowJob.id }} · {{ phaseLabel(workflowJob.phase) }}
+              </NTag>
+            </NSpace>
+            <NSteps size="small" vertical>
+              <NStep
+                v-for="step in workflowSteps"
+                :key="step.title"
+                :title="step.title"
+                :description="step.description"
+                :status="step.status"
+              />
+            </NSteps>
+            <NAlert
+              v-if="workflowErrors.length"
+              :type="workflowJob?.status === 'failed' ? 'error' : 'warning'"
+              :title="workflowJob?.status === 'failed' ? '最近任务失败' : '任务存在部分告警'"
+            >
+              {{ workflowErrors.join("；") }}
+            </NAlert>
+          </NSpace>
           <NP depth="3">
             当前时区：{{ scheduleQuery.data.value.timezone }}。计划时间按上海时区计算。
           </NP>

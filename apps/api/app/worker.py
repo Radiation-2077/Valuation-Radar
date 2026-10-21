@@ -4,13 +4,14 @@ import argparse
 import json
 import time
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import JobRun
-from app.services.refresh import refresh_market_data
+from app.services.refresh import RefreshSummary, refresh_market_data
 from app.services.revaluation import run_valuation_refresh
 from app.services.schedule import scheduler_tick
 
@@ -25,50 +26,91 @@ def process_next_job() -> bool:
         )
         if job is None:
             return False
+        job_id = job.id
+        current_phase = "valuing" if job.job_type == "valuation_refresh" else "fetching"
+        details: dict[str, Any] = {}
         job.status = "running"
-        job.phase = "valuing" if job.job_type == "valuation_refresh" else "fetching"
+        job.phase = current_phase
         job.started_at = datetime.now(UTC).replace(tzinfo=None)
         session.commit()
 
+        def update_phase(phase: str) -> None:
+            nonlocal current_phase
+            current_phase = phase
+            live = session.get(JobRun, job_id)
+            if live is None or live.status == "cancelled":
+                return
+            live.phase = phase
+            live.details = dict(details)
+            session.commit()
+
         try:
             if job.job_type == "market_refresh":
-                summary = refresh_market_data(session, get_settings())
-                if summary.quotes_saved == 0:
-                    raise RuntimeError("本轮没有取得任何有效行情")
+                summary = refresh_market_data(
+                    session,
+                    get_settings(),
+                    on_phase=update_phase,
+                )
+                details = _market_refresh_details(summary)
+                if summary.quotes_fetched == 0:
+                    current_phase = "fetching"
+                    diagnostic = "；".join(summary.quote_errors) or "行情源未返回有效报价"
+                    raise RuntimeError(f"本轮没有取得任何有效行情：{diagnostic}")
+                update_phase("finalizing")
                 job.phase = "completed"
                 job.status = "partial" if summary.quote_errors else "succeeded"
-                job.details = {
-                    "listings": summary.listings,
-                    "quotes_saved": summary.quotes_saved,
-                    "macro_observations": summary.macro_observations,
-                    "ranking_runs": summary.ranking_runs,
-                    "errors": summary.quote_errors,
-                }
+                job.details = details
             elif job.job_type == "valuation_refresh":
                 report = run_valuation_refresh(session, job, get_settings())
                 job.phase = "awaiting_review"
                 job.status = "succeeded"
-                job.details = {
+                details = {
                     "report_id": report.id,
                     "instrument": report.instrument.name,
                     "review_required": True,
                 }
+                job.details = details
             else:
                 raise ValueError(f"暂不支持任务类型：{job.job_type}")
             job.finished_at = datetime.now(UTC).replace(tzinfo=None)
             session.commit()
-            print(json.dumps({"job_id": job.id, **job.details}, ensure_ascii=False), flush=True)
+            print(json.dumps({"job_id": job_id, **details}, ensure_ascii=False), flush=True)
         except Exception as exc:
             session.rollback()
-            failed = session.get(JobRun, job.id)
+            failed = session.get(JobRun, job_id)
             if failed is not None and failed.status != "cancelled":
                 failed.status = "failed"
-                failed.phase = "failed"
+                failed.phase = current_phase
                 failed.error = str(exc)
+                errors = details.get("errors")
+                detail_errors = list(errors) if isinstance(errors, list) else []
+                if str(exc) not in detail_errors:
+                    detail_errors.append(str(exc))
+                failed.details = {
+                    **details,
+                    "failed_phase": current_phase,
+                    "errors": detail_errors,
+                }
                 failed.finished_at = datetime.now(UTC).replace(tzinfo=None)
                 session.commit()
-            print(f"job {job.id} failed: {exc}", flush=True)
+            print(f"job {job_id} failed: {exc}", flush=True)
         return True
+
+
+def _market_refresh_details(summary: RefreshSummary) -> dict[str, Any]:
+    return {
+        "listings": summary.listings,
+        "quotes_fetched": summary.quotes_fetched,
+        "quotes_saved": summary.quotes_saved,
+        "quotes_unchanged": summary.quotes_unchanged,
+        "macro_observations": summary.macro_observations,
+        "ranking_runs": summary.ranking_runs,
+        "ranking_reused": summary.ranking_reused,
+        "latest_quote_at": (
+            summary.latest_quote_at.isoformat() if summary.latest_quote_at else None
+        ),
+        "errors": summary.quote_errors,
+    }
 
 
 def run_worker(poll_seconds: float = 3.0) -> None:
