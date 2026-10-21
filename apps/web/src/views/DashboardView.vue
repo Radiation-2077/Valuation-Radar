@@ -13,6 +13,7 @@ import {
   NGridItem,
   NH1,
   NH2,
+  NIcon,
   NP,
   NSelect,
   NSpace,
@@ -21,6 +22,7 @@ import {
   NText,
   type DataTableColumns,
 } from "naive-ui";
+import { FunnelOutline } from "@vicons/ionicons5";
 import { computed, h, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -51,6 +53,7 @@ const profile = computed<ProfileCode>(() => {
 const market = ref<string | null>(null);
 const path = ref<string | null>(null);
 const industry = ref<string | null>(null);
+const filtersOpen = ref(false);
 const selectedValuationId = ref<number | null>(null);
 const detailOpen = ref(false);
 
@@ -60,6 +63,9 @@ const filters = computed(() => ({
   path: path.value || undefined,
   industry: industry.value || undefined,
 }));
+const activeFilterCount = computed(
+  () => [market.value, path.value, industry.value].filter(Boolean).length,
+);
 const query = useQuery<RankingResponse>({
   queryKey: computed(() => ["ranking", filters.value]),
   queryFn: () => fetchRanking(filters.value),
@@ -322,9 +328,66 @@ function rowProps(row: RankingItem) {
       </NGridItem>
     </NGrid>
 
-    <NSpace class="toolbar" align="center" justify="space-between" :wrap="true" :size="16">
-      <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
-      <NButton tertiary @click="clearFilters">清除筛选</NButton>
+    <NSpace class="toolbar" vertical :size="12">
+      <NSpace align="center" justify="space-between" :wrap="true" :size="16">
+        <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
+        <NSpace align="center" :size="8">
+          <NButton
+            secondary
+            :aria-expanded="filtersOpen"
+            @click="filtersOpen = !filtersOpen"
+          >
+            <template #icon>
+              <NIcon :component="FunnelOutline" />
+            </template>
+            筛选
+            <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
+              {{ activeFilterCount }}
+            </NTag>
+          </NButton>
+          <NButton v-if="activeFilterCount" text @click="clearFilters">
+            清除筛选
+          </NButton>
+        </NSpace>
+      </NSpace>
+
+      <template v-if="filtersOpen">
+        <NCard class="filter-panel" size="small">
+          <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="8">
+            <NGridItem>
+              <NFormItem label="市场" :show-feedback="false">
+                <NSelect
+                  v-model:value="market"
+                  :options="marketOptions"
+                  clearable
+                  placeholder="全部市场"
+                />
+              </NFormItem>
+            </NGridItem>
+            <NGridItem>
+              <NFormItem label="估值路径" :show-feedback="false">
+                <NSelect
+                  v-model:value="path"
+                  :options="pathOptions"
+                  clearable
+                  placeholder="全部路径"
+                />
+              </NFormItem>
+            </NGridItem>
+            <NGridItem>
+              <NFormItem label="行业" :show-feedback="false">
+                <NSelect
+                  v-model:value="industry"
+                  :options="industryOptions"
+                  clearable
+                  filterable
+                  placeholder="全部行业"
+                />
+              </NFormItem>
+            </NGridItem>
+          </NGrid>
+        </NCard>
+      </template>
     </NSpace>
 
     <NSpin v-if="query.isPending.value" size="large" />
@@ -368,39 +431,6 @@ function rowProps(row: RankingItem) {
               <NTag size="small" :bordered="false">观察 {{ query.data.value.counts.excluded }}</NTag>
             </NSpace>
           </NSpace>
-          <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="8">
-            <NGridItem>
-              <NFormItem label="市场" :show-feedback="false">
-                <NSelect
-                  v-model:value="market"
-                  :options="marketOptions"
-                  clearable
-                  placeholder="全部市场"
-                />
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="估值路径" :show-feedback="false">
-                <NSelect
-                  v-model:value="path"
-                  :options="pathOptions"
-                  clearable
-                  placeholder="全部路径"
-                />
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="行业" :show-feedback="false">
-                <NSelect
-                  v-model:value="industry"
-                  :options="industryOptions"
-                  clearable
-                  filterable
-                  placeholder="全部行业"
-                />
-              </NFormItem>
-            </NGridItem>
-          </NGrid>
           <RankingScatter
             :items="[...query.data.value.main_board, ...query.data.value.etfs]"
             @select="openValuation"
