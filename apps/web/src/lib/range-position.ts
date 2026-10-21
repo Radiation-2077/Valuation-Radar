@@ -1,5 +1,11 @@
+import { CHART_COLORS } from "./chart-colors";
+
 export type PricePosition = "low" | "fair" | "high";
-export const SCENARIO_COLORS = ["#80c7ff", "#b8a1ff", "#e8b86d"] as const;
+export const SCENARIO_COLORS = [
+  CHART_COLORS.blue,
+  CHART_COLORS.purple,
+  CHART_COLORS.gold,
+] as const;
 
 export function classifyPricePosition(
   currentPosition: number,
@@ -12,9 +18,9 @@ export function classifyPricePosition(
 }
 
 export function pricePositionColor(position: PricePosition): string {
-  if (position === "low") return "#57d6b1";
-  if (position === "high") return "#ee8c78";
-  return "#e8b86d";
+  if (position === "low") return CHART_COLORS.green;
+  if (position === "high") return CHART_COLORS.red;
+  return CHART_COLORS.gold;
 }
 
 export function scenarioMarkerColor(index: number): string {

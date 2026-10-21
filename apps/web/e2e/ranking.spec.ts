@@ -178,6 +178,12 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .last()
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(lastTableCellBorderBottom).toBe("0px");
+  const returnStack = page.locator(".n-drawer .return-stack-chart").first();
+  const returnStackCanvasBox = await returnStack.locator("canvas").boundingBox();
+  expect(returnStackCanvasBox).not.toBeNull();
+  expect(returnStackCanvasBox!.height).toBeCloseTo(48, 0);
+  await expect(returnStack).toContainText("收益拆解");
+  await expect(returnStack).toHaveAttribute("data-segment-count", "3");
   await expect(page.getByRole("heading", { name: /七、预期收益率/ })).toBeVisible();
   expect(await page.locator(".n-drawer canvas").count()).toBeGreaterThanOrEqual(6);
 });

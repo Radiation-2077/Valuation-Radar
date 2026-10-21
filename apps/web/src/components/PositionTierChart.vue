@@ -6,6 +6,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { NSpace, NText } from "naive-ui";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
+import { POSITION_TIER_COLORS } from "@/lib/chart-colors";
 import {
   parsePositionTiers,
   type PositionTierSource,
@@ -20,7 +21,6 @@ const element = ref<HTMLDivElement>();
 let chart: ECharts | undefined;
 let observer: ResizeObserver | undefined;
 
-const colors = ["#57d6b1", "#80c7ff", "#e8b86d"];
 const tiers = computed(() => parsePositionTiers(props.items));
 const accessibleLabel = computed(() =>
   tiers.value
@@ -50,7 +50,7 @@ function render() {
         data: [tier.allocation],
         barWidth: 32,
         itemStyle: {
-          color: colors[index % colors.length],
+          color: POSITION_TIER_COLORS[index % POSITION_TIER_COLORS.length],
           borderColor: tier.active ? "#dce7ef" : "transparent",
           borderWidth: tier.active ? 2 : 0,
           borderRadius:
