@@ -15,7 +15,7 @@ import { RouterLink, RouterView } from "vue-router";
       <nav aria-label="主导航">
         <RouterLink to="/">性价比排名</RouterLink>
       </nav>
-      <span class="environment">LOCAL</span>
+      <span class="environment"><i></i> LOCAL DATA</span>
     </header>
     <main>
       <RouterView />

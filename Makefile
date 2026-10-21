@@ -1,4 +1,4 @@
-.PHONY: setup migrate import-legacy dev build test lint typecheck
+.PHONY: setup migrate import-legacy dev build test test-e2e lint typecheck
 
 setup:
 	python3 -m venv .venv
@@ -29,3 +29,6 @@ lint:
 
 test:
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pnpm test
+
+test-e2e:
+	pnpm test:e2e

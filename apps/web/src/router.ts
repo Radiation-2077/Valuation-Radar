@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import DashboardView from "./views/DashboardView.vue";
+import ValuationDetailView from "./views/ValuationDetailView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -10,7 +11,13 @@ const router = createRouter({
       name: "dashboard",
       component: DashboardView,
     },
+    {
+      path: "/valuations/:id",
+      name: "valuation",
+      component: ValuationDetailView,
+    },
   ],
+  scrollBehavior: () => ({ top: 0 }),
 });
 
 export default router;

@@ -11,6 +11,7 @@
     "test": "pnpm test:api && pnpm test:web",
     "test:api": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/pytest apps/api/tests",
     "test:web": "pnpm --dir apps/web test",
+    "test:e2e": "pnpm --dir apps/web test:e2e",
     "lint": "pnpm lint:api && pnpm lint:web",
     "lint:api": ".venv/bin/ruff check apps/api",
     "lint:web": "pnpm --dir apps/web lint",
