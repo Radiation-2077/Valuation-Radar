@@ -54,18 +54,15 @@
   gap: var(--grid-gap) !important;
 }
 
-.analysis-grid > div,
 .updates-grid > div {
   display: flex;
 }
 
-.analysis-grid > div > .n-card,
 .updates-grid > div > .n-card {
   width: 100%;
   height: 100%;
 }
 
-.analysis-grid,
 .updates-grid,
 .ops-status-grid,
 .top-picks-grid,

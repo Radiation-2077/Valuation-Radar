@@ -62,11 +62,11 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
 
-  const chartBox = await page.locator(".chart-card").boundingBox();
-  const filterBox = await page.locator(".filter-card").boundingBox();
-  expect(chartBox).not.toBeNull();
-  expect(filterBox).not.toBeNull();
-  expect(Math.abs(chartBox!.height - filterBox!.height)).toBeLessThan(1);
+  const analysisCard = page.locator(".analysis-card");
+  await expect(analysisCard).toBeVisible();
+  await expect(analysisCard.locator(".n-select")).toHaveCount(3);
+  await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
+  await expect(page.locator(".filter-card")).toHaveCount(0);
   const tableShellStyle = await page.locator(".table-shell").first().evaluate((element) => {
     const style = getComputedStyle(element);
     return {

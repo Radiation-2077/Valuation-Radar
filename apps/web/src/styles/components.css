@@ -126,8 +126,7 @@
 }
 
 .status-card,
-.chart-card,
-.filter-card,
+.analysis-card,
 .ranking-card {
   border: 1px solid var(--ui-line);
 }

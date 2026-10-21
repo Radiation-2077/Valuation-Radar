@@ -357,50 +357,56 @@ function rowProps(row: RankingItem) {
         </NSpace>
       </NCard>
 
-      <NGrid
-        responsive="screen"
-        class="analysis-grid"
-        cols="1 m:3"
-        :x-gap="16"
-        :y-gap="16"
-      >
-        <NGridItem span="1 m:2">
-          <NCard class="chart-card">
-            <NSpace vertical :size="16">
-              <NSpace class="card-heading" align="center" justify="space-between">
-                <NH2>性价比象限</NH2>
-                <NTag size="small" :bordered="false">气泡越大，安全边际越高</NTag>
-              </NSpace>
-              <RankingScatter
-                :items="[...query.data.value.main_board, ...query.data.value.etfs]"
-                @select="openValuation"
-              />
+      <NCard class="analysis-card">
+        <NSpace vertical :size="20">
+          <NSpace class="card-heading" align="center" justify="space-between" :wrap="true">
+            <NH2>性价比象限</NH2>
+            <NSpace align="center" :size="8">
+              <NTag size="small" :bordered="false">气泡越大，安全边际越高</NTag>
+              <NTag size="small" :bordered="false">主榜 {{ query.data.value.counts.main_board }}</NTag>
+              <NTag size="small" :bordered="false">ETF {{ query.data.value.counts.etfs }}</NTag>
+              <NTag size="small" :bordered="false">观察 {{ query.data.value.counts.excluded }}</NTag>
             </NSpace>
-          </NCard>
-        </NGridItem>
-
-        <NGridItem>
-          <NCard class="filter-card">
-            <NSpace vertical :size="12">
-              <NH2>筛选池子</NH2>
+          </NSpace>
+          <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="8">
+            <NGridItem>
               <NFormItem label="市场" :show-feedback="false">
-                <NSelect v-model:value="market" :options="marketOptions" clearable />
+                <NSelect
+                  v-model:value="market"
+                  :options="marketOptions"
+                  clearable
+                  placeholder="全部市场"
+                />
               </NFormItem>
+            </NGridItem>
+            <NGridItem>
               <NFormItem label="估值路径" :show-feedback="false">
-                <NSelect v-model:value="path" :options="pathOptions" clearable />
+                <NSelect
+                  v-model:value="path"
+                  :options="pathOptions"
+                  clearable
+                  placeholder="全部路径"
+                />
               </NFormItem>
+            </NGridItem>
+            <NGridItem>
               <NFormItem label="行业" :show-feedback="false">
-                <NSelect v-model:value="industry" :options="industryOptions" clearable filterable />
+                <NSelect
+                  v-model:value="industry"
+                  :options="industryOptions"
+                  clearable
+                  filterable
+                  placeholder="全部行业"
+                />
               </NFormItem>
-              <NGrid cols="3" :x-gap="12">
-                <NGridItem><NText depth="3">主榜 {{ query.data.value.counts.main_board }}</NText></NGridItem>
-                <NGridItem><NText depth="3">ETF {{ query.data.value.counts.etfs }}</NText></NGridItem>
-                <NGridItem><NText depth="3">观察 {{ query.data.value.counts.excluded }}</NText></NGridItem>
-              </NGrid>
-            </NSpace>
-          </NCard>
-        </NGridItem>
-      </NGrid>
+            </NGridItem>
+          </NGrid>
+          <RankingScatter
+            :items="[...query.data.value.main_board, ...query.data.value.etfs]"
+            @select="openValuation"
+          />
+        </NSpace>
+      </NCard>
 
       <NCard class="ranking-card">
         <NSpace vertical :size="16">
