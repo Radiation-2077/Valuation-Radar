@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import {
+  NGrid,
+  NGridItem,
+  NH3,
   NProgress,
   NSpace,
   NTable,
   NTbody,
   NTd,
-  NText,
+  NTh,
+  NThead,
   NTr,
 } from "naive-ui";
 import { computed } from "vue";
@@ -24,6 +28,13 @@ const props = defineProps<{
 
 const dimensions = computed(() => blockObjects(props.block, "dimensions"));
 const scaleMax = computed(() => blockNumber(props.block, "scale_max") || 10);
+const tableRows = computed(() =>
+  dimensions.value.map((dimension) => [
+    objectText(dimension, "indicator"),
+    objectText(dimension, "value"),
+    objectText(dimension, "assessment"),
+  ]),
+);
 
 function scorePercent(dimension: Record<string, unknown>): number {
   const score = objectNumber(dimension, "score");
@@ -38,29 +49,48 @@ function scoreLabel(dimension: Record<string, unknown>): string {
 </script>
 
 <template>
-  <div class="table-shell">
-    <NTable size="small" :bordered="false" :single-line="false">
-      <NTbody>
-        <NTr v-for="dimension in dimensions" :key="objectText(dimension, 'key')">
-          <NTd>
-            <NText strong>{{ objectText(dimension, "label") }}</NText>
-          </NTd>
-          <NTd>
-            <NSpace vertical :size="4">
-              <NProgress
-                type="line"
-                :percentage="scorePercent(dimension)"
-                :height="8"
-                :show-indicator="false"
-              />
-              <NText depth="3">{{ scoreLabel(dimension) }}</NText>
-            </NSpace>
-          </NTd>
-          <NTd>{{ objectText(dimension, "indicator") }}</NTd>
-          <NTd>{{ objectText(dimension, "value") }}</NTd>
-          <NTd>{{ objectText(dimension, "assessment") }}</NTd>
-        </NTr>
-      </NTbody>
-    </NTable>
-  </div>
+  <NGrid responsive="screen" cols="1 l:2" :x-gap="32" :y-gap="20">
+    <NGridItem>
+      <NSpace vertical :size="16">
+        <NH3>质量分项（0–{{ scaleMax }}）</NH3>
+        <div
+          v-for="dimension in dimensions"
+          :key="objectText(dimension, 'key')"
+          class="score-row"
+        >
+          <span>{{ objectText(dimension, "label") }}</span>
+          <NProgress
+            type="line"
+            :percentage="scorePercent(dimension)"
+            :height="7"
+            :show-indicator="false"
+          />
+          <strong>{{ scoreLabel(dimension) }}</strong>
+        </div>
+      </NSpace>
+    </NGridItem>
+    <NGridItem>
+      <NSpace vertical :size="16">
+        <NH3>关键指标</NH3>
+        <div class="table-shell">
+          <NTable size="small" :bordered="false" :single-line="false">
+            <NThead>
+              <NTr>
+                <NTh>维度</NTh>
+                <NTh>结果</NTh>
+                <NTh>评价</NTh>
+              </NTr>
+            </NThead>
+            <NTbody>
+              <NTr v-for="(row, index) in tableRows" :key="index">
+                <NTd>{{ row[0] }}</NTd>
+                <NTd>{{ row[1] }}</NTd>
+                <NTd>{{ row[2] }}</NTd>
+              </NTr>
+            </NTbody>
+          </NTable>
+        </div>
+      </NSpace>
+    </NGridItem>
+  </NGrid>
 </template>
