@@ -16,8 +16,8 @@
   --shadow-card: 0 22px 70px rgba(0, 0, 0, 0.18);
   --content-width: 1380px;
   --space-page: 24px;
-  --space-section: 28px;
-  --grid-gap: 28px;
+  --space-section: 20px;
+  --grid-gap: 20px;
 }
 
 html,

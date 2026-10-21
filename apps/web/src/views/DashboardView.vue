@@ -310,7 +310,7 @@ function rowProps(row: RankingItem) {
 </script>
 
 <template>
-  <NSpace vertical :size="24">
+  <NSpace vertical class="dashboard-stack" :size="24">
     <NGrid responsive="screen" class="dashboard-hero" cols="1 m:2" align-items="end">
       <NGridItem>
         <NSpace vertical :size="10">

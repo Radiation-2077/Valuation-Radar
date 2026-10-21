@@ -50,6 +50,10 @@
   gap: var(--space-section);
 }
 
+.dashboard-stack {
+  gap: var(--grid-gap) !important;
+}
+
 .analysis-grid > div,
 .updates-grid > div {
   display: flex;

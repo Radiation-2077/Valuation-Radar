@@ -94,6 +94,11 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   expect(statusGrid).not.toBeNull();
   const horizontalGap = second!.x - (first!.x + first!.width);
   const verticalGap = statusGrid!.y - (hero!.y + hero!.height);
-  expect(horizontalGap).toBeGreaterThanOrEqual(24);
+  const configuredGap = await page.locator(".ops-status-grid").evaluate(
+    (element) => Number.parseFloat(getComputedStyle(element).gap),
+  );
+  expect(configuredGap).toBe(20);
+  expect(horizontalGap).toBeCloseTo(configuredGap, 0);
+  expect(verticalGap).toBeCloseTo(configuredGap, 0);
   expect(Math.abs(horizontalGap - verticalGap)).toBeLessThanOrEqual(2);
 });
