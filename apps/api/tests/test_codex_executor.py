@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import app.integrations.codex as codex_module
 from app.integrations.codex import CodexExecutor
 
 
@@ -40,6 +41,7 @@ def test_codex_executor_runs_non_interactively(
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(codex_module, "check_network", lambda: None)
     executor = CodexExecutor(binary="codex", timeout_seconds=30, model="test-model")
 
     result = executor.run(
@@ -64,3 +66,41 @@ def test_codex_executor_runs_non_interactively(
     assert result.exit_code == 0
     assert result.version == "codex-cli 0.162.1"
     assert result.stdout_path.read_text(encoding="utf-8") == '{"type":"done"}\n'
+
+
+def test_codex_executor_stops_before_model_when_network_is_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        codex_module,
+        "check_network",
+        lambda: (_ for _ in ()).throw(RuntimeError("Codex 网络预检失败：blocked")),
+    )
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="codex-cli 0.162.1",
+            stderr="",
+        ),
+    )
+    monkeypatch.setattr(
+        subprocess,
+        "Popen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("网络失败时不应启动模型")
+        ),
+    )
+
+    result = CodexExecutor().run(
+        cwd=tmp_path,
+        prompt="不应执行",
+        output_schema=tmp_path / "schema.json",
+        manifest_path=tmp_path / "manifest.json",
+    )
+
+    assert result.exit_code == -2
+    assert "网络预检失败" in result.failure
+    assert "网络预检失败" in result.stderr_path.read_text(encoding="utf-8")

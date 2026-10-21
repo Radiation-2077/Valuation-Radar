@@ -23,8 +23,15 @@ LEGACY_DATA_DIR = PROJECT_ROOT.parent / "data"
 
 
 class FakeCodexExecutor:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        missing: list[str] | None = None,
+        warnings: list[str] | None = None,
+    ) -> None:
         self.settings = settings
+        self.missing = missing or []
+        self.warnings = warnings or []
 
     def run(
         self,
@@ -39,6 +46,7 @@ class FakeCodexExecutor:
         card["analysis_date"] = analysis_date.isoformat()
         card["generated_at"] = datetime.now(ZoneInfo(self.settings.timezone)).isoformat()
         card["conclusion"]["verdict"] = "观望等待"
+        card["missing"] = list(self.missing)
         card["schema_version"] = "1.1"
         card["presentation"] = _quality_presentation()
         card_path = cwd / "data" / f"{card['name']}_{analysis_date.isoformat()}.json"
@@ -49,7 +57,7 @@ class FakeCodexExecutor:
                     "status": "ok",
                     "data_card_path": str(card_path),
                     "summary": "fake",
-                    "warnings": [],
+                    "warnings": list(self.warnings),
                 }
             ),
             encoding="utf-8",
@@ -220,6 +228,64 @@ def test_codex_failure_keeps_published_valuation(tmp_path: Path) -> None:
             "重估失败" in event["message"]
             for event in job.details["debug_events"]
         )
+
+
+@pytest.mark.parametrize(
+    ("missing", "warnings", "message"),
+    [
+        (["ROE 不可获取"], [], "缺失数据"),
+        ([], ["行情源联网失败"], "存在警告"),
+    ],
+)
+def test_codex_rejects_incomplete_or_warned_output(
+    tmp_path: Path,
+    missing: list[str],
+    warnings: list[str],
+    message: str,
+) -> None:
+    engine = create_engine(f"sqlite:///{tmp_path / 'candidate-strict.db'}")
+    Base.metadata.create_all(engine)
+    settings = Settings(
+        storage_root=tmp_path / "storage",
+        timezone="Asia/Shanghai",
+    )
+    with Session(engine) as session:
+        import_legacy_cards(session, data_dir=LEGACY_DATA_DIR, settings=settings)
+        instrument = session.scalar(select(Instrument).where(Instrument.name == "中国移动"))
+        assert instrument is not None
+        published_before = session.query(ValuationReport).filter_by(
+            instrument_id=instrument.id,
+            status="published",
+        ).count()
+        job = JobRun(
+            job_type="valuation_refresh",
+            trigger="manual",
+            scope=f"instrument:{instrument.id}",
+            status="running",
+            phase="valuing",
+            idempotency_key=f"strict-{len(missing)}-{len(warnings)}",
+        )
+        session.add(job)
+        session.commit()
+
+        with pytest.raises(RuntimeError, match=message):
+            run_valuation_refresh(
+                session,
+                job,
+                settings,
+                executor=FakeCodexExecutor(
+                    settings,
+                    missing=missing,
+                    warnings=warnings,
+                ),
+            )
+
+        assert session.query(ValuationReport).filter_by(status="needs_review").count() == 0
+        assert session.query(ValuationReport).filter_by(
+            instrument_id=instrument.id,
+            status="published",
+        ).count() == published_before
+        assert session.query(AiRun).filter_by(job_id=job.id).one().status == "rejected"
 
 
 def _quality_presentation() -> dict:

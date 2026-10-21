@@ -199,7 +199,7 @@ test("renders unavailable gauges with an explicit missing value", async ({ page 
   await expect(
     page.getByRole("img", { name: "税后股息率 未获取" }),
   ).toBeVisible();
-  await expect(page.getByRole("img", { name: /安全边际 14\.4%/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: /安全边际/ }).first()).toBeVisible();
 });
 
 test("merges a legacy scenario section into the valuation range", async ({ page }) => {

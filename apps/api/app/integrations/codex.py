@@ -4,6 +4,10 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
+
+NETWORK_PROBE_URL = "https://qt.gtimg.cn/q=sh600941"
+
 
 @dataclass(frozen=True)
 class CodexResult:
@@ -13,6 +17,7 @@ class CodexResult:
     stderr_path: Path
     manifest_path: Path
     timed_out: bool = False
+    failure: str = ""
 
 
 class CodexExecutor:
@@ -46,6 +51,19 @@ class CodexExecutor:
     ) -> CodexResult:
         stdout_path = cwd / "codex.stdout.jsonl"
         stderr_path = cwd / "codex.stderr.log"
+        try:
+            check_network()
+        except RuntimeError as exc:
+            stdout_path.write_text("", encoding="utf-8")
+            stderr_path.write_text(str(exc), encoding="utf-8")
+            return CodexResult(
+                exit_code=-2,
+                version=self.version(),
+                stdout_path=stdout_path,
+                stderr_path=stderr_path,
+                manifest_path=manifest_path,
+                failure=str(exc),
+            )
         command = [
             self.binary,
             "exec",
@@ -98,3 +116,18 @@ class CodexExecutor:
             manifest_path=manifest_path,
             timed_out=timed_out,
         )
+
+
+def check_network() -> None:
+    try:
+        response = httpx.get(
+            NETWORK_PROBE_URL,
+            timeout=10,
+            follow_redirects=True,
+            headers={"User-Agent": "ValuationRadar/0.1"},
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"Codex 网络预检失败：{exc}") from exc
+    if not response.content:
+        raise RuntimeError("Codex 网络预检失败：行情源返回空响应")

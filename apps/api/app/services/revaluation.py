@@ -113,14 +113,31 @@ def run_valuation_refresh(
             f"Codex 已退出，退出码 {result.exit_code}，开始校验候选数据卡",
         )
         if result.exit_code != 0:
-            message = "Codex 执行超时" if result.timed_out else f"Codex 退出码 {result.exit_code}"
+            message = result.failure or (
+                "Codex 执行超时"
+                if result.timed_out
+                else f"Codex 退出码 {result.exit_code}"
+            )
             raise RuntimeError(message)
+
+        manifest_path = staging / "manifest.json"
+        if not manifest_path.is_file():
+            raise ValueError("缺少 Codex manifest，终止估值")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("status") not in {"ok", "needs_review"}:
+            raise RuntimeError(f"Codex manifest 状态失败：{manifest.get('status')}")
+        warnings = manifest.get("warnings") or []
+        if warnings:
+            raise RuntimeError(f"Codex 报告存在警告，终止估值：{'；'.join(map(str, warnings))}")
 
         card_path = staging / "data" / card_name
         if not card_path.is_file():
             raise ValueError(f"缺少候选数据卡：{card_name}")
         card = json.loads(card_path.read_text(encoding="utf-8"))
         validate_card(card, card_path)
+        missing = [str(item) for item in card.get("missing") or []]
+        if missing:
+            raise RuntimeError(f"候选估值存在缺失数据，终止估值：{'；'.join(missing)}")
         if card["name"] != instrument.name:
             raise ValueError("候选数据卡标的名与原标的不一致")
         if card["analysis_date"] != analysis_date.isoformat():
@@ -240,7 +257,7 @@ def _build_evidence(session: Session, instrument: Instrument) -> dict[str, Any]:
             for row in macro_rows[:20]
         ],
         "constraints": {
-            "missing_data": "缺失时写 null 并登记 missing，不得编造",
+            "missing_data": "任何估值必需数据缺失或联网失败时立即终止，不生成候选估值",
             "source": "优先使用 evidence.json 与本目录 common/ 数据",
             "output": "只输出 schema 1.1 结构化数据卡，排名与 presentation 必须同源同值",
         },
@@ -280,13 +297,13 @@ def _prompt(
 
 要求：
 1. 按 skill 的方法重新判断质地、产业周期和市场结构，并独立重估。
-2. 数据缺失时写 null 并登记 missing，禁止编造或把缺失值当 0。
+2. 任何估值必需数据缺失、来源不可访问或无法交叉核验时立即终止，不得生成估算卡。
 3. 只生成 schema 1.1 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
 4. 数据卡必须包含完整的 presentation.sections；质量章只使用既有两栏 grid：
    左侧五个 scores，右侧三列表格。
 5. 章节契约：{section_contract}
 6. 每个 section 的 market 必须与内容一致，禁止把 A/H 价格、仓位或收益混在同一章节。
-7. 排名字段与 presentation 必须同源同值，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。
+7. 成功时 manifest.warnings 必须为空；排名字段与 presentation 同源同值并包含完整详情。
 8. 不要修改当前目录之外的文件，不要访问生产数据库。
 9. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
 """
