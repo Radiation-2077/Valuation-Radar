@@ -315,6 +315,12 @@
   white-space: pre-wrap;
 }
 
+.debug-events {
+  height: 14rem;
+  padding-right: 4px;
+  overflow-y: auto;
+}
+
 .debug-log--stderr {
   height: 12rem;
 }
@@ -520,6 +526,10 @@
 
   .debug-log {
     height: 14rem;
+  }
+
+  .debug-events {
+    height: 12rem;
   }
 
   .debug-log--stderr {

@@ -16,7 +16,7 @@ import {
   NTimeline,
   NTimelineItem,
 } from "naive-ui";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import { fetchJobDebug } from "@/api/client";
 import { formatCodexJsonl } from "@/lib/debug-output";
@@ -35,6 +35,16 @@ const debugQuery = useQuery({
 const readableOutput = computed(() =>
   formatCodexJsonl(debugQuery.data.value?.stdout ?? ""),
 );
+const manualRefreshing = ref(false);
+
+async function refreshDebug() {
+  manualRefreshing.value = true;
+  try {
+    await debugQuery.refetch();
+  } finally {
+    manualRefreshing.value = false;
+  }
+}
 
 function eventType(status: string): "default" | "success" | "error" | "info" | "warning" {
   if (status === "failed" || status === "rejected") return "error";
@@ -60,8 +70,8 @@ function eventType(status: string): "default" | "success" | "error" | "info" | "
           <NButton
             size="tiny"
             secondary
-            :loading="debugQuery.isFetching.value"
-            @click="debugQuery.refetch()"
+            :loading="manualRefreshing"
+            @click="refreshDebug"
           >
             刷新 Debug
           </NButton>
@@ -81,16 +91,18 @@ function eventType(status: string): "default" | "success" | "error" | "info" | "
 
       <NSpace vertical :size="8">
         <NText strong>事件流</NText>
-        <NTimeline v-if="debugQuery.data.value.events.length">
-          <NTimelineItem
-            v-for="event in debugQuery.data.value.events"
-            :key="`${event.at}-${event.phase}-${event.message}`"
-            :type="eventType(event.phase)"
-            :time="formatDateTime(event.at)"
-          >
-            {{ event.message }}
-          </NTimelineItem>
-        </NTimeline>
+        <div v-if="debugQuery.data.value.events.length" class="debug-events">
+          <NTimeline>
+            <NTimelineItem
+              v-for="event in debugQuery.data.value.events"
+              :key="`${event.at}-${event.phase}-${event.message}`"
+              :type="eventType(event.phase)"
+              :time="formatDateTime(event.at)"
+            >
+              {{ event.message }}
+            </NTimelineItem>
+          </NTimeline>
+        </div>
         <NEmpty v-else size="small" description="暂无结构化事件" />
       </NSpace>
 
@@ -120,7 +132,7 @@ function eventType(status: string): "default" | "success" | "error" | "info" | "
 
       <NSpace vertical :size="8">
         <NText strong>Codex 实时输出</NText>
-        <NTabs v-if="debugQuery.data.value.stdout" type="line" animated>
+        <NTabs v-if="debugQuery.data.value.stdout" type="line" :animated="false">
           <NTabPane name="readable" tab="可读输出">
             <pre class="debug-log" aria-label="Codex 可读输出">{{ readableOutput || "正在等待可读事件…" }}</pre>
           </NTabPane>
