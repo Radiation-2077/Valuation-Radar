@@ -299,6 +299,26 @@
   margin: 0;
 }
 
+.debug-log {
+  height: 18rem;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.012);
+  color: var(--ui-muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.debug-log--stderr {
+  height: 12rem;
+}
+
 .table-shell > .n-data-table {
   overflow: hidden;
   border-radius: var(--radius-sm);
@@ -496,6 +516,14 @@
 
   .table-shell {
     padding: 6px;
+  }
+
+  .debug-log {
+    height: 14rem;
+  }
+
+  .debug-log--stderr {
+    height: 10rem;
   }
 }
 

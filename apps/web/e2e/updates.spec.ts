@@ -24,6 +24,6 @@ test("shows schedule controls and update history", async ({ page }) => {
   await debugButton.click();
   await expect(page.getByText("事件流")).toBeVisible();
   await expect(page.getByRole("button", { name: "刷新 Debug" })).toBeVisible();
-  await expect(page.getByText("STDOUT / JSONL")).toBeVisible();
+  await expect(page.getByText("Codex 实时输出")).toBeVisible();
   await expect(page.getByRole("button", { name: "收起 Debug" })).toBeVisible();
 });
