@@ -233,20 +233,7 @@ function openMarket(id: number) {
 
 <template>
   <div class="updates-view">
-    <NGrid responsive="screen" class="updates-hero" cols="1 m:2" align-items="end">
-      <NGridItem>
-        <NSpace vertical :size="10">
-          <NTag :bordered="false">DATA OPERATIONS / 02</NTag>
-          <NH1>让排名停留在最近一次收盘。</NH1>
-          <NP depth="3">
-            调度器只负责在交易日投递任务，worker 负责取数、入库和重算排名。任务失败时不会清空上一份可信结果。
-          </NP>
-        </NSpace>
-      </NGridItem>
-      <NGridItem>
-        <NText depth="3">数据更新与运行状态</NText>
-      </NGridItem>
-    </NGrid>
+    <NH1 class="updates-title dashboard-title">数据更新与运行状态</NH1>
 
     <div v-if="scheduleQuery.isPending.value" class="loading-state">
       <NSpin size="large" />

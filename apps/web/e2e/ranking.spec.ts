@@ -111,7 +111,7 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await expect(statusCards).toHaveCount(4);
   const first = await statusCards.nth(0).boundingBox();
   const second = await statusCards.nth(1).boundingBox();
-  const hero = await page.locator(".updates-hero").boundingBox();
+  const hero = await page.locator(".updates-title").boundingBox();
   const statusGrid = await page.locator(".ops-status-grid").boundingBox();
   expect(first).not.toBeNull();
   expect(second).not.toBeNull();
