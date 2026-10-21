@@ -47,6 +47,12 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("max-width", "640px");
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("margin-top", "8px");
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("line-height", "28px");
+  const fairRangeValue = page
+    .locator(".n-drawer .n-statistic")
+    .filter({ hasText: "合理区间" })
+    .locator(".n-statistic-value__content");
+  await expect(fairRangeValue).toHaveText("¥320–400");
+  expect((await fairRangeValue.boundingBox())!.height).toBeLessThan(40);
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();

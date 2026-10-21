@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatDateTime,
   formatMoney,
+  formatMoneyRange,
   formatPercent,
   formatRelativeTime,
   isStale,
@@ -17,6 +18,12 @@ describe("format helpers", () => {
   it("uses the business currency symbol", () => {
     expect(formatMoney(100.5, "CNY")).toBe("¥100.50");
     expect(formatMoney(100.5, "HKD")).toBe("HK$100.50");
+  });
+
+  it("formats price ranges with one currency symbol and compact decimals", () => {
+    expect(formatMoneyRange(320, 400, "CNY")).toBe("¥320–400");
+    expect(formatMoneyRange(3.2, 4.56, "HKD")).toBe("HK$3.2–4.56");
+    expect(formatMoneyRange(null, 400, "CNY")).toBe("—");
   });
 
   it("marks reports older than the configured threshold", () => {

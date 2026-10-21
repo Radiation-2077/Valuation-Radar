@@ -7,16 +7,40 @@ export function formatNumber(
   return `${value.toFixed(digits)}${suffix}`;
 }
 
-export function formatMoney(
-  value: number | null | undefined,
-  currency: string,
-): string {
+function moneySymbol(currency: string): string {
+  return currency === "HKD" ? "HK$" : currency === "USD" ? "$" : "¥";
+}
+
+export function formatMoney(value: number | null | undefined, currency: string): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  const symbol = currency === "HKD" ? "HK$" : currency === "USD" ? "$" : "¥";
+  const symbol = moneySymbol(currency);
   return `${symbol}${value.toLocaleString("zh-CN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatMoneyRange(
+  low: number | null | undefined,
+  high: number | null | undefined,
+  currency: string,
+): string {
+  if (
+    low === null ||
+    low === undefined ||
+    high === null ||
+    high === undefined ||
+    Number.isNaN(low) ||
+    Number.isNaN(high)
+  ) {
+    return "—";
+  }
+  const formatBound = (value: number) =>
+    value.toLocaleString("zh-CN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  return `${moneySymbol(currency)}${formatBound(low)}–${formatBound(high)}`;
 }
 
 export function formatPercent(value: number | null | undefined, digits = 1): string {

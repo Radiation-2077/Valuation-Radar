@@ -27,6 +27,7 @@ import ReportDetailSections from "@/components/ReportDetailSections.vue";
 import {
   formatDate,
   formatMoney,
+  formatMoneyRange,
   formatNumber,
   formatPercent,
   marketLabels,
@@ -87,7 +88,7 @@ const kpis = computed(() => {
     { label: "现价", value: formatMoney(data.price, data.currency) },
     {
       label: "合理区间",
-      value: `${formatMoney(data.fair_low, data.currency)}–${formatMoney(data.fair_high, data.currency)}`,
+      value: formatMoneyRange(data.fair_low, data.fair_high, data.currency),
     },
     { label: "中性目标价", value: formatMoney(data.fair_mid, data.currency) },
     {
