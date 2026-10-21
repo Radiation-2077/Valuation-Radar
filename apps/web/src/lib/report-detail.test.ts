@@ -4,6 +4,7 @@ import type { ReportDetailBlock } from "@/api/types";
 
 import {
   cleanReportNarrative,
+  flattenPositionLayout,
   mergeScenarioIntoRange,
   parseConicGradient,
 } from "./report-detail";
@@ -63,5 +64,29 @@ describe("report detail helpers", () => {
       scenario_explanation: "三档情景说明。\n合理区间 HK$55–68，中枢 HK$62。",
     });
     expect(merged[0].scenarios).toHaveLength(3);
+  });
+
+  it("flattens a position table and removes its donut column", () => {
+    const blocks: ReportDetailBlock[] = [
+      {
+        type: "grid",
+        columns: [
+          [{ type: "table", headers: ["步骤"], rows: [["① 基础仓位"]] }],
+          [
+            { type: "donut", percentage: 7, value: "7%" },
+            {
+              type: "group",
+              blocks: [{ type: "paragraph", text: "止盈与认错条件" }],
+            },
+          ],
+        ],
+      },
+    ];
+
+    const flattened = flattenPositionLayout(blocks, "六、操作建议与仓位管理");
+    const columns = flattened[0].columns as ReportDetailBlock[][];
+
+    expect(columns).toHaveLength(1);
+    expect(columns[0].map((block) => block.type)).toEqual(["table", "group"]);
   });
 });

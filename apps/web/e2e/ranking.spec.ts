@@ -153,6 +153,19 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /A 股估值/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /H 股估值/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();
+  const positionCard = page.locator(".n-card").filter({
+    has: page.getByRole("heading", { name: /六、操作建议与仓位管理/ }),
+  });
+  await expect(positionCard.locator(".premium-donut-chart")).toHaveCount(0);
+  const positionTierChart = positionCard.locator(".position-tier-chart");
+  await expect(positionTierChart).toHaveAttribute("data-tier-count", "3");
+  await expect(positionTierChart).toHaveAttribute("aria-label", /¥232\.74/);
+  await expect(positionTierChart).toHaveAttribute("aria-label", /40%/);
+  const positionTableBox = await positionCard.locator(".table-shell").first().boundingBox();
+  const positionCardBox = await positionCard.boundingBox();
+  expect(positionTableBox).not.toBeNull();
+  expect(positionCardBox).not.toBeNull();
+  expect(positionTableBox!.width / positionCardBox!.width).toBeGreaterThan(0.84);
   await expect(page.getByRole("heading", { name: /七、预期收益率/ })).toBeVisible();
   expect(await page.locator(".n-drawer canvas").count()).toBeGreaterThanOrEqual(6);
 });

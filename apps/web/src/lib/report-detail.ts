@@ -65,6 +65,32 @@ export function mergeScenarioIntoRange(
   });
 }
 
+export function flattenPositionLayout(
+  blocks: ReportDetailBlock[],
+  sectionTitle: string,
+): ReportDetailBlock[] {
+  if (!sectionTitle.includes("仓位")) return blocks;
+  return blocks.map((block) => {
+    if (block.type !== "grid") return block;
+    const columns = blockColumns(block);
+    const hasTable = columns.some((column) =>
+      column.some((item) => item.type === "table"),
+    );
+    const hasDonut = columns.some((column) =>
+      column.some((item) => item.type === "donut"),
+    );
+    if (!hasTable || !hasDonut) return block;
+    return {
+      ...block,
+      columns: [
+        columns.flatMap((column) =>
+          column.filter((item) => item.type !== "donut"),
+        ),
+      ],
+    };
+  });
+}
+
 export function visibleReportSections(
   sections: ReportDetailSection[],
   market: string,
@@ -78,11 +104,12 @@ export function visibleReportSections(
     .map((section) => {
       const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
       const mergedBlocks = mergeScenarioIntoRange(visibleBlocks);
+      const layoutBlocks = flattenPositionLayout(mergedBlocks, section.title);
       return {
         ...section,
         blocks: section.title.includes("决策仪表盘")
-          ? mergedBlocks.filter((block) => block.type === "gauges")
-          : mergedBlocks,
+          ? layoutBlocks.filter((block) => block.type === "gauges")
+          : layoutBlocks,
       };
     })
     .filter((section) => section.blocks.length > 0);

@@ -19,6 +19,7 @@ import {
 
 import type { ReportDetailBlock } from "@/api/types";
 import MetricGauge from "@/components/MetricGauge.vue";
+import PositionTierChart from "@/components/PositionTierChart.vue";
 import PremiumDonutChart from "@/components/PremiumDonutChart.vue";
 import RangePositionChart from "@/components/RangePositionChart.vue";
 import ReturnStackChart from "@/components/ReturnStackChart.vue";
@@ -29,12 +30,12 @@ import {
   blockNumber,
   blockObjects,
   blockText,
+  cleanReportNarrative,
   objectBoolean,
   objectNumber,
   objectText,
   tableHeaders,
   tableRows,
-  cleanReportNarrative,
 } from "@/lib/report-detail";
 
 defineOptions({ name: "ReportBlockRenderer" });
@@ -303,21 +304,16 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
       </NGridItem>
     </NGrid>
 
-    <NGrid
+    <PositionTierChart
       v-else-if="block.type === 'steps'"
-      responsive="screen"
-      cols="1 m:3"
-      :x-gap="12"
-      :y-gap="12"
-    >
-      <NGridItem v-for="step in blockObjects(block, 'items')" :key="itemString(step, 'title')">
-        <NCard size="small" :class="{ 'step-active': itemBoolean(step, 'active') }">
-          <NText strong>{{ itemString(step, "title") }}</NText>
-          <br />
-          <NText depth="3">{{ itemString(step, "body") }}</NText>
-        </NCard>
-      </NGridItem>
-    </NGrid>
+      :items="
+        blockObjects(block, 'items').map((item) => ({
+          title: itemString(item, 'title'),
+          body: itemString(item, 'body'),
+          active: itemBoolean(item, 'active'),
+        }))
+      "
+    />
 
     <PremiumDonutChart
       v-else-if="block.type === 'donut'"
