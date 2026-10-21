@@ -131,7 +131,6 @@
 .profile-stage {
   position: relative;
   display: grid;
-  margin-top: -8px;
 }
 
 .profile-content-layer {

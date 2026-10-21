@@ -51,6 +51,10 @@
   gap: 12px !important;
 }
 
+.dashboard-stack .toolbar {
+  margin-top: -8px;
+}
+
 .updates-grid > div {
   display: flex;
 }

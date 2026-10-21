@@ -23,7 +23,6 @@ const profiles: Array<{ code: ProfileCode; label: string }> = [
     type="line"
     animated
     :value="modelValue"
-    :pane-wrapper-style="{ display: 'none' }"
     @update:value="(value: string) => emit('update:modelValue', value as ProfileCode)"
   >
     <NTabPane
