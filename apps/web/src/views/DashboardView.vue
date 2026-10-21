@@ -13,10 +13,15 @@ import {
   NFormItem,
   NGrid,
   NGridItem,
+  NH1,
+  NH2,
+  NP,
   NSelect,
+  NSpace,
   NSpin,
   NSwitch,
   NTag,
+  NText,
   type DataTableColumns,
 } from "naive-ui";
 import { computed, h, ref } from "vue";
@@ -60,7 +65,6 @@ const filters = computed(() => ({
   industry: industry.value || undefined,
   staleOnly: staleOnly.value,
 }));
-
 const query = useQuery<RankingResponse>({
   queryKey: computed(() => ["ranking", filters.value]),
   queryFn: () => fetchRanking(filters.value),
@@ -92,95 +96,73 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
   return "error";
 };
 
-const rankingColumns = computed<DataTableColumns<RankingItem>>(() => [
-  {
-    title: "排名",
-    key: "rank",
-    width: 68,
-    render: (row) => h("span", { class: "rank-number" }, String(row.rank ?? "—")),
-  },
+const columns = computed<DataTableColumns<RankingItem>>(() => [
+  { title: "排名", key: "rank", width: 72 },
   {
     title: "标的",
     key: "name",
-    minWidth: 190,
+    minWidth: 170,
     render: (row) =>
-      h("div", [
-        h("strong", { class: "security-name" }, row.name),
-        h("span", { class: "security-code" }, `${row.market} · ${row.code}`),
-        h(
-          "div",
-          row.risk_flags.slice(0, 2).map((flag) =>
-            h(
-              NTag,
-              { size: "tiny", bordered: false, style: "margin-right:4px;margin-top:4px" },
-              { default: () => flag },
-            ),
-          ),
-        ),
-      ]),
+      h(NSpace, { vertical: true, size: 2 }, {
+        default: () => [
+          h(NText, { strong: true }, { default: () => row.name }),
+          h(NText, { depth: 3 }, { default: () => `${row.market} · ${row.code}` }),
+        ],
+      }),
   },
   {
     title: "行业 / 路径",
     key: "industry",
-    minWidth: 145,
-    render: (row) =>
-      h("div", [
-        h("span", row.industry),
-        h("small", { class: "cell-sub" }, pathLabels[row.path] ?? row.path),
-      ]),
+    render: (row) => `${row.industry} / ${pathLabels[row.path] ?? row.path}`,
   },
   {
     title: "现价",
     key: "price",
-    width: 108,
     render: (row) => formatMoney(row.price, row.currency),
   },
   {
     title: "安全边际",
-    key: "safety_margin_pct",
-    width: 108,
+    key: "margin",
     render: (row) =>
       h(
-        "span",
-        { class: (row.safety_margin_pct ?? 0) >= 0 ? "positive" : "negative" },
-        formatPercent(row.safety_margin_pct),
+        NText,
+        { type: (row.safety_margin_pct ?? 0) >= 0 ? "success" : "error" },
+        { default: () => formatPercent(row.safety_margin_pct) },
       ),
   },
   {
     title: "预期年化",
-    key: "expected_return",
-    width: 105,
+    key: "expected",
     render: (row) => formatPercent(row.expected_return.total),
   },
   {
     title: "最大回撤",
     key: "drawdown",
-    width: 105,
     render: (row) => formatPercent(row.max_drawdown_pct),
   },
   {
     title: "综合分",
     key: "score",
-    width: 120,
     render: (row) =>
-      h("div", { class: "table-score-cell" }, [
-        h("span", { class: "table-score" }, formatNumber(row.score.total, 1)),
-        h(
-          NTag,
-          { size: "tiny", bordered: false, type: bandType(row.score.band) },
-          { default: () => row.score.band },
-        ),
-      ]),
+      h(NSpace, { align: "center", size: 6 }, {
+        default: () => [
+          h(NText, { strong: true }, { default: () => formatNumber(row.score.total, 1) }),
+          h(
+            NTag,
+            { size: "small", type: bandType(row.score.band), bordered: false },
+            { default: () => row.score.band },
+          ),
+        ],
+      }),
   },
   {
-    title: "数据",
-    key: "analysis_date",
-    width: 90,
+    title: "数据日期",
+    key: "date",
     render: (row) =>
       h(
-        "span",
-        { class: row.stale_days > 7 ? "stale-text" : "" },
-        formatDate(row.analysis_date),
+        NText,
+        { type: row.stale_days > 7 ? "warning" : undefined },
+        { default: () => formatDate(row.analysis_date) },
       ),
   },
 ]);
@@ -192,10 +174,6 @@ function selectProfile(value: ProfileCode) {
 function openValuation(id: number) {
   selectedValuationId.value = id;
   detailOpen.value = true;
-}
-
-function closeValuation() {
-  detailOpen.value = false;
 }
 
 function clearFilters() {
@@ -218,36 +196,33 @@ function rowProps(row: RankingItem) {
 </script>
 
 <template>
-  <div class="dashboard">
-    <section class="dashboard-hero">
-      <div>
-        <p class="eyebrow">DECISION SYSTEM / LIVE RANK</p>
-        <h1>把估值结论，压缩成可执行的排序。</h1>
-        <p class="hero-copy">
-          同一把尺子比较安全边际、基础收益、抗跌性与稳定性。价格变化不会改写历史估值，只会改变它今天的位置。
-        </p>
-      </div>
-      <div class="hero-side">
-        <span class="section-index">01</span>
-        <small>风险调整后的性价比</small>
-      </div>
-    </section>
+  <NSpace vertical :size="24">
+    <NGrid responsive="screen" cols="1 m:2" align-items="end">
+      <NGridItem>
+        <NSpace vertical :size="10">
+          <NTag :bordered="false">DECISION SYSTEM / LIVE RANK</NTag>
+          <NH1>把估值结论，压缩成可执行的排序。</NH1>
+          <NP depth="3">
+            同一把尺子比较安全边际、基础收益、抗跌性与稳定性。价格变化不会改写历史估值，只会改变它今天的位置。
+          </NP>
+        </NSpace>
+      </NGridItem>
+      <NGridItem>
+        <NText depth="3">风险调整后的性价比</NText>
+      </NGridItem>
+    </NGrid>
 
-    <div class="control-row">
+    <NSpace align="center" justify="space-between" :wrap="true" :size="16">
       <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
-      <NButton tertiary size="small" @click="clearFilters">清除筛选</NButton>
-    </div>
+      <NButton tertiary @click="clearFilters">清除筛选</NButton>
+    </NSpace>
 
-    <div v-if="query.isPending.value" class="loading-state">
-      <NSpin size="large" />
-      <span>正在读取估值与排名…</span>
-    </div>
-
+    <NSpin v-if="query.isPending.value" size="large" />
     <NAlert v-else-if="query.isError.value" type="error" title="排名暂时不可用">
-      <div class="alert-content">
+      <NSpace justify="space-between" align="center">
         <span>{{ query.error.value?.message }}</span>
         <NButton size="small" @click="query.refetch()">重新加载</NButton>
-      </div>
+      </NSpace>
     </NAlert>
 
     <template v-else-if="query.data.value">
@@ -256,144 +231,104 @@ function rowProps(row: RankingItem) {
         :counts="query.data.value.counts"
       />
 
-      <section class="top-section">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">TOP PICKS</p>
-            <h2>当前最值得看的三条</h2>
-          </div>
+      <NSpace vertical :size="16">
+        <NSpace align="center" justify="space-between" :wrap="true">
+          <NH2>当前最值得看的三条</NH2>
           <NTag :bordered="false">
             {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
           </NTag>
-        </div>
-        <div class="top-grid">
-          <TopPickCard
-            v-for="item in query.data.value.top_three"
-            :key="item.valuation_market_id"
-            :item="item"
-            @select="openValuation"
-          />
-        </div>
-      </section>
+        </NSpace>
+        <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="16">
+          <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
+            <TopPickCard :item="item" @select="openValuation" />
+          </NGridItem>
+        </NGrid>
+      </NSpace>
 
-      <section class="analysis-grid">
-        <NCard class="scatter-panel" :bordered="false">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">RISK / RETURN MAP</p>
-              <h2>性价比象限</h2>
-            </div>
-            <NTag :bordered="false" size="small">气泡越大，安全边际越高</NTag>
-          </div>
-          <RankingScatter
-            :items="[...query.data.value.main_board, ...query.data.value.etfs]"
-            @select="openValuation"
-          />
-        </NCard>
+      <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="16">
+        <NGridItem span="1 m:2">
+          <NCard>
+            <NSpace vertical :size="16">
+              <NSpace align="center" justify="space-between">
+                <NH2>性价比象限</NH2>
+                <NTag size="small" :bordered="false">气泡越大，安全边际越高</NTag>
+              </NSpace>
+              <RankingScatter
+                :items="[...query.data.value.main_board, ...query.data.value.etfs]"
+                @select="openValuation"
+              />
+            </NSpace>
+          </NCard>
+        </NGridItem>
 
-        <NCard class="filter-panel" :bordered="false">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">NARROW THE POOL</p>
-              <h2>筛选池子</h2>
-            </div>
-          </div>
-          <NGrid :cols="1" :y-gap="12">
-            <NGridItem>
+        <NGridItem>
+          <NCard>
+            <NSpace vertical :size="12">
+              <NH2>筛选池子</NH2>
               <NFormItem label="市场" :show-feedback="false">
-                <NSelect
-                  v-model:value="market"
-                  :options="marketOptions"
-                  clearable
-                  placeholder="全部市场"
-                />
+                <NSelect v-model:value="market" :options="marketOptions" clearable />
               </NFormItem>
-            </NGridItem>
-            <NGridItem>
               <NFormItem label="估值路径" :show-feedback="false">
-                <NSelect
-                  v-model:value="path"
-                  :options="pathOptions"
-                  clearable
-                  placeholder="全部路径"
-                />
+                <NSelect v-model:value="path" :options="pathOptions" clearable />
               </NFormItem>
-            </NGridItem>
-            <NGridItem>
               <NFormItem label="行业" :show-feedback="false">
-                <NSelect
-                  v-model:value="industry"
-                  :options="industryOptions"
-                  clearable
-                  filterable
-                  placeholder="全部行业"
-                />
+                <NSelect v-model:value="industry" :options="industryOptions" clearable filterable />
               </NFormItem>
-            </NGridItem>
-            <NGridItem>
               <NFormItem label="只看估值偏旧" :show-feedback="false">
                 <NSwitch v-model:value="staleOnly" />
               </NFormItem>
+              <NGrid cols="3" :x-gap="12">
+                <NGridItem><NText depth="3">主榜 {{ query.data.value.counts.main_board }}</NText></NGridItem>
+                <NGridItem><NText depth="3">ETF {{ query.data.value.counts.etfs }}</NText></NGridItem>
+                <NGridItem><NText depth="3">观察 {{ query.data.value.counts.excluded }}</NText></NGridItem>
+              </NGrid>
+            </NSpace>
+          </NCard>
+        </NGridItem>
+      </NGrid>
+
+      <NCard>
+        <NSpace vertical :size="16">
+          <NSpace align="center" justify="space-between">
+            <NH2>完整性价比排名</NH2>
+            <NTag size="small" :bordered="false">点击行在同页展开详情</NTag>
+          </NSpace>
+          <NDataTable
+            v-if="query.data.value.main_board.length"
+            size="small"
+            :columns="columns"
+            :data="query.data.value.main_board"
+            :row-props="rowProps"
+            :bordered="false"
+            :single-line="false"
+            :pagination="false"
+            :scroll-x="1120"
+          />
+          <NEmpty v-else description="当前筛选没有主榜标的" />
+        </NSpace>
+      </NCard>
+
+      <NCard v-if="query.data.value.etfs.length">
+        <NSpace vertical :size="16">
+          <NH2>ETF 独立观察</NH2>
+          <NGrid responsive="screen" cols="1 s:2 m:3" :x-gap="12" :y-gap="12">
+            <NGridItem v-for="item in query.data.value.etfs" :key="item.valuation_market_id">
+              <NCard size="small" hoverable @click="openValuation(item.valuation_market_id)">
+                <NSpace vertical :size="8">
+                  <NTag :type="bandType(item.score.band)" :bordered="false">
+                    {{ item.score.band }} 档
+                  </NTag>
+                  <NText strong>{{ item.name }}</NText>
+                  <NText depth="3">{{ item.code }}</NText>
+                  <NText>预期年化 {{ formatPercent(item.expected_return.total) }}</NText>
+                </NSpace>
+              </NCard>
             </NGridItem>
           </NGrid>
-          <div class="pool-counts">
-            <div><small>主榜</small><strong>{{ query.data.value.counts.main_board }}</strong></div>
-            <div><small>ETF</small><strong>{{ query.data.value.counts.etfs }}</strong></div>
-            <div><small>观察</small><strong>{{ query.data.value.counts.excluded }}</strong></div>
-          </div>
-        </NCard>
-      </section>
-
-      <NCard class="ranking-panel" :bordered="false">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">FULL RANKING</p>
-            <h2>完整性价比排名</h2>
-          </div>
-          <NTag :bordered="false" size="small">点击行在同页展开详情</NTag>
-        </div>
-        <NDataTable
-          v-if="query.data.value.main_board.length"
-          class="ranking-table"
-          size="small"
-          :columns="rankingColumns"
-          :data="query.data.value.main_board"
-          :row-props="rowProps"
-          :bordered="false"
-          :single-line="false"
-          :pagination="false"
-          :scroll-x="1240"
-        />
-        <NEmpty v-else description="当前筛选没有主榜标的" />
+        </NSpace>
       </NCard>
 
-      <NCard v-if="query.data.value.etfs.length" class="ranking-panel" :bordered="false">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">ETF BOARD</p>
-            <h2>ETF 独立观察</h2>
-          </div>
-        </div>
-        <div class="etf-grid">
-          <NCard
-            v-for="item in query.data.value.etfs"
-            :key="item.valuation_market_id"
-            size="small"
-            hoverable
-            class="etf-card"
-            @click="openValuation(item.valuation_market_id)"
-          >
-            <NTag :type="bandType(item.score.band)" size="small" :bordered="false">
-              {{ item.score.band }} 档
-            </NTag>
-            <strong>{{ item.name }}</strong>
-            <span>{{ item.code }}</span>
-            <small>预期年化 {{ formatPercent(item.expected_return.total) }}</small>
-          </NCard>
-        </div>
-      </NCard>
-
-      <NCollapse v-if="query.data.value.excluded.length" class="excluded-section">
+      <NCollapse v-if="query.data.value.excluded.length">
         <NCollapseItem
           :title="`排除 / 观察区（${query.data.value.excluded.length}）`"
           name="excluded"
@@ -403,11 +338,9 @@ function rowProps(row: RankingItem) {
             :key="item.valuation_market_id"
             block
             text
-            class="excluded-row"
             @click="openValuation(item.valuation_market_id)"
           >
-            <span>{{ item.name }} {{ item.market }}</span>
-            <small>{{ item.excluded_reasons.join("；") }}</small>
+            {{ item.name }} {{ item.market }} · {{ item.excluded_reasons.join("；") }}
           </NButton>
         </NCollapseItem>
       </NCollapse>
@@ -420,14 +353,14 @@ function rowProps(row: RankingItem) {
       :trap-focus="true"
       @after-leave="selectedValuationId = null"
     >
-      <NDrawerContent :native-scrollbar="false" closable body-content-style="padding: 0 28px 60px">
+      <NDrawerContent :native-scrollbar="false" closable>
         <ValuationDetailPanel
           v-if="selectedValuationId"
           :valuation-market-id="selectedValuationId"
           :profile="profile"
-          @close="closeValuation"
+          @close="detailOpen = false"
         />
       </NDrawerContent>
     </NDrawer>
-  </div>
+  </NSpace>
 </template>

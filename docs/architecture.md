@@ -4,7 +4,7 @@
 
 | 进程 | 职责 |
 |---|---|
-| `web` | Vue 3 + Naive UI SPA，查询排名、同页详情、调度与复核状态 |
+| `web` | Vue 3 + Naive UI 默认组件的 SPA，查询排名、同页详情、调度与复核状态 |
 | `api` | FastAPI，只做查询和任务投递 |
 | `scheduler` | 按交易日历检查计划并创建幂等任务 |
 | `worker` | 执行行情刷新或 Codex 估值任务 |

@@ -10,11 +10,16 @@ import {
   NFormItem,
   NGrid,
   NGridItem,
+  NH1,
+  NH2,
+  NP,
   NSelect,
+  NSpace,
   NSpin,
   NStatistic,
   NSwitch,
   NTag,
+  NText,
   NTimePicker,
   useMessage,
   type DataTableColumns,
@@ -228,19 +233,20 @@ function openMarket(id: number) {
 
 <template>
   <div class="updates-view">
-    <section class="updates-hero">
-      <div>
-        <p class="eyebrow">DATA OPERATIONS / 02</p>
-        <h1>让排名停留在最近一次收盘。</h1>
-        <p class="hero-copy">
-          调度器只负责在交易日投递任务，worker 负责取数、入库和重算排名。任务失败时不会清空上一份可信结果。
-        </p>
-      </div>
-      <div class="hero-side">
-        <span class="section-index">02</span>
-        <small>数据更新与运行状态</small>
-      </div>
-    </section>
+    <NGrid responsive="screen" cols="1 m:2" align-items="end">
+      <NGridItem>
+        <NSpace vertical :size="10">
+          <NTag :bordered="false">DATA OPERATIONS / 02</NTag>
+          <NH1>让排名停留在最近一次收盘。</NH1>
+          <NP depth="3">
+            调度器只负责在交易日投递任务，worker 负责取数、入库和重算排名。任务失败时不会清空上一份可信结果。
+          </NP>
+        </NSpace>
+      </NGridItem>
+      <NGridItem>
+        <NText depth="3">数据更新与运行状态</NText>
+      </NGridItem>
+    </NGrid>
 
     <div v-if="scheduleQuery.isPending.value" class="loading-state">
       <NSpin size="large" />
@@ -286,18 +292,17 @@ function openMarket(id: number) {
         </NGridItem>
       </NGrid>
 
-      <section class="updates-layout">
+      <NGrid responsive="screen" cols="1 l:2" :x-gap="16" :y-gap="16">
+        <NGridItem>
         <NCard class="schedule-panel" :bordered="false">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">SCHEDULE</p>
-              <h2>收盘后更新设置</h2>
-            </div>
+          <NSpace vertical :size="16">
+            <NSpace align="center" justify="space-between">
+              <NH2>收盘后更新设置</NH2>
             <NSwitch v-model:value="form.enabled">
               <template #checked>ON</template>
               <template #unchecked>OFF</template>
             </NSwitch>
-          </div>
+            </NSpace>
 
           <NForm label-placement="top" :show-feedback="false">
             <NGrid responsive="screen" cols="1 s:2" :x-gap="16" :y-gap="4">
@@ -338,7 +343,7 @@ function openMarket(id: number) {
             </NGrid>
           </NForm>
 
-          <div class="schedule-actions">
+          <NSpace>
             <NButton
               type="primary"
               :loading="saveMutation.isPending.value"
@@ -354,15 +359,17 @@ function openMarket(id: number) {
             >
               {{ activeJob ? "已有任务执行中" : "立即刷新行情" }}
             </NButton>
-          </div>
-          <p class="schedule-note">
+          </NSpace>
+          <NP depth="3">
             自动更新会刷新行情、宏观缓存和当前排名。完整 Codex 重估按独立策略运行，不会未经校验覆盖当前估值。
-          </p>
+          </NP>
+          </NSpace>
         </NCard>
+        </NGridItem>
 
+        <NGridItem>
         <NCard class="schedule-summary" :bordered="false">
-          <p class="eyebrow">HOW IT RUNS</p>
-          <h2>执行链路</h2>
+          <NH2>执行链路</NH2>
           <NForm label-placement="left" :show-feedback="false">
             <NGrid :cols="1" :y-gap="12">
               <NGridItem><NTag :bordered="false">01 交易日检查</NTag></NGridItem>
@@ -371,20 +378,19 @@ function openMarket(id: number) {
               <NGridItem><NTag :bordered="false">04 排名重算</NTag></NGridItem>
             </NGrid>
           </NForm>
-          <p class="panel-footnote">
+          <NP depth="3">
             当前时区：{{ scheduleQuery.data.value.timezone }}。计划时间按上海时区计算。
-          </p>
+          </NP>
         </NCard>
-      </section>
+        </NGridItem>
+      </NGrid>
 
       <NCard class="jobs-panel" :bordered="false">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">JOB HISTORY</p>
-            <h2>最近任务</h2>
-          </div>
+        <NSpace vertical :size="16">
+          <NSpace align="center" justify="space-between">
+            <NH2>最近任务</NH2>
           <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
-        </div>
+          </NSpace>
         <NDataTable
           v-if="jobs.length"
           size="small"
@@ -395,29 +401,27 @@ function openMarket(id: number) {
           :pagination="false"
         />
         <NEmpty v-else description="还没有更新任务" />
+        </NSpace>
       </NCard>
 
       <NCard class="review-panel" :bordered="false">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">HUMAN CHECKPOINT</p>
-            <h2>待复核 Codex 估值</h2>
-          </div>
+        <NSpace vertical :size="16">
+          <NSpace align="center" justify="space-between">
+            <NH2>待复核 Codex 估值</NH2>
           <NTag :bordered="false" size="small">{{ reviews.length }} 个候选版本</NTag>
-        </div>
-        <div v-if="reviews.length" class="review-list">
+          </NSpace>
+        <NSpace v-if="reviews.length" vertical :size="12">
           <NCard v-for="review in reviews" :key="review.report_id" size="small" :bordered="false">
-            <div class="review-heading">
-              <div>
-                <strong>{{ review.name }}</strong>
-                <small>
-                  {{ formatDateTime(review.generated_at) }} · 置信度 {{ review.confidence }}
-                </small>
-              </div>
+            <NSpace vertical :size="12">
+            <NSpace align="center" justify="space-between">
+              <NSpace vertical :size="4">
+                <NText strong>{{ review.name }}</NText>
+                <NText depth="3">{{ formatDateTime(review.generated_at) }} · 置信度 {{ review.confidence }}</NText>
+              </NSpace>
               <NTag type="warning" :bordered="false">REVIEW</NTag>
-            </div>
-            <p>{{ review.thesis }}</p>
-            <div class="review-markets">
+            </NSpace>
+            <NP>{{ review.thesis }}</NP>
+            <NSpace>
               <NButton
                 v-for="market in review.markets"
                 :key="market.valuation_market_id"
@@ -427,8 +431,8 @@ function openMarket(id: number) {
               >
                 {{ market.market }} · {{ market.code }} · {{ market.verdict }}
               </NButton>
-            </div>
-            <div class="review-actions">
+            </NSpace>
+            <NSpace>
               <NButton
                 type="primary"
                 size="small"
@@ -445,10 +449,12 @@ function openMarket(id: number) {
               >
                 拒绝候选
               </NButton>
-            </div>
+            </NSpace>
+            </NSpace>
           </NCard>
-        </div>
+        </NSpace>
         <NEmpty v-else description="没有待复核候选" />
+        </NSpace>
       </NCard>
     </template>
   </div>

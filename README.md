@@ -12,7 +12,7 @@
 
 ## 技术栈
 
-- 前端：Vue 3、TypeScript、Vite、Vue Router、Naive UI、TanStack Vue Query、ECharts
+- 前端：Vue 3、TypeScript、Vite、Vue Router、Naive UI 默认暗色主题、TanStack Vue Query、ECharts
 - 后端：FastAPI、Pydantic v2、SQLAlchemy 2、Alembic
 - 数据库：SQLite（WAL）
 - 调度：独立 scheduler + 单实例 worker + 数据库任务表

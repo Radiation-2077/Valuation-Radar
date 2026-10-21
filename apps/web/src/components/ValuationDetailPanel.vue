@@ -12,6 +12,7 @@ import {
   NGridItem,
   NList,
   NListItem,
+  NProgress,
   NSpin,
   NStatistic,
   NTag,
@@ -21,7 +22,6 @@ import { computed, ref, watch, watchEffect } from "vue";
 
 import { fetchValuation, requestRevaluation } from "@/api/client";
 import type { ProfileCode } from "@/api/types";
-import FairValueBand from "@/components/FairValueBand.vue";
 import ReturnBreakdown from "@/components/ReturnBreakdown.vue";
 import ScoreBars from "@/components/ScoreBars.vue";
 import {
@@ -106,6 +106,14 @@ const kpis = computed(() => {
     },
   ];
 });
+
+const fairPosition = computed(() => {
+  const data = query.data.value;
+  if (!data) return 0;
+  const minimum = Math.min(data.fair_low, data.price);
+  const maximum = Math.max(data.fair_high, data.price);
+  return maximum === minimum ? 50 : ((data.price - minimum) / (maximum - minimum)) * 100;
+});
 </script>
 
 <template>
@@ -185,13 +193,23 @@ const kpis = computed(() => {
                 基线 {{ formatPercent(query.data.value.safety_margin_pct) }}
               </NTag>
             </div>
-            <FairValueBand
-              :low="query.data.value.fair_low"
-              :mid="query.data.value.fair_mid"
-              :high="query.data.value.fair_high"
-              :price="query.data.value.price"
-              :currency="query.data.value.currency"
+            <NProgress
+              type="line"
+              :percentage="fairPosition"
+              :height="10"
+              :show-indicator="false"
             />
+            <NGrid cols="3" :x-gap="12">
+              <NGridItem>
+                <NStatistic label="合理下限" :value="formatMoney(query.data.value.fair_low, query.data.value.currency)" />
+              </NGridItem>
+              <NGridItem>
+                <NStatistic label="合理中枢" :value="formatMoney(query.data.value.fair_mid, query.data.value.currency)" />
+              </NGridItem>
+              <NGridItem>
+                <NStatistic label="合理上限" :value="formatMoney(query.data.value.fair_high, query.data.value.currency)" />
+              </NGridItem>
+            </NGrid>
             <NGrid class="valuation-metrics" cols="2 m:4" :x-gap="12" :y-gap="12">
               <NGridItem>
                 <NStatistic label="PE" :value="formatNumber(query.data.value.valuation.pe)" />
