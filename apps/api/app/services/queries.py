@@ -260,8 +260,26 @@ def get_valuation_detail(
         if other.id != market.id
     ]
     conclusion = report.raw_card.get("conclusion") or {}
+    latest_valuation_market_id = session.scalar(
+        select(ValuationMarket.id)
+        .join(ValuationReport, ValuationReport.id == ValuationMarket.report_id)
+        .join(Listing, Listing.id == ValuationMarket.listing_id)
+        .where(
+            ValuationReport.instrument_id == instrument.id,
+            ValuationReport.status == "published",
+            Listing.market == market.listing.market,
+        )
+        .order_by(
+            ValuationReport.analysis_date.desc(),
+            ValuationReport.revision.desc(),
+            ValuationReport.generated_at.desc(),
+            ValuationMarket.id.desc(),
+        )
+        .limit(1)
+    ) or market.id
     return ValuationDetailOut(
         valuation_market_id=market.id,
+        latest_valuation_market_id=latest_valuation_market_id,
         report_id=report.id,
         instrument_id=instrument.id,
         name=instrument.name,

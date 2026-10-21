@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import {
   NAlert,
+  NButton,
   NCard,
   NDescriptions,
   NDescriptionsItem,
@@ -49,13 +50,23 @@ function eventType(status: string): "default" | "success" | "error" | "info" | "
     <NSpace v-else-if="debugQuery.data.value" vertical :size="16">
       <NSpace align="center" justify="space-between">
         <NText strong>任务 #{{ debugQuery.data.value.job.id }} Debug</NText>
-        <NTag
-          size="small"
-          :bordered="false"
-          :type="eventType(debugQuery.data.value.job.status)"
-        >
-          {{ debugQuery.data.value.job.status }} · {{ debugQuery.data.value.job.phase }}
-        </NTag>
+        <NSpace align="center">
+          <NButton
+            size="tiny"
+            secondary
+            :loading="debugQuery.isFetching.value"
+            @click="debugQuery.refetch()"
+          >
+            刷新 Debug
+          </NButton>
+          <NTag
+            size="small"
+            :bordered="false"
+            :type="eventType(debugQuery.data.value.job.status)"
+          >
+            {{ debugQuery.data.value.job.status }} · {{ debugQuery.data.value.job.phase }}
+          </NTag>
+        </NSpace>
       </NSpace>
 
       <NAlert v-if="debugQuery.data.value.job.error" type="error" :bordered="false">

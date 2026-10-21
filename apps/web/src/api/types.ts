@@ -68,6 +68,7 @@ export interface RankingResponse {
 
 export interface ValuationDetail {
   valuation_market_id: number;
+  latest_valuation_market_id: number;
   report_id: number;
   instrument_id: number;
   name: string;

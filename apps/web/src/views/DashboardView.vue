@@ -73,6 +73,7 @@ const query = useQuery<RankingResponse>({
   queryKey: computed(() => ["ranking", filters.value]),
   queryFn: () => fetchRanking(filters.value),
   staleTime: 30_000,
+  refetchInterval: 30_000,
 });
 
 const marketOptions = computed(() =>

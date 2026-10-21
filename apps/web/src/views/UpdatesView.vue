@@ -103,6 +103,7 @@ const reviewMutation = useMutation({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["reviews"] }),
       queryClient.invalidateQueries({ queryKey: ["ranking"] }),
+      queryClient.invalidateQueries({ queryKey: ["valuation"] }),
     ]);
     message.success(result.ranking_rebuilt ? "候选估值已发布并重算排名" : "候选估值已拒绝");
   },

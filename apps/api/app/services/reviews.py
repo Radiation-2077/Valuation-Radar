@@ -35,6 +35,7 @@ def approve_review(session: Session, report_id: int) -> ValuationReport:
     report.status = "published"
     report.generated_at = report.generated_at or datetime.now(UTC).replace(tzinfo=None)
     apply_instrument_metadata(report.instrument, report.raw_card)
+    session.flush()
     RankingService().rebuild(session)
     session.commit()
     return report

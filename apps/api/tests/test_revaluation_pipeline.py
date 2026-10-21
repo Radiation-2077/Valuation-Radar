@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.db.base import Base
 from app.integrations.codex import CodexResult
-from app.models import AiRun, Instrument, JobRun, ValuationReport
+from app.models import AiRun, Instrument, JobRun, Listing, ValuationMarket, ValuationReport
 from app.services.importer import import_legacy_cards
-from app.services.queries import get_valuation_detail
+from app.services.queries import get_ranking, get_valuation_detail
 from app.services.revaluation import run_valuation_refresh
 from app.services.reviews import approve_review, list_review_reports
 
@@ -97,7 +97,7 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         timezone="Asia/Shanghai",
     )
 
-    with Session(engine) as session:
+    with Session(engine, autoflush=False) as session:
         import_legacy_cards(
             session,
             data_dir=LEGACY_DATA_DIR,
@@ -105,6 +105,14 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         )
         instrument = session.scalar(select(Instrument).where(Instrument.name == "中国移动"))
         assert instrument is not None
+        old_market_id, old_market_name = session.execute(
+            select(ValuationMarket.id, Listing.market)
+            .join(ValuationReport, ValuationReport.id == ValuationMarket.report_id)
+            .join(Listing, Listing.id == ValuationMarket.listing_id)
+            .where(ValuationReport.instrument_id == instrument.id)
+            .order_by(ValuationReport.analysis_date, ValuationReport.revision)
+            .limit(1)
+        ).one()
         original_verdict = instrument.verdict
         job = JobRun(
             job_type="valuation_refresh",
@@ -138,8 +146,24 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert session.get(Instrument, instrument.id).verdict == "观望等待"  # type: ignore[union-attr]
         assert session.query(ValuationReport).filter_by(status="needs_review").count() == 0
         assert session.query(ValuationReport).filter_by(status="published").count() > 0
+        ranking = get_ranking(session, profile="balanced")
+        ranked = next(
+            item
+            for item in ranking.main_board
+            if item.name == "中国移动" and item.market == "A"
+        )
+        assert ranked.report_id == published.id
+        assert ranked.valuation_market_id in {market.id for market in published.markets}
         detail = get_valuation_detail(session, published.markets[0].id)
         assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "quality_scorecard"
+        old_detail = get_valuation_detail(session, old_market_id)
+        assert old_detail.valuation_market_id == old_market_id
+        latest_market_id = next(
+            market.id
+            for market in published.markets
+            if market.listing.market == old_market_name
+        )
+        assert old_detail.latest_valuation_market_id == latest_market_id
 
 
 def test_codex_failure_keeps_published_valuation(tmp_path: Path) -> None:

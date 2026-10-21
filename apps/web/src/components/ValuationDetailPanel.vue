@@ -59,6 +59,7 @@ const query = useQuery({
   queryKey: computed(() => ["valuation", valuationId.value, profile.value]),
   queryFn: () => fetchValuation(valuationId.value, profile.value),
   enabled: computed(() => Number.isFinite(valuationId.value)),
+  refetchInterval: 30_000,
 });
 const revaluationMutation = useMutation({
   mutationFn: (instrumentId: number) => requestRevaluation(instrumentId),
@@ -73,6 +74,15 @@ watchEffect(() => {
     document.title = `${query.data.value.name} ${query.data.value.market} · 估值雷达`;
   }
 });
+
+watch(
+  () => query.data.value?.latest_valuation_market_id,
+  (latestId) => {
+    if (latestId && latestId !== activeId.value) {
+      activeId.value = latestId;
+    }
+  },
+);
 
 const bandType = (band: string): "success" | "info" | "warning" | "error" => {
   if (band === "S") return "success";

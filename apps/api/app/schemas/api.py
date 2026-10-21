@@ -125,6 +125,7 @@ class MarketSummaryOut(BaseModel):
 
 class ValuationDetailOut(BaseModel):
     valuation_market_id: int
+    latest_valuation_market_id: int
     report_id: int
     instrument_id: int
     name: str
