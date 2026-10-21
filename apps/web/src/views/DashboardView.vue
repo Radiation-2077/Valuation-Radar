@@ -313,7 +313,18 @@ function rowProps(row: RankingItem) {
 
 <template>
   <NSpace vertical class="dashboard-stack" :size="24">
-    <NH1 class="dashboard-title">风险调整后的性价比</NH1>
+    <NSpace vertical :size="8">
+      <NTag
+        v-if="query.data.value?.freshness.stale_units"
+        class="dashboard-stale-tag"
+        type="warning"
+        :bordered="false"
+      >
+        {{ query.data.value.freshness.stale_units }} 条估值超过
+        {{ query.data.value.freshness.stale_after_days }} 天
+      </NTag>
+      <NH1 class="dashboard-title">风险调整后的性价比</NH1>
+    </NSpace>
 
     <NSpace class="toolbar" vertical :size="12">
       <NSpace align="center" justify="space-between" :wrap="true" :size="16">

@@ -6,6 +6,8 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "风险调整后的性价比" })).toBeVisible();
   await expect(page.getByText("DECISION SYSTEM / LIVE RANK")).toHaveCount(0);
   await expect(page.getByText("把估值结论，压缩成可执行的排序。")).toHaveCount(0);
+  await expect(page.locator(".dashboard-stale-tag")).toBeVisible();
+  await expect(page.locator(".status-card").getByText(/估值超过/)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "性价比Top3" })).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
   await expect(page.getByRole("table").first()).toBeVisible();

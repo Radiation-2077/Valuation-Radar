@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NGrid, NGridItem, NStatistic, NTag } from "naive-ui";
+import { NCard, NGrid, NGridItem, NStatistic } from "naive-ui";
 
 import type { Freshness } from "@/api/types";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -12,7 +12,7 @@ defineProps<{
 
 <template>
   <NCard class="status-card" :bordered="false" size="small">
-    <NGrid responsive="screen" cols="1 s:2 m:3 l:5" :x-gap="20" :y-gap="12">
+    <NGrid responsive="screen" cols="1 s:2 m:4" :x-gap="20" :y-gap="12">
       <NGridItem>
         <NStatistic label="排名计算" :value="formatDateTime(freshness.ranking_as_of)" />
       </NGridItem>
@@ -24,11 +24,6 @@ defineProps<{
       </NGridItem>
       <NGridItem>
         <NStatistic label="排序单元" :value="counts.all ?? 0" />
-      </NGridItem>
-      <NGridItem v-if="freshness.stale_units">
-        <NTag type="warning" :bordered="false">
-          {{ freshness.stale_units }} 条估值超过 {{ freshness.stale_after_days }} 天
-        </NTag>
       </NGridItem>
     </NGrid>
   </NCard>
