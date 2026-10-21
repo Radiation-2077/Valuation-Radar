@@ -345,19 +345,21 @@ function rowProps(row: RankingItem) {
         :counts="query.data.value.counts"
       />
 
-      <NSpace vertical :size="16">
-        <NSpace class="section-heading" align="center" justify="space-between" :wrap="true">
-          <NH2>当前最值得看的三条</NH2>
-          <NTag :bordered="false">
-            {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
-          </NTag>
+      <NCard class="top3-card">
+        <NSpace vertical :size="20">
+          <NSpace class="section-heading" align="center" justify="space-between" :wrap="true">
+            <NH2>性价比Top3</NH2>
+            <NTag :bordered="false">
+              {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
+            </NTag>
+          </NSpace>
+          <NGrid responsive="screen" class="top-picks-grid" cols="1 m:3">
+            <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
+              <TopPickCard :item="item" @select="openValuation" />
+            </NGridItem>
+          </NGrid>
         </NSpace>
-        <NGrid responsive="screen" class="top-picks-grid" cols="1 m:3">
-          <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
-            <TopPickCard :item="item" @select="openValuation" />
-          </NGridItem>
-        </NGrid>
-      </NSpace>
+      </NCard>
 
       <NGrid
         responsive="screen"

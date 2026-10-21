@@ -6,6 +6,7 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "把估值结论，压缩成可执行的排序。" }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "性价比Top3" })).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
   await expect(page.getByRole("table").first()).toBeVisible();
 
