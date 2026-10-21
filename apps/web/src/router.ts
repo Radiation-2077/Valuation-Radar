@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import DashboardView from "./views/DashboardView.vue";
+import UpdatesView from "./views/UpdatesView.vue";
 import ValuationDetailView from "./views/ValuationDetailView.vue";
 
 const router = createRouter({
@@ -15,6 +16,11 @@ const router = createRouter({
       path: "/valuations/:id",
       name: "valuation",
       component: ValuationDetailView,
+    },
+    {
+      path: "/updates",
+      name: "updates",
+      component: UpdatesView,
     },
   ],
   scrollBehavior: () => ({ top: 0 }),

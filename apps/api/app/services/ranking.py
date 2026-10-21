@@ -1,29 +1,41 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 
 from app.domain.scoring import (
     DEFAULT_PROFILE,
     PROFILES,
+    SecurityContext,
     context_from_card,
     rank_entries,
     score_context,
 )
 from app.models import (
+    QuoteObservation,
     RankingEntry,
     RankingRun,
     ValuationMarket,
     ValuationReport,
 )
+from app.services.macro import latest_macro_values
+
+
+@dataclass(frozen=True)
+class MarketContext:
+    context: SecurityContext
+    valuation_market_id: int
+    listing_id: int
+    current_price: float | None
 
 
 class RankingService:
-    def rebuild(self, session: Any, as_of: datetime | None = None) -> int:
+    def rebuild(self, session: Session, as_of: datetime | None = None) -> int:
         run_time = as_of or datetime.now(UTC).replace(tzinfo=None)
         contexts = self._latest_contexts(session)
         if not contexts:
@@ -32,12 +44,12 @@ class RankingService:
         created = 0
         for profile in PROFILES.values():
             scored = rank_entries(
-                [score_context(context) for context, _ in contexts],
+                [score_context(item.context, item.current_price) for item in contexts],
                 profile.code,
             )
             reference_by_key = {
-                (context.name, context.market, context.code): valuation_market_id
-                for context, valuation_market_id in contexts
+                (item.context.name, item.context.market, item.context.code): item
+                for item in contexts
             }
             config_hash = hashlib.sha256(
                 f"{profile.code}:{profile.margin}:{profile.base}:{profile.risk}:"
@@ -55,7 +67,7 @@ class RankingService:
 
             rank = 0
             for entry in scored:
-                valuation_market_id = reference_by_key[
+                reference = reference_by_key[
                     (entry.context.name, entry.context.market, entry.context.code)
                 ]
                 is_main_board = not entry.excluded_reasons and not entry.context.is_etf
@@ -64,7 +76,7 @@ class RankingService:
                 session.add(
                     RankingEntry(
                         run_id=run.id,
-                        valuation_market_id=valuation_market_id,
+                        valuation_market_id=reference.valuation_market_id,
                         rank=rank if is_main_board else None,
                         band=entry.band,
                         score=entry.scores[profile.code],
@@ -73,7 +85,7 @@ class RankingService:
                         score_risk=entry.score_risk,
                         score_stability=entry.score_stability,
                         effective_safety_margin_pct=entry.effective_safety_margin_pct,
-                        current_price=entry.context.price,
+                        current_price=reference.current_price or entry.context.price,
                         base_income=entry.base_income,
                         expected_total=entry.expected_total,
                         max_drawdown_pct=entry.context.max_drawdown_pct,
@@ -87,7 +99,7 @@ class RankingService:
         session.flush()
         return created
 
-    def _latest_contexts(self, session: Any) -> list[tuple[Any, int]]:
+    def _latest_contexts(self, session: Session) -> list[MarketContext]:
         reports = (
             session.scalars(
                 select(ValuationReport)
@@ -116,7 +128,18 @@ class RankingService:
             if current_key is None or report_key > current_key:
                 latest[report.instrument_id] = report
 
-        output: list[tuple[Any, int]] = []
+        quote_rows = session.scalars(
+            select(QuoteObservation).order_by(
+                QuoteObservation.observed_at.desc(),
+                QuoteObservation.id.desc(),
+            )
+        ).all()
+        latest_quotes: dict[int, QuoteObservation] = {}
+        for quote in quote_rows:
+            latest_quotes.setdefault(quote.listing_id, quote)
+        macro = latest_macro_values(session)
+
+        output: list[MarketContext] = []
         for report in latest.values():
             raw_markets = report.raw_card.get("markets") or []
             for market in report.markets:
@@ -128,11 +151,24 @@ class RankingService:
                 if raw_market is None:
                     continue
                 context = context_from_card(report.raw_card, raw_market, report.analysis_date)
-                output.append((context, market.id))
+                context = replace(
+                    context,
+                    rf_cny=macro.get("CN10Y", context.rf_cny),
+                    rf_usd=macro.get("US10Y", context.rf_usd),
+                )
+                latest_quote = latest_quotes.get(market.listing_id)
+                output.append(
+                    MarketContext(
+                        context=context,
+                        valuation_market_id=market.id,
+                        listing_id=market.listing_id,
+                        current_price=latest_quote.price if latest_quote else None,
+                    )
+                )
         return output
 
 
-def latest_run(session: Any, profile: str = DEFAULT_PROFILE) -> RankingRun | None:
+def latest_run(session: Session, profile: str = DEFAULT_PROFILE) -> RankingRun | None:
     if profile not in PROFILES:
         raise ValueError(f"未知风险偏好：{profile}")
     return session.scalar(

@@ -1282,6 +1282,267 @@ h2 {
   line-height: 1.8;
 }
 
+.primary-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.updates-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4rem;
+  padding: 9vh 0 3.4rem;
+}
+
+.updates-hero > div:first-child {
+  max-width: 900px;
+}
+
+.ops-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--line);
+}
+
+.ops-status-grid article {
+  min-height: 122px;
+  padding: 1.2rem;
+  background: var(--panel-solid);
+}
+
+.ops-status-grid article.active {
+  background: linear-gradient(145deg, rgba(17, 52, 61, 0.95), rgba(13, 32, 48, 0.95));
+}
+
+.ops-status-grid small,
+.ops-status-grid strong,
+.ops-status-grid span {
+  display: block;
+}
+
+.ops-status-grid small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.ops-status-grid strong {
+  margin: 0.6rem 0 0.25rem;
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.28rem;
+  font-weight: 500;
+}
+
+.ops-status-grid span {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.updates-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.6fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.schedule-panel,
+.schedule-summary,
+.jobs-panel {
+  padding: 1.35rem;
+}
+
+.switch-control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.switch-control input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-control span {
+  position: relative;
+  width: 42px;
+  height: 23px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(158, 190, 210, 0.08);
+  transition: 180ms ease;
+}
+
+.switch-control span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--muted);
+  content: "";
+  transition: 180ms ease;
+}
+
+.switch-control input:checked + span {
+  border-color: rgba(87, 214, 177, 0.45);
+  background: rgba(87, 214, 177, 0.18);
+}
+
+.switch-control input:checked + span::after {
+  left: 22px;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(87, 214, 177, 0.6);
+}
+
+.switch-control b {
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+
+.schedule-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.schedule-fields label > span {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.schedule-fields select,
+.schedule-fields input {
+  width: 100%;
+  padding: 0.72rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--ink-soft);
+}
+
+.schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.3rem;
+}
+
+.success-note {
+  color: var(--accent);
+  font-size: 0.68rem;
+}
+
+.schedule-note {
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.7;
+}
+
+.schedule-summary ol {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.4rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.schedule-summary li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.schedule-summary li > span {
+  color: rgba(87, 214, 177, 0.4);
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.1rem;
+}
+
+.schedule-summary strong,
+.schedule-summary small {
+  display: block;
+}
+
+.schedule-summary strong {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.schedule-summary small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.jobs-panel {
+  margin-top: 1rem;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.jobs-table th {
+  padding: 0.7rem 0.65rem;
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.jobs-table td {
+  padding: 0.9rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+}
+
+.job-status {
+  display: inline-flex;
+  padding: 0.22rem 0.4rem;
+  border-radius: 5px;
+  background: rgba(158, 190, 210, 0.08);
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.job-status--succeeded {
+  background: rgba(87, 214, 177, 0.1);
+  color: var(--accent);
+}
+
+.job-status--running,
+.job-status--queued {
+  background: rgba(128, 199, 255, 0.1);
+  color: var(--blue);
+}
+
+.job-status--failed {
+  background: rgba(238, 140, 120, 0.1);
+  color: var(--red);
+}
+
+.job-status--partial {
+  background: rgba(232, 184, 109, 0.1);
+  color: var(--warm);
+}
+
 @media (max-width: 1050px) {
   .top-grid,
   .detail-grid,
@@ -1309,6 +1570,14 @@ h2 {
     gap: 2rem;
   }
 
+  .ops-status-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .updates-layout {
+    grid-template-columns: 1fr;
+  }
+
   .verdict-panel {
     max-width: 420px;
   }
@@ -1329,6 +1598,10 @@ h2 {
   }
 
   .dashboard-hero {
+    padding-top: 14vh;
+  }
+
+  .updates-hero {
     padding-top: 14vh;
   }
 
@@ -1412,6 +1685,15 @@ h2 {
 
   .source-section {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .schedule-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 }

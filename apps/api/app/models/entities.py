@@ -78,6 +78,10 @@ class Listing(TimestampMixin, Base):
 
     instrument: Mapped[Instrument] = relationship(back_populates="listings")
     market_snapshots: Mapped[list[ValuationMarket]] = relationship(back_populates="listing")
+    quote_observations: Mapped[list[QuoteObservation]] = relationship(
+        back_populates="listing",
+        cascade="all, delete-orphan",
+    )
 
 
 class ValuationReport(TimestampMixin, Base):
@@ -178,6 +182,40 @@ class RankingEntry(Base):
 
     run: Mapped[RankingRun] = relationship(back_populates="entries")
     valuation_market: Mapped[ValuationMarket] = relationship()
+
+
+class QuoteObservation(Base):
+    __tablename__ = "quote_observations"
+    __table_args__ = (UniqueConstraint("listing_id", "source", "observed_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"))
+    observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    quote_date: Mapped[date] = mapped_column(Date, index=True)
+    price: Mapped[float] = mapped_column(Float)
+    previous_close: Mapped[float | None] = mapped_column(Float)
+    change_pct: Mapped[float | None] = mapped_column(Float)
+    pe: Mapped[float | None] = mapped_column(Float)
+    pb: Mapped[float | None] = mapped_column(Float)
+    source: Mapped[str] = mapped_column(String(30))
+    source_name: Mapped[str] = mapped_column(String(100), default="")
+    raw: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    listing: Mapped[Listing] = relationship(back_populates="quote_observations")
+
+
+class MacroObservation(Base):
+    __tablename__ = "macro_observations"
+    __table_args__ = (UniqueConstraint("key", "source", "as_of"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), index=True)
+    as_of: Mapped[date] = mapped_column(Date, index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    value: Mapped[float] = mapped_column(Float)
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    source: Mapped[str] = mapped_column(String(200))
+    raw: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class ScheduleSetting(TimestampMixin, Base):

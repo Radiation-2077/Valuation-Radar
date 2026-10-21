@@ -22,6 +22,7 @@ export interface RankingItem {
   analysis_date: string;
   stale_days: number;
   price: number;
+  price_date: string;
   fair_low: number;
   fair_mid: number;
   fair_high: number;
@@ -98,6 +99,8 @@ export interface ValuationDetail {
     confidence: string;
   };
   price: number;
+  baseline_price: number;
+  current_price: number;
   fair_low: number;
   fair_mid: number;
   fair_high: number;
@@ -142,4 +145,47 @@ export interface RankingFilters {
   path?: string;
   industry?: string;
   staleOnly?: boolean;
+}
+
+export interface Schedule {
+  enabled: boolean;
+  frequency: "trading_daily" | "weekly" | "manual";
+  run_time: string;
+  timezone: string;
+  calendar_mode: "CN" | "HK" | "ANY";
+  scope: "all";
+  revaluation_mode: "weekly_event" | "weekly" | "trading_daily" | "off";
+  publish_mode: "review_all" | "review_exceptions" | "auto";
+  stale_after_days: number;
+  next_run_at: string | null;
+  updated_at: string;
+}
+
+export interface SchedulePatch {
+  enabled?: boolean;
+  frequency?: Schedule["frequency"];
+  run_time?: string;
+  calendar_mode?: Schedule["calendar_mode"];
+  stale_after_days?: number;
+  revaluation_mode?: Schedule["revaluation_mode"];
+  publish_mode?: Schedule["publish_mode"];
+}
+
+export interface Job {
+  id: number;
+  job_type: string;
+  trigger: string;
+  scope: string;
+  status: string;
+  phase: string;
+  scheduled_for: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface JobList {
+  items: Job[];
 }

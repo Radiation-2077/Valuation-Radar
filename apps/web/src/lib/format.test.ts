@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatMoney, formatPercent, isStale } from "./format";
+import { formatDateTime, formatMoney, formatPercent, isStale } from "./format";
 
 describe("format helpers", () => {
   it("formats percentages and missing values", () => {
@@ -16,5 +16,11 @@ describe("format helpers", () => {
   it("marks reports older than the configured threshold", () => {
     expect(isStale(8, 7)).toBe(true);
     expect(isStale(7, 7)).toBe(false);
+  });
+
+  it("parses stored UTC values and explicit offsets without corrupting them", () => {
+    expect(formatDateTime("2026-10-21T12:43:32.414526")).not.toBe("—");
+    expect(formatDateTime("2026-10-22T18:30:00+08:00")).not.toBe("—");
+    expect(formatDateTime("invalid")).toBe("—");
   });
 });

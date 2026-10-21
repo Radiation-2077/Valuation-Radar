@@ -10,11 +10,13 @@ from app.domain.scoring import (
     DEFAULT_PROFILE,
     PROFILES,
     context_from_card,
+    effective_margin,
     score_context,
 )
 from app.models import (
     Instrument,
     Listing,
+    QuoteObservation,
     RankingEntry,
     RankingRun,
     ScheduleSetting,
@@ -65,7 +67,23 @@ def get_ranking(
         .all()
     )
     stale_after = _stale_after_days(session)
-    items = [_item_from_entry(entry, stale_after) for entry in entries]
+    listing_ids = [entry.valuation_market.listing_id for entry in entries]
+    quote_rows = (
+        session.scalars(
+            select(QuoteObservation)
+            .where(QuoteObservation.listing_id.in_(listing_ids))
+            .order_by(QuoteObservation.observed_at.desc(), QuoteObservation.id.desc())
+        ).all()
+        if listing_ids
+        else []
+    )
+    latest_quotes: dict[int, QuoteObservation] = {}
+    for quote in quote_rows:
+        latest_quotes.setdefault(quote.listing_id, quote)
+    items = [
+        _item_from_entry(entry, stale_after, latest_quotes.get(entry.valuation_market.listing_id))
+        for entry in entries
+    ]
     all_items = list(items)
     items = [
         item
@@ -89,14 +107,15 @@ def get_ranking(
     )
     stale_units = sum(1 for item in all_items if item.stale_days > stale_after)
     latest_analysis = max((item.analysis_date for item in all_items), default=None)
-    latest_price = max(
-        (
-            entry.valuation_market.price_date
-            for entry in entries
-            if entry.valuation_market is not None
-        ),
-        default=None,
-    )
+    price_dates = []
+    for entry in entries:
+        latest_quote = latest_quotes.get(entry.valuation_market.listing_id)
+        price_dates.append(
+            latest_quote.quote_date
+            if latest_quote is not None
+            else entry.valuation_market.price_date
+        )
+    latest_price = max(price_dates, default=None)
     freshness_status = (
         "stale" if latest_analysis and stale_days(latest_analysis) > stale_after else "current"
     )
@@ -177,6 +196,14 @@ def get_valuation_detail(
         report.analysis_date,
     )
     rebuilt = score_context(context)
+    quote = session.scalar(
+        select(QuoteObservation)
+        .where(QuoteObservation.listing_id == market.listing_id)
+        .order_by(QuoteObservation.observed_at.desc(), QuoteObservation.id.desc())
+        .limit(1)
+    )
+    current_price = quote.price if quote else market.price
+    current_margin = effective_margin(context, current_price)
     score = ScoreOut(
         margin=rebuilt.score_margin,
         base=rebuilt.score_base,
@@ -224,7 +251,7 @@ def get_valuation_detail(
         industry=instrument.industry,
         analysis_date=report.analysis_date,
         generated_at=report.generated_at,
-        price_date=market.price_date,
+        price_date=quote.quote_date if quote else market.price_date,
         stale_days=stale_days(report.analysis_date),
         quality=QualityOut(
             rating=instrument.quality_rating,
@@ -240,13 +267,15 @@ def get_valuation_detail(
             "thesis": str(conclusion.get("thesis") or ""),
             "confidence": str(conclusion.get("confidence") or ""),
         },
-        price=market.price,
+        price=current_price,
+        baseline_price=market.price,
+        current_price=current_price,
         fair_low=market.fair_low,
         fair_mid=market.fair_mid,
         fair_high=market.fair_high,
         safety_margin_pct=market.safety_margin_pct,
         effective_safety_margin_pct=(
-            entry.effective_safety_margin_pct if entry else rebuilt.effective_safety_margin_pct
+            current_margin
         ),
         valuation={
             "pe": market.pe,
@@ -301,7 +330,11 @@ def list_instruments(session: Session) -> InstrumentListOut:
     return InstrumentListOut(items=items)
 
 
-def _item_from_entry(entry: RankingEntry, stale_after: int) -> RankingItemOut:
+def _item_from_entry(
+    entry: RankingEntry,
+    stale_after: int,
+    quote: QuoteObservation | None,
+) -> RankingItemOut:
     market = entry.valuation_market
     report = market.report
     instrument = report.instrument
@@ -321,7 +354,8 @@ def _item_from_entry(entry: RankingEntry, stale_after: int) -> RankingItemOut:
         path=instrument.path,
         analysis_date=report.analysis_date,
         stale_days=age,
-        price=entry.current_price if entry.current_price is not None else market.price,
+        price=quote.price if quote else (entry.current_price or market.price),
+        price_date=quote.quote_date if quote else market.price_date,
         fair_low=market.fair_low,
         fair_mid=market.fair_mid,
         fair_high=market.fair_high,

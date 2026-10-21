@@ -1,4 +1,12 @@
-import type { RankingFilters, RankingResponse, ValuationDetail } from "./types";
+import type {
+  Job,
+  JobList,
+  RankingFilters,
+  RankingResponse,
+  Schedule,
+  SchedulePatch,
+  ValuationDetail,
+} from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -11,9 +19,13 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { Accept: "application/json" },
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...init?.headers,
+    },
   });
   if (!response.ok) {
     let message = `请求失败（${response.status}）`;
@@ -48,4 +60,31 @@ export async function fetchValuation(
   return request<ValuationDetail>(
     `/api/v1/valuations/${valuationMarketId}?profile=${encodeURIComponent(profile)}`,
   );
+}
+
+export async function fetchSchedule(): Promise<Schedule> {
+  return request<Schedule>("/api/v1/schedule");
+}
+
+export async function updateSchedule(payload: SchedulePatch): Promise<Schedule> {
+  return request<Schedule>("/api/v1/schedule", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchJobs(): Promise<JobList> {
+  return request<JobList>("/api/v1/jobs?limit=20");
+}
+
+export async function createRefreshJob(): Promise<Job> {
+  return request<Job>("/api/v1/jobs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": `manual-${crypto.randomUUID()}`,
+    },
+    body: JSON.stringify({ job_type: "market_refresh", scope: "all" }),
+  });
 }

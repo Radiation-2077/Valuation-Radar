@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'storage' / 'app.db'}"
     legacy_data_dir: Path = PROJECT_ROOT.parent / "data"
     legacy_reports_dir: Path = PROJECT_ROOT.parent
+    legacy_common_dir: Path = PROJECT_ROOT.parent / "common"
     timezone: str = "Asia/Shanghai"
     frontend_dist: Path = PROJECT_ROOT / "apps" / "web" / "dist"
     storage_root: Path = PROJECT_ROOT / "storage"

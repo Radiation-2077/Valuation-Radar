@@ -11,6 +11,8 @@ from app.models import (  # noqa: F401
     Instrument,
     JobRun,
     Listing,
+    MacroObservation,
+    QuoteObservation,
     RankingEntry,
     RankingRun,
     ScheduleSetting,

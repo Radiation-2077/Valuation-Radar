@@ -14,6 +14,7 @@ import { RouterLink, RouterView } from "vue-router";
       </RouterLink>
       <nav aria-label="主导航">
         <RouterLink to="/">性价比排名</RouterLink>
+        <RouterLink to="/updates">更新中心</RouterLink>
       </nav>
       <span class="environment"><i></i> LOCAL DATA</span>
     </header>

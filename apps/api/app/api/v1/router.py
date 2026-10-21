@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,18 +11,28 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.domain.scoring import ALGORITHM_VERSION, DEFAULT_PROFILE, PROFILES
-from app.models import ValuationMarket
+from app.models import JobRun, ScheduleSetting, ValuationMarket
 from app.schemas.api import (
     InstrumentListOut,
+    JobCreate,
+    JobListOut,
+    JobOut,
     MetaResponse,
     ProfileOut,
     RankingResponse,
+    ScheduleOut,
+    SchedulePatch,
     ValuationDetailOut,
 )
 from app.services.queries import (
     get_ranking,
     get_valuation_detail,
     list_instruments,
+)
+from app.services.schedule import (
+    get_or_create_schedule,
+    next_run_at,
+    queue_job,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -125,3 +136,105 @@ def valuation_report(
 @router.get("/instruments", response_model=InstrumentListOut)
 def instruments(session: SessionDep) -> InstrumentListOut:
     return list_instruments(session)
+
+
+@router.get("/schedule", response_model=ScheduleOut)
+def get_schedule(session: SessionDep) -> ScheduleOut:
+    schedule = get_or_create_schedule(session)
+    session.commit()
+    return _schedule_out(schedule)
+
+
+@router.patch("/schedule", response_model=ScheduleOut)
+def update_schedule(payload: SchedulePatch, session: SessionDep) -> ScheduleOut:
+    schedule = get_or_create_schedule(session)
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(schedule, key, value)
+    session.commit()
+    session.refresh(schedule)
+    return _schedule_out(schedule)
+
+
+@router.get("/jobs", response_model=JobListOut)
+def list_jobs(
+    session: SessionDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> JobListOut:
+    jobs = session.scalars(
+        select(JobRun).order_by(JobRun.id.desc()).limit(limit)
+    ).all()
+    return JobListOut(items=[_job_out(job) for job in jobs])
+
+
+@router.post("/jobs", response_model=JobOut, status_code=202)
+def create_job(
+    payload: JobCreate,
+    session: SessionDep,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> JobOut:
+    job, _ = queue_job(
+        session,
+        job_type=payload.job_type,
+        trigger="manual",
+        scope=payload.scope,
+        scheduled_for=datetime.now(UTC).replace(tzinfo=None),
+        idempotency_key=idempotency_key,
+    )
+    session.commit()
+    session.refresh(job)
+    return _job_out(job)
+
+
+@router.get("/jobs/{job_id}", response_model=JobOut)
+def get_job(job_id: int, session: SessionDep) -> JobOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    return _job_out(job)
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=JobOut)
+def cancel_job(job_id: int, session: SessionDep) -> JobOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    if job.status in {"queued", "running"}:
+        job.status = "cancelled"
+        job.phase = "cancelled"
+        job.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        session.commit()
+        session.refresh(job)
+    return _job_out(job)
+
+
+def _schedule_out(schedule: ScheduleSetting) -> ScheduleOut:
+    return ScheduleOut(
+        enabled=schedule.enabled,
+        frequency=schedule.frequency,
+        run_time=schedule.run_time,
+        timezone=schedule.timezone,
+        calendar_mode=schedule.calendar_mode,
+        scope=schedule.scope,
+        revaluation_mode=schedule.revaluation_mode,
+        publish_mode=schedule.publish_mode,
+        stale_after_days=schedule.stale_after_days,
+        next_run_at=next_run_at(schedule),
+        updated_at=schedule.updated_at,
+    )
+
+
+def _job_out(job: JobRun) -> JobOut:
+    return JobOut(
+        id=job.id,
+        job_type=job.job_type,
+        trigger=job.trigger,
+        scope=job.scope,
+        status=job.status,
+        phase=job.phase,
+        scheduled_for=job.scheduled_for,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        error=job.error,
+        details=job.details,
+        created_at=job.created_at,
+    )

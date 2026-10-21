@@ -34,7 +34,9 @@ export function formatDate(value: string | null | undefined): string {
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—";
-  const date = new Date(value.endsWith("Z") ? value : `${value}Z`);
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+  const date = new Date(hasZone ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
     day: "2-digit",

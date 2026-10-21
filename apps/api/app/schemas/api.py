@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -50,6 +50,7 @@ class RankingItemOut(BaseModel):
     analysis_date: date
     stale_days: int
     price: float
+    price_date: date
     fair_low: float
     fair_mid: float
     fair_high: float
@@ -128,6 +129,8 @@ class ValuationDetailOut(BaseModel):
     cycle: CycleOut
     conclusion: dict[str, str]
     price: float
+    baseline_price: float
+    current_price: float
     fair_low: float
     fair_mid: float
     fair_high: float
@@ -163,3 +166,52 @@ class InstrumentOut(BaseModel):
 
 class InstrumentListOut(BaseModel):
     items: list[InstrumentOut]
+
+
+class ScheduleOut(BaseModel):
+    enabled: bool
+    frequency: str
+    run_time: str
+    timezone: str
+    calendar_mode: str
+    scope: str
+    revaluation_mode: str
+    publish_mode: str
+    stale_after_days: int
+    next_run_at: datetime | None
+    updated_at: datetime
+
+
+class SchedulePatch(BaseModel):
+    enabled: bool | None = None
+    frequency: Literal["trading_daily", "weekly", "manual"] | None = None
+    run_time: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    calendar_mode: Literal["CN", "HK", "ANY"] | None = None
+    scope: Literal["all"] | None = None
+    revaluation_mode: Literal["weekly_event", "weekly", "trading_daily", "off"] | None = None
+    publish_mode: Literal["review_all", "review_exceptions", "auto"] | None = None
+    stale_after_days: int | None = Field(default=None, ge=1, le=90)
+
+
+class JobOut(BaseModel):
+    id: int
+    job_type: str
+    trigger: str
+    scope: str
+    status: str
+    phase: str
+    scheduled_for: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
+    error: str
+    details: dict[str, Any]
+    created_at: datetime
+
+
+class JobCreate(BaseModel):
+    job_type: Literal["market_refresh"] = "market_refresh"
+    scope: Literal["all"] = "all"
+
+
+class JobListOut(BaseModel):
+    items: list[JobOut]
