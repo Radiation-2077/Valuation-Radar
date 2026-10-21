@@ -38,6 +38,7 @@ import {
 defineOptions({ name: "ReportBlockRenderer" });
 defineProps<{
   blocks: ReportDetailBlock[];
+  alignScoresWithTable?: boolean;
 }>();
 
 function calloutType(tone: string): "success" | "warning" | "error" | "info" {
@@ -75,6 +76,14 @@ function gaugeColor(tone: string): string {
   if (tone === "warn") return "#e8b86d";
   if (tone === "neg") return "#ee8c78";
   return "#80c7ff";
+}
+
+function gridPairsScoresWithTable(block: ReportDetailBlock): boolean {
+  const columns = blockColumns(block);
+  return (
+    columns.some((column) => column.some((item) => item.type === "scores")) &&
+    columns.some((column) => column.some((item) => item.type === "table"))
+  );
 }
 </script>
 
@@ -115,7 +124,12 @@ function gaugeColor(tone: string): string {
       </NTable>
     </div>
 
-    <NSpace v-else-if="block.type === 'scores'" vertical :size="12">
+    <NSpace
+      v-else-if="block.type === 'scores'"
+      :class="['score-list', { 'score-list--table-aligned': alignScoresWithTable }]"
+      vertical
+      :size="12"
+    >
       <div
         v-for="item in blockObjects(block, 'items')"
         :key="itemString(item, 'label')"
@@ -176,7 +190,10 @@ function gaugeColor(tone: string): string {
       :y-gap="16"
     >
       <NGridItem v-for="(column, columnIndex) in blockColumns(block)" :key="columnIndex">
-        <ReportBlockRenderer :blocks="column" />
+        <ReportBlockRenderer
+          :blocks="column"
+          :align-scores-with-table="gridPairsScoresWithTable(block)"
+        />
       </NGridItem>
     </NGrid>
 

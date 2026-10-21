@@ -98,6 +98,21 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .first()
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(reportTableBorderBottom).toBe("0px");
+  const scoreTableAlignment = await qualityCard.evaluate((card) => {
+    const scoreRows = [...card.querySelectorAll(".score-row")];
+    const bodyRows = [...card.querySelectorAll("tbody tr")];
+    return scoreRows.map((row, index) => {
+      const scoreCenter = row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+      const tableCenter =
+        bodyRows[index].getBoundingClientRect().top +
+        bodyRows[index].getBoundingClientRect().height / 2;
+      return Math.abs(scoreCenter - tableCenter);
+    });
+  });
+  expect(scoreTableAlignment).toHaveLength(5);
+  if (page.viewportSize()!.width > 720) {
+    for (const difference of scoreTableAlignment) expect(difference).toBeLessThanOrEqual(1);
+  }
   const cycleSignalGap = await page
     .locator(".detail-panel h3")
     .filter({ hasText: "周期位置信号" })
