@@ -287,6 +287,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .detail-title .n-h1 {
@@ -297,7 +298,7 @@
 
 .detail-thesis {
   max-width: 640px;
-  margin-top: 16px;
+  margin-top: 8px;
   line-height: 2;
 }
 

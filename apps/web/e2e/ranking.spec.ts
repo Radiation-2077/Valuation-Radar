@@ -39,12 +39,13 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".n-drawer")).toBeVisible();
   await expect(page.locator(".n-drawer .detail-panel h1")).toContainText("宁德时代");
   await expect(page.locator(".n-drawer .detail-panel h1")).toHaveCSS("font-size", "36px");
+  await expect(page.locator(".n-drawer .detail-title")).toHaveCSS("margin-top", "8px");
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS(
     "-webkit-line-clamp",
     "3",
   );
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("max-width", "640px");
-  await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("margin-top", "16px");
+  await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("margin-top", "8px");
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("line-height", "28px");
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
