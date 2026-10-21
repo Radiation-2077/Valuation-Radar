@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
+
+from app.db.session import SessionLocal
+from app.services.importer import import_legacy_cards
 
 
 def main() -> None:
@@ -12,7 +17,13 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "import-legacy":
-        raise SystemExit("legacy importer will be added in the next phase")
+        with SessionLocal() as session:
+            summary = import_legacy_cards(
+                session,
+                data_dir=Path(args.data_dir),
+                reports_dir=Path(args.reports_dir),
+            )
+        print(json.dumps(summary.__dict__, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

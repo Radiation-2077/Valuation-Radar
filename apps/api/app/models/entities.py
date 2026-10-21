@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -20,12 +20,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
+def utc_now() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False,
     )
 
@@ -164,6 +168,11 @@ class RankingEntry(Base):
     score_stability: Mapped[float | None] = mapped_column(Float)
     effective_safety_margin_pct: Mapped[float | None] = mapped_column(Float)
     current_price: Mapped[float | None] = mapped_column(Float)
+    base_income: Mapped[float | None] = mapped_column(Float)
+    expected_total: Mapped[float | None] = mapped_column(Float)
+    max_drawdown_pct: Mapped[float | None] = mapped_column(Float)
+    risk_adjusted_ratio: Mapped[float | None] = mapped_column(Float)
+    value_reliance: Mapped[float] = mapped_column(Float, default=0)
     excluded_reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
     risk_flags: Mapped[list[str]] = mapped_column(JSON, default=list)
 
@@ -202,4 +211,4 @@ class JobRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     error: Mapped[str] = mapped_column(Text, default="")
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
