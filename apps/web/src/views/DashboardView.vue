@@ -238,7 +238,7 @@ function rowProps(row: RankingItem) {
             {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
           </NTag>
         </NSpace>
-        <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="16">
+        <NGrid responsive="screen" class="top-picks-grid" cols="1 m:3">
           <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
             <TopPickCard :item="item" @select="openValuation" />
           </NGridItem>
@@ -317,7 +317,7 @@ function rowProps(row: RankingItem) {
       <NCard v-if="query.data.value.etfs.length">
         <NSpace vertical :size="16">
           <NH2>ETF 独立观察</NH2>
-          <NGrid responsive="screen" cols="1 s:2 m:3" :x-gap="12" :y-gap="12">
+          <NGrid responsive="screen" class="etf-grid" cols="1 s:2 m:3">
             <NGridItem v-for="item in query.data.value.etfs" :key="item.valuation_market_id">
               <NCard size="small" hoverable @click="openValuation(item.valuation_market_id)">
                 <NSpace vertical :size="8">

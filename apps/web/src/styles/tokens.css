@@ -17,6 +17,7 @@
   --content-width: 1380px;
   --space-page: 24px;
   --space-section: 28px;
+  --grid-gap: 28px;
 }
 
 html,
