@@ -8,20 +8,23 @@ import {
   NLayoutHeader,
   NMenu,
   NMessageProvider,
+  NScrollbar,
   NSpace,
   NTag,
   darkTheme,
   dateZhCN,
   zhCN,
+  type ScrollbarInst,
 } from "naive-ui";
 import { AnalyticsOutline, PulseOutline, SyncOutline } from "@vicons/ionicons5";
-import { computed, h } from "vue";
+import { computed, h, nextTick, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
 import { themeOverrides } from "@/theme";
 
 const route = useRoute();
 const router = useRouter();
+const scrollbarRef = ref<ScrollbarInst | null>(null);
 const menuOptions = [
   {
     label: "性价比排名",
@@ -35,6 +38,14 @@ const menuOptions = [
   },
 ];
 const activeMenu = computed(() => (route.path === "/updates" ? "/updates" : "/"));
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await nextTick();
+    scrollbarRef.value?.scrollTo({ top: 0 });
+  },
+);
 </script>
 
 <template>
@@ -73,9 +84,11 @@ const activeMenu = computed(() => (route.path === "/updates" ? "/updates" : "/")
             </div>
           </NLayoutHeader>
           <NLayoutContent>
-            <main class="page-content">
-              <RouterView />
-            </main>
+            <NScrollbar ref="scrollbarRef" class="app-scrollbar">
+              <main class="page-content">
+                <RouterView />
+              </main>
+            </NScrollbar>
           </NLayoutContent>
         </NLayout>
       </NMessageProvider>

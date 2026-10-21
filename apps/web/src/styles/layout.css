@@ -3,7 +3,18 @@
 }
 
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-layout .n-layout-header {
+  height: 64px;
+}
+
+.app-scrollbar {
+  height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
 }
 
 .header-layout {

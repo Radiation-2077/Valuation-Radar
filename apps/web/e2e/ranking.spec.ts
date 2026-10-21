@@ -112,3 +112,23 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   expect(verticalGap).toBeCloseTo(configuredGap, 0);
   expect(Math.abs(horizontalGap - verticalGap)).toBeLessThanOrEqual(2);
 });
+
+test("naive scrollbar keeps page width stable between routes", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.waitForSelector(".app-scrollbar");
+
+  const homeHeader = await page.locator(".n-layout-header").boundingBox();
+  const bodyOverflow = await page.locator("body").evaluate(
+    (element) => getComputedStyle(element).overflow,
+  );
+  expect(homeHeader).not.toBeNull();
+  expect(bodyOverflow).toBe("hidden");
+
+  await page.goto("/updates");
+  await page.waitForSelector(".app-scrollbar");
+  const updatesHeader = await page.locator(".n-layout-header").boundingBox();
+  expect(updatesHeader).not.toBeNull();
+  expect(Math.abs(homeHeader!.x - updatesHeader!.x)).toBeLessThan(1);
+  expect(Math.abs(homeHeader!.width - updatesHeader!.width)).toBeLessThan(1);
+});
