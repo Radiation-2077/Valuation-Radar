@@ -43,6 +43,7 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     "3",
   );
   await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("max-width", "640px");
+  await expect(page.locator(".n-drawer .detail-thesis")).toHaveCSS("line-height", "28px");
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();
