@@ -1,0 +1,23 @@
+{
+  "name": "valuation-radar",
+  "private": true,
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:api": ".venv/bin/uvicorn app.main:app --reload --app-dir apps/api --host 127.0.0.1 --port 8000",
+    "dev:web": "pnpm --dir apps/web dev",
+    "build": "pnpm --dir apps/web build",
+    "typecheck": "pnpm --dir apps/web typecheck",
+    "test": "pnpm test:api && pnpm test:web",
+    "test:api": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv/bin/pytest apps/api/tests",
+    "test:web": "pnpm --dir apps/web test",
+    "lint": "pnpm lint:api && pnpm lint:web",
+    "lint:api": ".venv/bin/ruff check apps/api",
+    "lint:web": "pnpm --dir apps/web lint",
+    "db:migrate": ".venv/bin/alembic -c apps/api/alembic.ini upgrade head",
+    "import:legacy": ".venv/bin/python -m app.cli import-legacy --data-dir ../data --reports-dir .."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

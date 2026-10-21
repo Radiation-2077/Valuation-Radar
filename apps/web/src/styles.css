@@ -1,0 +1,150 @@
+:root {
+  color: #dce7ef;
+  background: #07131f;
+  font-family:
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #07131f;
+  --panel: #0d2030;
+  --line: rgba(158, 190, 210, 0.16);
+  --muted: #8296a5;
+  --accent: #57d6b1;
+  --warm: #e8b86d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(87, 214, 177, 0.12), transparent 28rem),
+    linear-gradient(180deg, #07131f 0%, #091823 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  min-height: 76px;
+  padding: 0 4vw;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 19, 31, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(87, 214, 177, 0.55);
+  border-radius: 12px 4px 12px 4px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.18em;
+}
+
+nav {
+  display: flex;
+  gap: 1.25rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+nav a.router-link-active {
+  color: var(--accent);
+}
+
+.environment {
+  margin-left: auto;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+}
+
+main {
+  width: min(1240px, 92vw);
+  margin: 0 auto;
+}
+
+.hero {
+  max-width: 850px;
+  padding: 10vh 0 4rem;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+}
+
+h1 {
+  max-width: 760px;
+  margin: 1rem 0;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: clamp(2.8rem, 7vw, 5.8rem);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.hero-copy {
+  max-width: 680px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.9;
+}
+
+@media (max-width: 700px) {
+  .app-header {
+    gap: 1rem;
+    padding: 0 5vw;
+  }
+
+  nav {
+    display: none;
+  }
+
+  .hero {
+    padding-top: 18vh;
+  }
+}

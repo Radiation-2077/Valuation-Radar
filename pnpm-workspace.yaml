@@ -1,0 +1,9 @@
+packages:
+  - apps/web
+
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi
+allowBuilds:
+  esbuild: true
+  vue-demi: true
