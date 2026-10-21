@@ -62,6 +62,42 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     decisionDashboard.getByRole("heading", { name: "A 股 300750.SZ", exact: true }),
   ).toHaveCount(0);
   await expect(decisionDashboard.getByText(/较 ¥360 中枢折价/)).toHaveCount(0);
+  const qualityCard = page.locator(".n-card").filter({
+    has: page.getByRole("heading", { name: /一、标的质地/ }),
+  });
+  const decisionDashboardBox = await decisionDashboard.boundingBox();
+  const qualityCardBox = await qualityCard.boundingBox();
+  expect(decisionDashboardBox).not.toBeNull();
+  expect(qualityCardBox).not.toBeNull();
+  expect(qualityCardBox!.y - (decisionDashboardBox!.y + decisionDashboardBox!.height)).toBeCloseTo(
+    20,
+    0,
+  );
+  await qualityCard.locator(".report-block-stack").first().waitFor();
+  const qualitySpacing = await qualityCard.evaluate((card) => {
+    const title = card.querySelector("h2");
+    const blockStack = card.querySelector(".report-block-stack");
+    const blockItems = blockStack ? [...blockStack.children] : [];
+    return {
+      titleToContent:
+        title && blockStack
+          ? blockStack.getBoundingClientRect().top - title.getBoundingClientRect().bottom
+          : null,
+      blockGaps: blockItems
+        .slice(1)
+        .map(
+          (item, index) =>
+            item.getBoundingClientRect().top - blockItems[index].getBoundingClientRect().bottom,
+        ),
+    };
+  });
+  expect(qualitySpacing.titleToContent).toBeCloseTo(20, 0);
+  for (const gap of qualitySpacing.blockGaps) expect(gap).toBeCloseTo(20, 0);
+  const reportTableBorderBottom = await qualityCard
+    .locator(".table-shell")
+    .first()
+    .evaluate((element) => getComputedStyle(element).borderBottomWidth);
+  expect(reportTableBorderBottom).toBe("0px");
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();

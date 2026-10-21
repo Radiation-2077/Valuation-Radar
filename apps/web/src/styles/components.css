@@ -254,6 +254,14 @@
   background: rgba(255, 255, 255, 0.012);
 }
 
+.report-block-stack .table-shell {
+  border-bottom: 0;
+}
+
+.report-section-body .n-h2 {
+  margin: 0;
+}
+
 .table-shell > .n-data-table {
   overflow: hidden;
   border-radius: var(--radius-sm);

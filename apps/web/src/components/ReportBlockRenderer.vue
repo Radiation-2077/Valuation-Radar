@@ -79,7 +79,8 @@ function gaugeColor(tone: string): string {
 </script>
 
 <template>
-  <template v-for="(block, index) in blocks" :key="`${block.type}-${index}`">
+  <NSpace class="report-block-stack" vertical :size="20">
+    <template v-for="(block, index) in blocks" :key="`${block.type}-${index}`">
     <NH3 v-if="block.type === 'heading'">{{ blockText(block) }}</NH3>
 
     <NText
@@ -306,5 +307,6 @@ function gaugeColor(tone: string): string {
     </NGrid>
 
     <ReportBlockRenderer v-else-if="block.type === 'group'" :blocks="blockNestedBlocks(block)" />
-  </template>
+    </template>
+  </NSpace>
 </template>
