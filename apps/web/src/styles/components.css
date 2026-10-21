@@ -193,7 +193,7 @@
 }
 
 .top-thesis {
-  min-height: 4.8em;
+  min-height: calc(1.65em * 4);
   margin: 0 0 16px;
   line-height: 1.65;
 }

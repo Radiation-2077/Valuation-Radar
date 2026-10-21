@@ -16,6 +16,11 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".top-card.rank-1")).toHaveCount(1);
   await expect(page.locator(".top-card.rank-2")).toHaveCount(1);
   await expect(page.locator(".top-card.rank-3")).toHaveCount(1);
+  const topCardBoxes = await page.locator(".top-card").evaluateAll((cards) =>
+    cards.map((card) => card.getBoundingClientRect().height),
+  );
+  expect(Math.max(...topCardBoxes) - Math.min(...topCardBoxes)).toBeLessThan(1);
+  await expect(page.locator(".top-thesis").first()).toHaveCSS("-webkit-line-clamp", "4");
   await expect(page.getByRole("table").first()).toBeVisible();
 
   const aggressiveTab = page.locator('.n-tabs-tab[data-name="aggressive"]');

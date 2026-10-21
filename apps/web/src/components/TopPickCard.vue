@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NCard, NStatistic, NTag } from "naive-ui";
+import { NCard, NEllipsis, NStatistic, NTag } from "naive-ui";
 
 import type { RankingItem } from "@/api/types";
 import { formatPercent } from "@/lib/format";
@@ -45,7 +45,9 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
       <NStatistic label="预期年化" :value="formatPercent(item.expected_return.total)" />
       <NStatistic label="最大回撤" :value="formatPercent(item.max_drawdown_pct)" />
     </div>
-    <p class="top-thesis">{{ item.thesis }}</p>
+    <NEllipsis class="top-thesis" :line-clamp="4" tooltip>
+      {{ item.thesis }}
+    </NEllipsis>
     <NTag size="small" :bordered="false" type="success">{{ item.verdict }}</NTag>
   </NCard>
 </template>

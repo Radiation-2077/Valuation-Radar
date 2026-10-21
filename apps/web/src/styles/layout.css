@@ -55,6 +55,15 @@
   display: flex;
 }
 
+.top-picks-grid > div {
+  display: flex;
+}
+
+.top-picks-grid > div > .n-card {
+  width: 100%;
+  height: 100%;
+}
+
 .updates-grid > div > .n-card {
   width: 100%;
   height: 100%;
