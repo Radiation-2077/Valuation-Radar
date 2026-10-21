@@ -1,0 +1,5 @@
+interface:
+  display_name: "价值投资估值"
+  short_description: "对个股与ETF做价值投资估值，输出可渲染的结构化JSON数据卡与详情区块"
+  brand_color: "#1d4ed8"
+  default_prompt: "用 $value-investing 给 招商银行 做估值，并按 schema 1.1 输出结构化数据卡和 presentation 区块。"

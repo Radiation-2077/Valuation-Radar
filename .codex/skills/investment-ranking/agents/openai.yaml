@@ -1,0 +1,5 @@
+interface:
+  display_name: "投资性价比排序"
+  short_description: "把已估值标的放到同一把尺子上，按风险偏好输出结构化性价比排序JSON"
+  brand_color: "#1d4ed8"
+  default_prompt: "用 $investment-ranking 把 data/ 里最近的估值数据卡排成 JSON 榜单，三套风险偏好并列。"
