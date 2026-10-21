@@ -36,7 +36,7 @@ import {
   updateSchedule,
 } from "@/api/client";
 import type { Job, Schedule, SchedulePatch } from "@/api/types";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatRelativeTime } from "@/lib/format";
 
 const queryClient = useQueryClient();
 const router = useRouter();
@@ -111,6 +111,10 @@ const activeJob = computed(() =>
 const latestSucceeded = computed(() =>
   jobs.value.find((job) => ["succeeded", "partial"].includes(job.status)),
 );
+const latestJobTime = computed(() => {
+  const latest = jobs.value[0];
+  return latest?.finished_at ?? latest?.started_at ?? latest?.created_at ?? null;
+});
 
 const frequencyOptions = [
   { label: "每个交易日", value: "trading_daily" },
@@ -233,7 +237,12 @@ function openMarket(id: number) {
 
 <template>
   <div class="updates-view">
-    <NH1 class="updates-title dashboard-title">数据更新与运行状态</NH1>
+    <NSpace vertical :size="8">
+      <NTag class="latest-task-tag" type="info" :bordered="false">
+        最近任务：{{ formatRelativeTime(latestJobTime) }}
+      </NTag>
+      <NH1 class="updates-title dashboard-title">数据更新与运行状态</NH1>
+    </NSpace>
 
     <div v-if="scheduleQuery.isPending.value" class="loading-state">
       <NSpin size="large" />

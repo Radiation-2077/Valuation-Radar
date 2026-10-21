@@ -46,6 +46,23 @@ export function formatDateTime(value: string | null | undefined): string {
   }).format(date);
 }
 
+export function formatRelativeTime(
+  value: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  if (!value) return "暂无记录";
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+  const date = new Date(hasZone ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return "暂无记录";
+
+  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1_000));
+  if (seconds < 60) return "刚刚";
+  if (seconds < 3_600) return `${Math.floor(seconds / 60)} 分钟前`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)} 小时前`;
+  if (seconds < 2_592_000) return `${Math.floor(seconds / 86_400)} 天前`;
+  return formatDate(value);
+}
+
 export const pathLabels: Record<string, string> = {
   stable: "稳定增长",
   cyclical: "周期",

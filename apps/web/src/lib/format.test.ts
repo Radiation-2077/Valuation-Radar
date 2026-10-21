@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDateTime, formatMoney, formatPercent, isStale } from "./format";
+import {
+  formatDateTime,
+  formatMoney,
+  formatPercent,
+  formatRelativeTime,
+  isStale,
+} from "./format";
 
 describe("format helpers", () => {
   it("formats percentages and missing values", () => {
@@ -22,5 +28,14 @@ describe("format helpers", () => {
     expect(formatDateTime("2026-10-21T12:43:32.414526")).not.toBe("—");
     expect(formatDateTime("2026-10-22T18:30:00+08:00")).not.toBe("—");
     expect(formatDateTime("invalid")).toBe("—");
+  });
+
+  it("formats recent task times relative to now", () => {
+    const now = new Date("2026-10-21T13:00:00Z");
+    expect(formatRelativeTime("2026-10-21T12:59:40Z", now)).toBe("刚刚");
+    expect(formatRelativeTime("2026-10-21T12:45:00Z", now)).toBe("15 分钟前");
+    expect(formatRelativeTime("2026-10-21T10:00:00Z", now)).toBe("3 小时前");
+    expect(formatRelativeTime("2026-10-20T13:00:00Z", now)).toBe("1 天前");
+    expect(formatRelativeTime(null, now)).toBe("暂无记录");
   });
 });
