@@ -5,6 +5,7 @@ import {
   NAlert,
   NButton,
   NCard,
+  NEllipsis,
   NGrid,
   NGridItem,
   NH1,
@@ -133,7 +134,9 @@ const reportSections = computed(() => query.data.value?.report_detail.sections ?
             </NTag>
             <NText depth="3">{{ query.data.value.code }}</NText>
           </div>
-          <p class="detail-thesis">{{ query.data.value.conclusion.thesis }}</p>
+          <NEllipsis class="detail-thesis" :line-clamp="3" tooltip>
+            {{ query.data.value.conclusion.thesis }}
+          </NEllipsis>
         </div>
         <NCard class="verdict-panel" size="small">
           <NText depth="3">结论</NText>
