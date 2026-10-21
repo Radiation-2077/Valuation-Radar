@@ -44,7 +44,7 @@ def test_scores_match_investment_ranking_skill() -> None:
     latest_cards = [item[1] for item in latest.values()]
     expected = {
         (entry["name"], entry["market"]): entry
-        for entry in module.build_entries(latest_cards)
+        for entry in module.build_entries(latest_cards, date.today())
     }
     actual = [
         score_context(
@@ -59,7 +59,7 @@ def test_scores_match_investment_ranking_skill() -> None:
     ]
 
     for profile in PROFILES.values():
-        profile_key = f"score::{profile.label}"
+        profile_key = f"score::{profile.code}"
         for entry in actual:
             reference = expected[(entry.context.name, entry.context.market)]
             assert entry.scores[profile.code] == pytest.approx(reference[profile_key])
