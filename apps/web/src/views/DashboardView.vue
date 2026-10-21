@@ -353,7 +353,7 @@ function rowProps(row: RankingItem) {
       <NH1 class="dashboard-title">风险调整后的性价比</NH1>
     </NSpace>
 
-    <NSpace class="toolbar" align="center" justify="end" :wrap="true" :size="8">
+    <NSpace class="toolbar" align="center" justify="space-between" :wrap="true" :size="8">
       <ProfileSwitcher :model-value="profile" @update:model-value="selectProfile" />
       <NPopover
         v-model:show="filtersOpen"

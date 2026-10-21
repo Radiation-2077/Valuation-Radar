@@ -104,6 +104,11 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   expect(profileSwitcherBox).not.toBeNull();
   expect(filterButtonBox).not.toBeNull();
   expect(profileSwitcherBox!.height).toBeCloseTo(filterButtonBox!.height, 0);
+  expect(profileSwitcherBox!.x).toBeCloseTo(toolbarBox!.x, 0);
+  expect(filterButtonBox!.x + filterButtonBox!.width).toBeCloseTo(
+    toolbarBox!.x + toolbarBox!.width,
+    0,
+  );
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
