@@ -124,6 +124,22 @@
   border: 1px solid var(--ui-line);
 }
 
+.ranking-card > .n-card-content {
+  padding: 30px 32px;
+}
+
+.table-shell {
+  padding: 10px 12px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.table-shell > .n-data-table {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
 .score-row,
 .return-row {
   display: grid;
@@ -214,5 +230,13 @@
   .score-row,
   .return-row {
     grid-template-columns: 72px minmax(0, 1fr) 54px;
+  }
+
+  .ranking-card > .n-card-content {
+    padding: 20px;
+  }
+
+  .table-shell {
+    padding: 6px;
   }
 }

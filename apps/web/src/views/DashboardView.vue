@@ -341,17 +341,19 @@ function rowProps(row: RankingItem) {
             <NH2>完整性价比排名</NH2>
             <NTag size="small" :bordered="false">点击行在同页展开详情</NTag>
           </NSpace>
-          <NDataTable
-            v-if="query.data.value.main_board.length"
-            size="small"
-            :columns="columns"
-            :data="query.data.value.main_board"
-            :row-props="rowProps"
-            :bordered="false"
-            :single-line="false"
-            :pagination="false"
-            :scroll-x="1120"
-          />
+          <div v-if="query.data.value.main_board.length" class="table-shell">
+            <NDataTable
+              class="ranking-table"
+              size="small"
+              :columns="columns"
+              :data="query.data.value.main_board"
+              :row-props="rowProps"
+              :bordered="false"
+              :single-line="false"
+              :pagination="false"
+              :scroll-x="1120"
+            />
+          </div>
           <NEmpty v-else description="当前筛选没有主榜标的" />
         </NSpace>
       </NCard>
@@ -384,17 +386,19 @@ function rowProps(row: RankingItem) {
               {{ query.data.value.excluded.length }} 条
             </NTag>
           </NSpace>
-          <NDataTable
-            class="excluded-table"
-            size="small"
-            :columns="excludedColumns"
-            :data="query.data.value.excluded"
-            :row-props="rowProps"
-            :bordered="false"
-            :single-line="false"
-            :pagination="false"
-            :scroll-x="980"
-          />
+          <div class="table-shell">
+            <NDataTable
+              class="excluded-table"
+              size="small"
+              :columns="excludedColumns"
+              :data="query.data.value.excluded"
+              :row-props="rowProps"
+              :bordered="false"
+              :single-line="false"
+              :pagination="false"
+              :scroll-x="980"
+            />
+          </div>
         </NSpace>
       </NCard>
     </template>
