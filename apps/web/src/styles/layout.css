@@ -48,7 +48,7 @@
 }
 
 .dashboard-stack {
-  gap: var(--grid-gap) !important;
+  gap: 12px !important;
 }
 
 .updates-grid > div {

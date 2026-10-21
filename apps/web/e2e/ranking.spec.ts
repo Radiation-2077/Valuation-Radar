@@ -97,9 +97,9 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   expect(tabsBox).not.toBeNull();
   expect(toolbarBox).not.toBeNull();
   expect(topThreeBox).not.toBeNull();
-  expect(titleBox!.y - (staleTag!.y + staleTag!.height)).toBeCloseTo(20, 0);
-  expect(tabsBox!.y - (titleBox!.y + titleBox!.height)).toBeCloseTo(20, 0);
-  expect(topThreeBox!.y - (toolbarBox!.y + toolbarBox!.height)).toBeCloseTo(20, 0);
+  expect(titleBox!.y - (staleTag!.y + staleTag!.height)).toBeCloseTo(8, 0);
+  expect(tabsBox!.y - (titleBox!.y + titleBox!.height)).toBeCloseTo(12, 0);
+  expect(topThreeBox!.y - (toolbarBox!.y + toolbarBox!.height)).toBeCloseTo(12, 0);
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
