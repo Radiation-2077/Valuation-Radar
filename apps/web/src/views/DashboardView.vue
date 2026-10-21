@@ -340,7 +340,7 @@ function rowProps(row: RankingItem) {
 
 <template>
   <NSpace vertical class="dashboard-stack" :size="24">
-    <NSpace vertical :size="8">
+    <NSpace vertical :size="20">
       <NTag
         v-if="query.data.value?.freshness.stale_units"
         class="dashboard-stale-tag"
