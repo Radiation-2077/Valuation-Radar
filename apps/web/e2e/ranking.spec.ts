@@ -98,6 +98,16 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .first()
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(reportTableBorderBottom).toBe("0px");
+  const cycleSignalGap = await page
+    .locator(".detail-panel h3")
+    .filter({ hasText: "周期位置信号" })
+    .evaluate((heading) => {
+      const table = heading.parentElement?.nextElementSibling?.querySelector(".table-shell");
+      return table
+        ? table.getBoundingClientRect().top - heading.getBoundingClientRect().bottom
+        : null;
+    });
+  expect(cycleSignalGap).toBeCloseTo(20, 0);
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();

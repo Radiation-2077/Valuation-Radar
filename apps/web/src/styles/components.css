@@ -262,6 +262,10 @@
   margin: 0;
 }
 
+.report-block-stack .n-h3 {
+  margin: 0;
+}
+
 .table-shell > .n-data-table {
   overflow: hidden;
   border-radius: var(--radius-sm);
