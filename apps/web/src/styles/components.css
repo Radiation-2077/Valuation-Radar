@@ -120,7 +120,6 @@
   line-height: 1.65;
 }
 
-.status-card,
 .analysis-card,
 .ranking-card {
   border: 1px solid var(--ui-line);

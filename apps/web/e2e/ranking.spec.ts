@@ -7,7 +7,10 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.getByText("DECISION SYSTEM / LIVE RANK")).toHaveCount(0);
   await expect(page.getByText("把估值结论，压缩成可执行的排序。")).toHaveCount(0);
   await expect(page.locator(".dashboard-stale-tag")).toBeVisible();
-  await expect(page.locator(".status-card").getByText(/估值超过/)).toHaveCount(0);
+  await expect(page.getByText("排名计算")).toHaveCount(0);
+  await expect(page.getByText("最新估值")).toHaveCount(0);
+  await expect(page.getByText("最新行情")).toHaveCount(0);
+  await expect(page.getByText("排序单元")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "性价比Top3" })).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
   await expect(page.getByRole("table").first()).toBeVisible();
@@ -35,7 +38,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(page.locator('.n-tabs-tab[data-name="balanced"]')).toHaveClass(
     /n-tabs-tab--active/,
   );
-  await expect(page.locator(".status-card")).toBeVisible();
+  await expect(page.locator(".status-card")).toHaveCount(0);
   await expect(page.locator(".top-card").first()).toBeVisible();
   await expect(page.locator(".etf-table")).toBeVisible();
   await expect(page.locator(".excluded-table")).toBeVisible();
@@ -48,15 +51,16 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(page).toHaveURL(/profile=balanced/);
 });
 
-test("risk profile controls do not overlap the freshness bar", async ({ page }) => {
+test("risk profile controls do not overlap the top three container", async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 720 });
   await page.goto("/?profile=conservative");
+  await page.waitForSelector(".top3-card");
 
   const profileBox = await page.locator(".n-tabs").boundingBox();
-  const freshnessBox = await page.locator(".status-card").boundingBox();
+  const topThreeBox = await page.locator(".top3-card").boundingBox();
   expect(profileBox).not.toBeNull();
-  expect(freshnessBox).not.toBeNull();
-  expect(profileBox!.y + profileBox!.height).toBeLessThan(freshnessBox!.y);
+  expect(topThreeBox).not.toBeNull();
+  expect(profileBox!.y + profileBox!.height).toBeLessThan(topThreeBox!.y);
 });
 
 test("dashboard and update cards keep consistent spacing and heights", async ({ page }) => {
@@ -69,12 +73,12 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
   await expect(page.locator(".filter-card")).toHaveCount(0);
   await expect(page.locator(".filter-popover")).toHaveCount(0);
-  const layoutBeforeFilters = await page.locator(".status-card").boundingBox();
+  const layoutBeforeFilters = await page.locator(".top3-card").boundingBox();
   await page.getByRole("button", { name: "筛选" }).click();
   await expect(page.locator(".filter-popover")).toBeVisible();
   await expect(page.locator(".filter-popover .n-select")).toHaveCount(3);
   await expect(page.locator(".filter-popover .n-select").first()).toBeVisible();
-  const layoutAfterFilters = await page.locator(".status-card").boundingBox();
+  const layoutAfterFilters = await page.locator(".top3-card").boundingBox();
   expect(layoutBeforeFilters).not.toBeNull();
   expect(layoutAfterFilters).not.toBeNull();
   expect(Math.abs(layoutBeforeFilters!.y - layoutAfterFilters!.y)).toBeLessThan(1);

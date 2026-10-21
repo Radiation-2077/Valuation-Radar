@@ -28,7 +28,6 @@ import { useRoute, useRouter } from "vue-router";
 
 import { fetchRanking } from "@/api/client";
 import type { ProfileCode, RankingItem, RankingResponse } from "@/api/types";
-import FreshnessBar from "@/components/FreshnessBar.vue";
 import ProfileTabs from "@/components/ProfileTabs.vue";
 import RankingScatter from "@/components/RankingScatter.vue";
 import TopPickCard from "@/components/TopPickCard.vue";
@@ -399,11 +398,6 @@ function rowProps(row: RankingItem) {
     </NAlert>
 
     <template v-else-if="query.data.value">
-      <FreshnessBar
-        :freshness="query.data.value.freshness"
-        :counts="query.data.value.counts"
-      />
-
       <NCard class="top3-card">
         <NSpace vertical :size="20">
           <NSpace class="card-heading" align="center" justify="space-between" :wrap="true">
