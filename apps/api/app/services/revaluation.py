@@ -282,7 +282,8 @@ def _prompt(
 1. 按 skill 的方法重新判断质地、产业周期和市场结构，并独立重估。
 2. 数据缺失时写 null 并登记 missing，禁止编造或把缺失值当 0。
 3. 只生成 schema 1.1 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
-4. 数据卡必须包含完整的 presentation.sections，质量章必须使用一个五维 quality_scorecard。
+4. 数据卡必须包含完整的 presentation.sections；质量章只使用既有两栏 grid：
+   左侧五个 scores，右侧三列表格。
 5. 章节契约：{section_contract}
 6. 每个 section 的 market 必须与内容一致，禁止把 A/H 价格、仓位或收益混在同一章节。
 7. 排名字段与 presentation 必须同源同值，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。

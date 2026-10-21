@@ -157,7 +157,7 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert ranked.report_id == published.id
         assert ranked.valuation_market_id in {market.id for market in published.markets}
         detail = get_valuation_detail(session, published.markets[0].id)
-        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "quality_scorecard"
+        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "grid"
         old_detail = get_valuation_detail(session, old_market_id)
         assert old_detail.valuation_market_id == old_market_id
         latest_market_id = next(
@@ -265,17 +265,44 @@ def _quality_presentation() -> dict:
             "assessment": "通过",
         },
     ]
+    quality_grid = {
+        "type": "grid",
+        "columns": [
+            [
+                {"type": "heading", "level": 3, "text": "质量分项（0–10）"},
+                {
+                    "type": "scores",
+                    "items": [
+                        {
+                            "label": item["label"],
+                            "score": f"{item['score']:.1f}",
+                            "width": item["score"] * 10,
+                            "tone": "positive",
+                        }
+                        for item in dimensions
+                    ],
+                },
+            ],
+            [
+                {"type": "heading", "level": 3, "text": "关键指标"},
+                {
+                    "type": "table",
+                    "headers": ["维度", "结果", "评价"],
+                    "rows": [
+                        [item["indicator"], item["value"], item["assessment"]]
+                        for item in dimensions
+                    ],
+                },
+            ],
+        ],
+    }
     sections = [
         {
             "id": "quality",
             "title": "标的质地",
             "market": "common",
             "blocks": [
-                {
-                    "type": "quality_scorecard",
-                    "scale_max": 10,
-                    "dimensions": dimensions,
-                },
+                    quality_grid,
                 {
                     "type": "callout",
                     "tone": "info",

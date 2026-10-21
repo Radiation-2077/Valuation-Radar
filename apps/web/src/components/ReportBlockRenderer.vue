@@ -24,7 +24,6 @@ import FormulaBlock from "@/components/FormulaBlock.vue";
 import MetricGauge from "@/components/MetricGauge.vue";
 import PositionTierChart from "@/components/PositionTierChart.vue";
 import PremiumDonutChart from "@/components/PremiumDonutChart.vue";
-import QualityScorecard from "@/components/QualityScorecard.vue";
 import RangePositionChart from "@/components/RangePositionChart.vue";
 import RichText from "@/components/RichText.vue";
 import ReturnStackChart from "@/components/ReturnStackChart.vue";
@@ -164,11 +163,6 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
 
     <BulletList
       v-else-if="block.type === 'bullets'"
-      :block="block"
-    />
-
-    <QualityScorecard
-      v-else-if="block.type === 'quality_scorecard'"
       :block="block"
     />
 

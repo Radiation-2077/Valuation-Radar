@@ -23,13 +23,13 @@ from app.services.report_parser import parse_report_detail
 
 SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1"}
 PRESENTATION_MARKETS = {"common", "A", "H", "US", "CN"}
-QUALITY_KEYS = {
-    "profit_cash_quality",
-    "balance_sheet",
-    "roe",
-    "moat",
-    "survival",
-}
+QUALITY_LABELS = (
+    "利润现金含量",
+    "资产负债表",
+    "ROE 水平",
+    "护城河强度",
+    "生存能力",
+)
 
 
 class CardValidationError(ValueError):
@@ -127,6 +127,7 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
             f"{label} schema_version 非法：{schema_version}（支持 1.0 / 1.1）"
         )
     if schema_version == "1.1":
+        canonicalize_presentation_quality(card)
         _validate_presentation(card, label)
     try:
         analysis_date = date.fromisoformat(str(card["analysis_date"]))
@@ -340,7 +341,7 @@ def _validate_presentation(card: dict[str, Any], label: str) -> None:
         raise CardValidationError(f"{label} presentation.sections 必须是非空数组")
 
     section_ids: set[str] = set()
-    quality_cards: list[dict[str, Any]] = []
+    quality_grids: list[dict[str, Any]] = []
     for section_index, section in enumerate(sections):
         section_tag = f"presentation.sections[{section_index}]"
         if not isinstance(section, dict):
@@ -364,48 +365,133 @@ def _validate_presentation(card: dict[str, Any], label: str) -> None:
                 raise CardValidationError(f"{label} {block_tag} 必须是对象")
             if not isinstance(block.get("type"), str) or not block["type"]:
                 raise CardValidationError(f"{label} {block_tag}.type 缺失")
-            if block["type"] == "quality_scorecard":
-                quality_cards.append(block)
+            if block["type"] == "grid" and _quality_grid_parts(block) is not None:
+                quality_grids.append(block)
 
-    if len(quality_cards) != 1:
+    if len(quality_grids) != 1:
         raise CardValidationError(
-            f"{label} schema 1.1 必须且只能包含一个 quality_scorecard"
+            f"{label} schema 1.1 必须且只能包含一个质量 grid（scores + table）"
         )
-    _validate_quality_scorecard(quality_cards[0], label)
+    _validate_quality_grid(quality_grids[0], label)
     _validate_ah_sections(card, sections, label)
 
 
-def _validate_quality_scorecard(block: dict[str, Any], label: str) -> None:
+def _validate_quality_grid(block: dict[str, Any], label: str) -> None:
+    parts = _quality_grid_parts(block)
+    if parts is None:
+        raise CardValidationError(f"{label} 质量 grid 必须包含 scores 与 table")
+    scores, table = parts
+    items = scores.get("items")
+    if not isinstance(items, list) or len(items) != 5:
+        raise CardValidationError(f"{label} 质量 grid.scores.items 必须恰好 5 项")
+    labels = [str(item.get("label") or "") for item in items if isinstance(item, dict)]
+    if labels != list(QUALITY_LABELS):
+        raise CardValidationError(f"{label} 质量 grid 五个维度顺序或名称不正确")
+    for item in items:
+        if not isinstance(item, dict):
+            raise CardValidationError(f"{label} 质量 grid.scores 含非对象项")
+        try:
+            score = float(str(item.get("score")))
+            width = float(str(item.get("width")))
+        except (TypeError, ValueError) as exc:
+            raise CardValidationError(f"{label} 质量 grid score/width 必须为数值") from exc
+        if not 0 <= score <= 10 or not 0 <= width <= 100:
+            raise CardValidationError(f"{label} 质量 grid score/width 越界")
+    rows = table.get("rows")
+    if not isinstance(rows, list) or len(rows) != 5:
+        raise CardValidationError(f"{label} 质量 grid.table.rows 必须恰好 5 行")
+    if any(not isinstance(row, list) or len(row) != 3 for row in rows):
+        raise CardValidationError(f"{label} 质量 grid.table 每行必须为 3 列")
+
+
+def _quality_grid_parts(
+    block: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    columns = block.get("columns")
+    if not isinstance(columns, list):
+        return None
+    blocks = [
+        item
+        for column in columns
+        if isinstance(column, list)
+        for item in column
+        if isinstance(item, dict)
+    ]
+    scores = next((item for item in blocks if item.get("type") == "scores"), None)
+    table = next((item for item in blocks if item.get("type") == "table"), None)
+    if scores is None or table is None:
+        return None
+    return scores, table
+
+
+def canonicalize_presentation_quality(card: dict[str, Any]) -> None:
+    presentation = card.get("presentation")
+    if not isinstance(presentation, dict):
+        return
+    sections = presentation.get("sections")
+    if not isinstance(sections, list):
+        return
+    for section in sections:
+        if not isinstance(section, dict) or not isinstance(section.get("blocks"), list):
+            continue
+        section["blocks"] = [
+            _quality_scorecard_to_grid(block)
+            if isinstance(block, dict) and block.get("type") == "quality_scorecard"
+            else block
+            for block in section["blocks"]
+        ]
+
+
+def _quality_scorecard_to_grid(block: dict[str, Any]) -> dict[str, Any]:
     dimensions = block.get("dimensions")
-    if not isinstance(dimensions, list) or len(dimensions) != 5:
-        raise CardValidationError(f"{label} quality_scorecard.dimensions 必须恰好 5 项")
-    keys = {
-        dimension.get("key")
-        for dimension in dimensions
-        if isinstance(dimension, dict)
-    }
-    if keys != QUALITY_KEYS:
-        raise CardValidationError(f"{label} quality_scorecard 五个维度不完整或重复")
+    if not isinstance(dimensions, list):
+        return block
     scale_max = block.get("scale_max", 10)
-    if not isinstance(scale_max, (int, float)) or isinstance(scale_max, bool) or scale_max <= 0:
-        raise CardValidationError(f"{label} quality_scorecard.scale_max 必须为正数")
+    try:
+        maximum = float(str(scale_max))
+    except (TypeError, ValueError):
+        maximum = 10.0
+    score_items = []
+    rows = []
     for dimension in dimensions:
         if not isinstance(dimension, dict):
-            raise CardValidationError(f"{label} quality_scorecard.dimensions 含非对象项")
-        for key in ("label", "indicator", "value", "assessment"):
-            if not isinstance(dimension.get(key), str) or not dimension[key]:
-                raise CardValidationError(
-                    f"{label} quality_scorecard 维度 {dimension.get('key')} 缺少 {key}"
-                )
-        score = dimension.get("score")
-        if (
-            not isinstance(score, (int, float))
-            or isinstance(score, bool)
-            or not 0 <= score <= scale_max
-        ):
-            raise CardValidationError(
-                f"{label} quality_scorecard 维度 {dimension.get('key')} 分数越界"
-            )
+            continue
+        try:
+            score = float(str(dimension.get("score")))
+        except (TypeError, ValueError):
+            score = 0.0
+        score_items.append(
+            {
+                "label": str(dimension.get("label") or ""),
+                "score": f"{score:.1f}",
+                "width": round(score / maximum * 100, 1) if maximum > 0 else 0,
+                "tone": "negative" if score < maximum / 2 else "positive",
+            }
+        )
+        rows.append(
+            [
+                str(dimension.get("indicator") or ""),
+                str(dimension.get("value") or ""),
+                str(dimension.get("assessment") or ""),
+            ]
+        )
+    return {
+        "type": "grid",
+        "columns": [
+            [
+                {"type": "heading", "level": 3, "text": "质量分项（0–10）"},
+                {"type": "scores", "items": score_items},
+            ],
+            [
+                {"type": "heading", "level": 3, "text": "关键指标"},
+                {
+                    "type": "table",
+                    "headers": ["维度", "结果", "评价"],
+                    "rows": rows,
+                },
+            ],
+        ],
+    }
 
 
 def _validate_ah_sections(

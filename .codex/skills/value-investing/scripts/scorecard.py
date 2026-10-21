@@ -29,14 +29,14 @@ REQUIRED_ER = ["dividend", "growth", "valuation", "total"]
 VALID_SCHEMA = {"1.0", "1.1"}
 VALID_BLOCKS = {
     "heading", "paragraph", "callout", "table", "formula", "bullets",
-    "scores", "quality_scorecard",
+    "scores",
     "gauges", "valuation_scenarios", "range_position", "premium_donut",
     "position_tiers", "return_stack", "risk_cards", "grid", "metric_cards",
     "scenario_bars", "donut", "steps", "scale",
 }
-QUALITY_KEYS = {
-    "profit_cash_quality", "balance_sheet", "roe", "moat", "survival",
-}
+QUALITY_LABELS = [
+    "利润现金含量", "资产负债表", "ROE 水平", "护城河强度", "生存能力",
+]
 
 
 def _is_num(x) -> bool:
@@ -53,7 +53,7 @@ def _validate_presentation(card: dict) -> tuple[list[str], list[str]]:
     if not isinstance(sections, list) or not sections:
         return ["presentation.sections 必须是非空数组"], warn
 
-    quality_cards: list[dict] = []
+    quality_grids: list[dict] = []
     section_ids: set[str] = set()
     for s_idx, section in enumerate(sections):
         tag = f"presentation.sections[{s_idx}]"
@@ -85,27 +85,8 @@ def _validate_presentation(card: dict) -> tuple[list[str], list[str]]:
             if block_type not in VALID_BLOCKS:
                 errs.append(f"{btag}.type 非法：{block_type!r}")
                 continue
-            if block_type == "quality_scorecard":
-                quality_cards.append(block)
-                dimensions = block.get("dimensions")
-                if not isinstance(dimensions, list) or len(dimensions) != 5:
-                    errs.append(f"{btag}.dimensions 必须恰好 5 项")
-                    continue
-                keys = [d.get("key") for d in dimensions if isinstance(d, dict)]
-                if set(keys) != QUALITY_KEYS or len(set(keys)) != 5:
-                    errs.append(f"{btag}.dimensions.key 必须是 {sorted(QUALITY_KEYS)}")
-                scale_max = block.get("scale_max", 10)
-                for d_idx, dimension in enumerate(dimensions):
-                    dtag = f"{btag}.dimensions[{d_idx}]"
-                    if not isinstance(dimension, dict):
-                        errs.append(f"{dtag} 不是对象")
-                        continue
-                    for key in ("label", "indicator", "value", "assessment"):
-                        if not isinstance(dimension.get(key), str) or not dimension.get(key):
-                            errs.append(f"{dtag}.{key} 缺失")
-                    score = dimension.get("score")
-                    if not _is_num(score) or not 0 <= score <= float(scale_max):
-                        errs.append(f"{dtag}.score 应为 0–{scale_max} 数值")
+            if block_type == "grid" and _quality_grid_parts(block) is not None:
+                quality_grids.append(block)
             elif block_type == "position_tiers":
                 items = block.get("items")
                 if not isinstance(items, list) or len(items) != 3:
@@ -158,10 +139,64 @@ def _validate_presentation(card: dict) -> tuple[list[str], list[str]]:
         if not is_exempt and not has_summary:
             errs.append(f"{tag} 缺少 summary=true 的本章小结")
 
-    if len(quality_cards) != 1:
-        errs.append(f"presentation 必须且只能包含 1 个 quality_scorecard，实际 {len(quality_cards)}")
+    if len(quality_grids) != 1:
+        errs.append(
+            f"presentation 必须且只能包含 1 个质量 grid（scores + table），实际 {len(quality_grids)}"
+        )
+    else:
+        errs.extend(_validate_quality_grid(quality_grids[0]))
     _validate_ah_sections(card, sections, errs)
     return errs, warn
+
+
+def _quality_grid_parts(block: dict) -> tuple[dict, dict] | None:
+    columns = block.get("columns")
+    if not isinstance(columns, list):
+        return None
+    blocks = [
+        item
+        for column in columns
+        if isinstance(column, list)
+        for item in column
+        if isinstance(item, dict)
+    ]
+    scores = next((item for item in blocks if item.get("type") == "scores"), None)
+    table = next((item for item in blocks if item.get("type") == "table"), None)
+    if scores is None or table is None:
+        return None
+    return scores, table
+
+
+def _validate_quality_grid(block: dict) -> list[str]:
+    parts = _quality_grid_parts(block)
+    if parts is None:
+        return ["质量 grid 必须包含 scores 与 table"]
+    scores, table = parts
+    items = scores.get("items")
+    if not isinstance(items, list) or len(items) != 5:
+        return ["质量 grid.scores.items 必须恰好 5 项"]
+    labels = [item.get("label") for item in items if isinstance(item, dict)]
+    if labels != QUALITY_LABELS:
+        return ["质量 grid 五个维度顺序或名称不正确"]
+    errs = []
+    for item in items:
+        if not isinstance(item, dict):
+            errs.append("质量 grid.scores 含非对象项")
+            continue
+        try:
+            score = float(item.get("score"))
+            width = float(item.get("width"))
+        except (TypeError, ValueError):
+            errs.append("质量 grid score/width 必须为数值")
+            continue
+        if not 0 <= score <= 10 or not 0 <= width <= 100:
+            errs.append("质量 grid score/width 越界")
+    rows = table.get("rows")
+    if not isinstance(rows, list) or len(rows) != 5:
+        errs.append("质量 grid.table.rows 必须恰好 5 行")
+    elif any(not isinstance(row, list) or len(row) != 3 for row in rows):
+        errs.append("质量 grid.table 每行必须为 3 列")
+    return errs
 
 
 def _validate_ah_sections(card: dict, sections: list, errs: list[str]) -> None:

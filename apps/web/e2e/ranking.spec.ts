@@ -99,9 +99,12 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(reportTableBorderBottom).toBe("0px");
   const qualityScorecard = qualityCard.locator(".table-shell").first();
-  await expect(qualityScorecard.locator("thead")).toHaveCount(1);
+  await expect(qualityScorecard.locator("thead")).toHaveCount(0);
   await expect(qualityScorecard.locator("tbody tr")).toHaveCount(5);
   await expect(qualityCard.locator(".score-row")).toHaveCount(5);
+  await expect(
+    qualityScorecard.locator("tbody .n-ellipsis").first(),
+  ).toHaveCSS("-webkit-line-clamp", "1");
   await expect(
     page.locator(".table-shell").filter({ hasText: "对应溢价" }).locator(".n-ellipsis"),
   ).toHaveCount(0);

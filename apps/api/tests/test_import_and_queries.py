@@ -101,11 +101,11 @@ def test_schema_1_1_candidate_persists_presentation(tmp_path: Path) -> None:
         assert report.detail_json == presentation
 
         detail = get_valuation_detail(session, report.markets[0].id)
-        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "quality_scorecard"
+        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "grid"
 
 
 @pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
-def test_schema_1_1_rejects_missing_quality_scorecard() -> None:
+def test_schema_1_1_rejects_missing_quality_grid() -> None:
     card = json.loads(
         sorted(LEGACY_DATA_DIR.glob("*.json"))[0].read_text(encoding="utf-8")
     )
@@ -122,8 +122,79 @@ def test_schema_1_1_rejects_missing_quality_scorecard() -> None:
         ],
     }
 
-    with pytest.raises(CardValidationError, match="quality_scorecard"):
+    with pytest.raises(CardValidationError, match="质量 grid"):
         validate_card(card)
+
+
+@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
+def test_legacy_quality_scorecard_is_canonicalized_to_grid() -> None:
+    card = json.loads(
+        sorted(LEGACY_DATA_DIR.glob("*.json"))[0].read_text(encoding="utf-8")
+    )
+    card["schema_version"] = "1.1"
+    card["presentation"] = {
+        "schema_version": "1.0",
+        "sections": [
+            {
+                "id": "quality",
+                "title": "标的质地",
+                "market": "common",
+                "blocks": [
+                    {
+                        "type": "quality_scorecard",
+                        "scale_max": 10,
+                        "dimensions": [
+                            {
+                                "key": "profit_cash_quality",
+                                "label": "利润现金含量",
+                                "score": 8,
+                                "indicator": "经营现金流 / 净利润",
+                                "value": "1.2 倍",
+                                "assessment": "真实",
+                            },
+                            {
+                                "key": "balance_sheet",
+                                "label": "资产负债表",
+                                "score": 8,
+                                "indicator": "有息负债率",
+                                "value": "20%",
+                                "assessment": "稳健",
+                            },
+                            {
+                                "key": "roe",
+                                "label": "ROE 水平",
+                                "score": 7,
+                                "indicator": "ROE",
+                                "value": "12%",
+                                "assessment": "中上",
+                            },
+                            {
+                                "key": "moat",
+                                "label": "护城河强度",
+                                "score": 8,
+                                "indicator": "护城河",
+                                "value": "规模",
+                                "assessment": "强",
+                            },
+                            {
+                                "key": "survival",
+                                "label": "生存能力",
+                                "score": 7,
+                                "indicator": "压力测试",
+                                "value": "通过",
+                                "assessment": "通过",
+                            },
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    validate_card(card)
+    block = card["presentation"]["sections"][0]["blocks"][0]
+    assert block["type"] == "grid"
+    assert len(block["columns"]) == 2
 
 
 @pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
@@ -139,48 +210,38 @@ def test_schema_1_1_ah_requires_split_market_sections() -> None:
 
 
 def _quality_presentation() -> dict:
-    dimensions = [
-        {
-            "key": "profit_cash_quality",
-            "label": "利润现金含量",
-            "score": 8.0,
-            "indicator": "经营现金流 / 净利润",
-            "value": "1.2 倍",
-            "assessment": "真实",
-        },
-        {
-            "key": "balance_sheet",
-            "label": "资产负债表",
-            "score": 8.0,
-            "indicator": "有息负债率",
-            "value": "20%",
-            "assessment": "稳健",
-        },
-        {
-            "key": "roe",
-            "label": "ROE 水平",
-            "score": 7.0,
-            "indicator": "ROE（近 3 年均值）",
-            "value": "12%",
-            "assessment": "中上",
-        },
-        {
-            "key": "moat",
-            "label": "护城河强度",
-            "score": 8.0,
-            "indicator": "护城河",
-            "value": "规模与成本",
-            "assessment": "强",
-        },
-        {
-            "key": "survival",
-            "label": "生存能力",
-            "score": 7.0,
-            "indicator": "压力年份",
-            "value": "保持盈利",
-            "assessment": "通过",
-        },
-    ]
+    quality_grid = {
+        "type": "grid",
+        "columns": [
+            [
+                {"type": "heading", "level": 3, "text": "质量分项（0–10）"},
+                {
+                    "type": "scores",
+                    "items": [
+                        {"label": "利润现金含量", "score": "8.0", "width": 80, "tone": "positive"},
+                        {"label": "资产负债表", "score": "8.0", "width": 80, "tone": "positive"},
+                        {"label": "ROE 水平", "score": "7.0", "width": 70, "tone": "positive"},
+                        {"label": "护城河强度", "score": "8.0", "width": 80, "tone": "positive"},
+                        {"label": "生存能力", "score": "7.0", "width": 70, "tone": "positive"},
+                    ],
+                },
+            ],
+            [
+                {"type": "heading", "level": 3, "text": "关键指标"},
+                {
+                    "type": "table",
+                    "headers": ["维度", "结果", "评价"],
+                    "rows": [
+                        ["经营现金流 / 净利润", "1.2 倍", "真实"],
+                        ["有息负债率", "20%", "稳健"],
+                        ["ROE（近 3 年均值）", "12%", "中上"],
+                        ["护城河", "规模与成本", "强"],
+                        ["压力年份", "保持盈利", "通过"],
+                    ],
+                },
+            ],
+        ],
+    }
     return {
         "schema_version": "1.0",
         "sections": [
@@ -189,11 +250,7 @@ def _quality_presentation() -> dict:
                 "title": "标的质地",
                 "market": "common",
                 "blocks": [
-                    {
-                        "type": "quality_scorecard",
-                        "scale_max": 10,
-                        "dimensions": dimensions,
-                    },
+                    quality_grid,
                     {
                         "type": "callout",
                         "tone": "info",
