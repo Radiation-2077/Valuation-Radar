@@ -17,7 +17,6 @@ import {
   NSelect,
   NSpace,
   NSpin,
-  NSwitch,
   NTag,
   NText,
   type DataTableColumns,
@@ -52,7 +51,6 @@ const profile = computed<ProfileCode>(() => {
 const market = ref<string | null>(null);
 const path = ref<string | null>(null);
 const industry = ref<string | null>(null);
-const staleOnly = ref(false);
 const selectedValuationId = ref<number | null>(null);
 const detailOpen = ref(false);
 
@@ -61,7 +59,6 @@ const filters = computed(() => ({
   market: market.value || undefined,
   path: path.value || undefined,
   industry: industry.value || undefined,
-  staleOnly: staleOnly.value,
 }));
 const query = useQuery<RankingResponse>({
   queryKey: computed(() => ["ranking", filters.value]),
@@ -294,7 +291,6 @@ function clearFilters() {
   market.value = null;
   path.value = null;
   industry.value = null;
-  staleOnly.value = false;
 }
 
 function rowProps(row: RankingItem) {
@@ -395,9 +391,6 @@ function rowProps(row: RankingItem) {
               </NFormItem>
               <NFormItem label="行业" :show-feedback="false">
                 <NSelect v-model:value="industry" :options="industryOptions" clearable filterable />
-              </NFormItem>
-              <NFormItem label="只看估值偏旧" :show-feedback="false">
-                <NSwitch v-model:value="staleOnly" />
               </NFormItem>
               <NGrid cols="3" :x-gap="12">
                 <NGridItem><NText depth="3">主榜 {{ query.data.value.counts.main_board }}</NText></NGridItem>

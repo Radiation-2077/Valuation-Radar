@@ -44,7 +44,6 @@ def get_ranking(
     market: str | None = None,
     path: str | None = None,
     industry: str | None = None,
-    stale_only: bool = False,
 ) -> RankingResponse:
     if profile not in PROFILES:
         raise HTTPException(status_code=422, detail={"message": f"未知风险偏好：{profile}"})
@@ -91,7 +90,6 @@ def get_ranking(
         if (not market or item.market == market)
         and (not path or item.path == path)
         and (not industry or item.industry == industry)
-        and (not stale_only or item.stale_days > stale_after)
     ]
     main_board = sorted(
         [item for item in items if not item.excluded_reasons and not item.is_etf],

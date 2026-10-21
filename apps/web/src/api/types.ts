@@ -143,7 +143,6 @@ export interface RankingFilters {
   market?: string;
   path?: string;
   industry?: string;
-  staleOnly?: boolean;
 }
 
 export interface Schedule {

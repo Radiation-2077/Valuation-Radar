@@ -38,6 +38,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(page.locator(".top-card").first()).toBeVisible();
   await expect(page.locator(".etf-table")).toBeVisible();
   await expect(page.locator(".excluded-table")).toBeVisible();
+  await expect(page.getByText("只看估值偏旧")).toHaveCount(0);
 
   await page.locator(".top-card").first().click();
   await expect(page.locator(".n-drawer")).toBeVisible();

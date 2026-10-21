@@ -76,7 +76,6 @@ def dashboard(
     market: str | None = None,
     path: str | None = None,
     industry: str | None = None,
-    stale_only: bool = False,
 ) -> RankingResponse:
     return get_ranking(
         session,
@@ -84,7 +83,6 @@ def dashboard(
         market=market,
         path=path,
         industry=industry,
-        stale_only=stale_only,
     )
 
 
@@ -95,7 +93,6 @@ def rankings(
     market: str | None = None,
     path: str | None = None,
     industry: str | None = None,
-    stale_only: bool = False,
 ) -> RankingResponse:
     return get_ranking(
         session,
@@ -103,7 +100,6 @@ def rankings(
         market=market,
         path=path,
         industry=industry,
-        stale_only=stale_only,
     )
 
 

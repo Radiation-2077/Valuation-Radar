@@ -51,7 +51,6 @@ export async function fetchRanking(filters: RankingFilters): Promise<RankingResp
   if (filters.market) query.set("market", filters.market);
   if (filters.path) query.set("path", filters.path);
   if (filters.industry) query.set("industry", filters.industry);
-  if (filters.staleOnly) query.set("stale_only", "true");
   return request<RankingResponse>(`/api/v1/rankings?${query.toString()}`);
 }
 
