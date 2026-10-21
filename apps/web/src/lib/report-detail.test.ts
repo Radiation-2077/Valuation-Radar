@@ -5,7 +5,7 @@ import type { ReportDetailBlock } from "@/api/types";
 import {
   cleanReportNarrative,
   flattenPositionLayout,
-  mergeScenarioIntoRange,
+  mergeScenarioAcrossSections,
   normalizeDashboardSections,
   parseConicGradient,
   visibleReportSections,
@@ -43,37 +43,54 @@ describe("report detail helpers", () => {
     ).toBe("最大回撤情景：A 股约 −31.3%（¥160）；H 股约 −33.7%（HK$250）");
   });
 
-  it("merges scenario bars and their explanation into the range block", () => {
-    const blocks: ReportDetailBlock[] = [
-      { type: "heading", text: "估值情景对比（H 股）" },
+  it("merges scenario bars from another section into the range block", () => {
+    const sections = [
       {
-        type: "scenario_bars",
-        items: [
-          { label: "HK$50", height: 80 },
-          { label: "HK$62", height: 90, highlight: true },
-          { label: "HK$72", height: 100 },
+        id: "valuation",
+        title: "三、估值分析",
+        market: "common",
+        blocks: [
+          { type: "paragraph", text: "正常化利润结论。" },
+          { type: "heading", text: "估值情景对比" },
+          {
+            type: "scenario_bars",
+            items: [
+              { label: "HK$50", height: 80 },
+              { label: "HK$62", height: 90, highlight: true },
+              { label: "HK$72", height: 100 },
+            ],
+          },
+          { type: "paragraph", text: "只放 H 股数据，三档情景说明。" },
         ],
       },
-      { type: "paragraph", text: "只放 H 股数据，三档情景说明。" },
       {
-        type: "range_bar",
-        fill_left: 54.5,
-        fill_width: 36.4,
-        pin_left: 14.9,
-        pin_label: "现价 HK$51.55",
-        axis: ["HK$47", "HK$55", "HK$68", "HK$75"],
+        id: "range",
+        title: "四、合理估值区间",
+        market: "common",
+        blocks: [
+          {
+            type: "range_bar",
+            fill_left: 54.5,
+            fill_width: 36.4,
+            pin_left: 14.9,
+            pin_label: "现价 HK$51.55",
+            axis: ["HK$47", "HK$55", "HK$68", "HK$75"],
+          },
+          { type: "paragraph", text: "合理区间 HK$55–68，中枢 HK$62。" },
+        ],
       },
-      { type: "paragraph", text: "合理区间 HK$55–68，中枢 HK$62。" },
     ];
 
-    const merged = mergeScenarioIntoRange(blocks);
+    const merged = mergeScenarioAcrossSections(sections, "H");
 
-    expect(merged).toHaveLength(1);
-    expect(merged[0]).toMatchObject({
+    expect(merged[0].blocks).toEqual([
+      { type: "paragraph", text: "正常化利润结论。" },
+    ]);
+    expect(merged[1].blocks[0]).toMatchObject({
       type: "range_bar",
       scenario_explanation: "三档情景说明。\n合理区间 HK$55–68，中枢 HK$62。",
     });
-    expect(merged[0].scenarios).toHaveLength(3);
+    expect(merged[1].blocks[0].scenarios).toHaveLength(3);
   });
 
   it("flattens a position table and removes its donut column", () => {

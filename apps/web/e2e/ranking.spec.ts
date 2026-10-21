@@ -202,6 +202,14 @@ test("renders unavailable gauges with an explicit missing value", async ({ page 
   await expect(page.getByRole("img", { name: /安全边际 14\.4%/ })).toBeVisible();
 });
 
+test("merges a legacy scenario section into the valuation range", async ({ page }) => {
+  await page.goto("/valuations/1?profile=balanced");
+
+  await expect(page.getByText("估值情景对比", { exact: false })).toHaveCount(0);
+  const range = page.locator(".range-position-chart").first();
+  await expect(range).toHaveAttribute("data-scenarios", "¥4.50|¥5.30|¥6.30");
+});
+
 test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await page.goto("/?profile=balanced");
 

@@ -26,46 +26,123 @@ export function cleanReportNarrative(text: string): string {
     .replace(/\s*[／/]\s*(?=[AH]\s*股)/g, "；");
 }
 
-export function mergeScenarioIntoRange(
-  blocks: ReportDetailBlock[],
-): ReportDetailBlock[] {
-  const rangeIndex = blocks.findIndex((block) => block.type === "range_bar");
-  const scenarioIndex = blocks.findIndex((block) => block.type === "scenario_bars");
-  if (rangeIndex < 0 || scenarioIndex < 0) return blocks;
+export function mergeScenarioAcrossSections(
+  sections: ReportDetailSection[],
+  market: string,
+): ReportDetailSection[] {
+  const working = sections.map((section) => ({
+    ...section,
+    blocks: [...section.blocks],
+  }));
+  let scenarioLocation: { section: number; block: number } | null = null;
+  let scenarioBlock: ReportDetailBlock | null = null;
+  for (const [sectionIndex, section] of working.entries()) {
+    const blockIndex = section.blocks.findIndex(
+      (block) =>
+        ["scenario_bars", "valuation_scenarios"].includes(block.type) &&
+        (!block.market || block.market === market),
+    );
+    if (blockIndex >= 0) {
+      scenarioLocation = { section: sectionIndex, block: blockIndex };
+      scenarioBlock = section.blocks[blockIndex];
+      break;
+    }
+  }
+  if (!scenarioLocation || !scenarioBlock) return working;
 
-  const scenario = blocks[scenarioIndex];
+  let rangeLocation: { section: number; block: number } | null = null;
+  let rangeBlock: ReportDetailBlock | null = null;
+  for (const [sectionIndex, section] of working.entries()) {
+    const blockIndex = section.blocks.findIndex(
+      (block) =>
+        ["range_bar", "range_position"].includes(block.type) &&
+        (!block.market || block.market === market),
+    );
+    if (blockIndex >= 0) {
+      rangeLocation = { section: sectionIndex, block: blockIndex };
+      rangeBlock = section.blocks[blockIndex];
+      break;
+    }
+  }
+  if (!rangeLocation || !rangeBlock) return working;
+
+  const scenarioSection = working[scenarioLocation.section];
+  const rangeSection = working[rangeLocation.section];
   const explanationIndex =
-    blocks[scenarioIndex + 1]?.type === "paragraph" ? scenarioIndex + 1 : -1;
+    scenarioSection.blocks[scenarioLocation.block + 1]?.type === "paragraph"
+      ? scenarioLocation.block + 1
+      : -1;
   const rangeExplanationIndex =
-    blocks[rangeIndex + 1]?.type === "paragraph" ? rangeIndex + 1 : -1;
+    rangeSection.blocks[rangeLocation.block + 1]?.type === "paragraph" &&
+    !(rangeLocation.section === scenarioLocation.section &&
+      rangeLocation.block + 1 === explanationIndex)
+      ? rangeLocation.block + 1
+      : -1;
   const headingIndex =
-    blocks[scenarioIndex - 1]?.type === "heading" &&
-    blockText(blocks[scenarioIndex - 1]).includes("情景对比")
-      ? scenarioIndex - 1
+    scenarioSection.blocks[scenarioLocation.block - 1]?.type === "heading" &&
+    blockText(scenarioSection.blocks[scenarioLocation.block - 1]).includes("情景")
+      ? scenarioLocation.block - 1
       : -1;
   const removed = new Set([
-    scenarioIndex,
+    scenarioLocation.block,
     explanationIndex,
-    rangeExplanationIndex,
     headingIndex,
   ]);
-
-  return blocks.flatMap((block, index) => {
-    if (index === rangeIndex) {
-      return [
-        {
-          ...block,
-          scenarios: blockObjects(scenario, "items"),
-          scenario_explanation: [explanationIndex, rangeExplanationIndex]
-            .filter((index) => index >= 0)
-            .map((index) => cleanReportNarrative(blockText(blocks[index])))
-            .filter(Boolean)
-            .join("\n"),
-        },
-      ];
+  const scenarioExplanation = [explanationIndex, rangeExplanationIndex]
+    .filter((index) => index >= 0)
+    .map((index) =>
+      cleanReportNarrative(
+        blockText(
+          index === rangeExplanationIndex
+            ? rangeSection.blocks[index]
+            : scenarioSection.blocks[index],
+        ),
+      ),
+    )
+    .filter(Boolean)
+    .join("\n");
+  const scenarios = blockObjects(scenarioBlock, "items").map((item) => {
+    if (item.name !== undefined || item.price !== undefined) {
+      return {
+        label: String(item.price ?? item.name ?? ""),
+        highlight: item.name === "中性",
+      };
     }
-    return removed.has(index) ? [] : [block];
+    return {
+      label: objectText(item, "label"),
+      highlight: objectBoolean(item, "highlight"),
+    };
   });
+
+  const mergedRangeBlock = {
+    ...rangeBlock,
+    scenarios,
+    scenario_explanation: scenarioExplanation,
+  };
+  return working.map((section, sectionIndex) => ({
+    ...section,
+    blocks: section.blocks.flatMap((block, blockIndex) => {
+      if (
+        sectionIndex === rangeLocation.section &&
+        blockIndex === rangeLocation.block
+      ) {
+        return [mergedRangeBlock];
+      }
+      if (
+        sectionIndex === scenarioLocation.section &&
+        removed.has(blockIndex)
+      ) {
+        return [];
+      }
+      if (
+        sectionIndex === rangeLocation.section &&
+        blockIndex === rangeExplanationIndex
+      ) {
+        return [];
+      }
+      return [block];
+    }),
+  }));
 }
 
 export function flattenPositionLayout(
@@ -98,7 +175,7 @@ export function visibleReportSections(
   sections: ReportDetailSection[],
   market: string,
 ): ReportDetailSection[] {
-  return normalizeDashboardSections(sections, market)
+  const filteredSections = normalizeDashboardSections(sections, market)
     .filter((section) => {
       if (section.market && section.market !== "common" && section.market !== market) {
         return false;
@@ -106,11 +183,11 @@ export function visibleReportSections(
       if (section.title.includes("A 股估值") && market !== "A") return false;
       if (section.title.includes("H 股估值") && market !== "H") return false;
       return true;
-    })
+    });
+  return mergeScenarioAcrossSections(filteredSections, market)
     .map((section) => {
       const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
-      const mergedBlocks = mergeScenarioIntoRange(visibleBlocks);
-      const layoutBlocks = flattenPositionLayout(mergedBlocks, section.title);
+      const layoutBlocks = flattenPositionLayout(visibleBlocks, section.title);
       return {
         ...section,
         blocks: section.title.includes("决策仪表盘")
