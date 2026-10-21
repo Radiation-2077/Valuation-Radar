@@ -2,6 +2,20 @@
 
 本机优先的估值分析工作台。项目把现有估值数据卡、三套风险偏好排名和估值报告升级为可查询、可追溯、按交易日更新的 Web 应用。
 
+## 界面预览
+
+### 性价比排名
+
+![性价比排名首页](docs/screenshots/dashboard.png)
+
+### 同页估值详情
+
+![标的估值详情](docs/screenshots/valuation-detail.png)
+
+### 数据更新与运行状态
+
+![数据更新与运行状态](docs/screenshots/updates.png)
+
 ## 已实现
 
 - Vue 3 排名首页：稳健保守 / 均衡 / 进取三套榜单、Top 3、象限图、筛选和完整排名。
