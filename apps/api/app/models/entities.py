@@ -101,7 +101,6 @@ class ValuationReport(TimestampMixin, Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     raw_card: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     card_sha256: Mapped[str] = mapped_column(String(64), index=True)
-    report_path: Mapped[str] = mapped_column(String(500), default="")
     status: Mapped[str] = mapped_column(String(30), default="published", index=True)
 
     instrument: Mapped[Instrument] = relationship(back_populates="reports")
@@ -250,3 +249,24 @@ class JobRun(Base):
     error: Mapped[str] = mapped_column(Text, default="")
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+
+
+class AiRun(Base):
+    __tablename__ = "ai_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("job_runs.id", ondelete="CASCADE"), index=True)
+    instrument_id: Mapped[int] = mapped_column(
+        ForeignKey("instruments.id", ondelete="CASCADE"),
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(30), default="running", index=True)
+    cli_version: Mapped[str] = mapped_column(String(100), default="")
+    model: Mapped[str] = mapped_column(String(100), default="")
+    prompt_path: Mapped[str] = mapped_column(String(500), default="")
+    output_path: Mapped[str] = mapped_column(String(500), default="")
+    exit_code: Mapped[int | None] = mapped_column(Integer)
+    stderr: Mapped[str] = mapped_column(Text, default="")
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)

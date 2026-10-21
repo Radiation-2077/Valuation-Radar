@@ -4,14 +4,12 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.db.session import get_db
 from app.domain.scoring import ALGORITHM_VERSION, DEFAULT_PROFILE, PROFILES
-from app.models import JobRun, ScheduleSetting, ValuationMarket
+from app.models import Instrument, JobRun, ScheduleSetting, ValuationReport
 from app.schemas.api import (
     InstrumentListOut,
     JobCreate,
@@ -20,6 +18,10 @@ from app.schemas.api import (
     MetaResponse,
     ProfileOut,
     RankingResponse,
+    ReviewDecisionOut,
+    ReviewListOut,
+    ReviewMarketOut,
+    ReviewOut,
     ScheduleOut,
     SchedulePatch,
     ValuationDetailOut,
@@ -28,6 +30,11 @@ from app.services.queries import (
     get_ranking,
     get_valuation_detail,
     list_instruments,
+)
+from app.services.reviews import (
+    approve_review,
+    list_review_reports,
+    reject_review,
 )
 from app.services.schedule import (
     get_or_create_schedule,
@@ -109,30 +116,6 @@ def valuation_detail(
     return get_valuation_detail(session, valuation_market_id, profile)
 
 
-@router.get("/valuations/{valuation_market_id}/report")
-def valuation_report(
-    valuation_market_id: int,
-    session: SessionDep,
-) -> FileResponse:
-    market = session.scalar(
-        select(ValuationMarket).where(ValuationMarket.id == valuation_market_id)
-    )
-    if market is None or market.report is None or not market.report.report_path:
-        raise HTTPException(status_code=404, detail={"message": "原报告不存在"})
-    settings = get_settings()
-    path = (settings.storage_root / market.report.report_path).resolve()
-    artifacts_root = settings.artifacts_dir.resolve()
-    if not path.is_relative_to(artifacts_root) or not path.is_file():
-        raise HTTPException(status_code=404, detail={"message": "原报告文件不存在"})
-    return FileResponse(
-        path,
-        media_type="text/html",
-        headers={
-            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'"
-        },
-    )
-
-
 @router.get("/instruments", response_model=InstrumentListOut)
 def instruments(session: SessionDep) -> InstrumentListOut:
     return list_instruments(session)
@@ -207,6 +190,54 @@ def cancel_job(job_id: int, session: SessionDep) -> JobOut:
     return _job_out(job)
 
 
+@router.post(
+    "/instruments/{instrument_id}/revaluations",
+    response_model=JobOut,
+    status_code=202,
+)
+def request_revaluation(
+    instrument_id: int,
+    session: SessionDep,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> JobOut:
+    if session.get(Instrument, instrument_id) is None:
+        raise HTTPException(status_code=404, detail={"message": "标的不存在"})
+    job, _ = queue_job(
+        session,
+        job_type="valuation_refresh",
+        trigger="manual",
+        scope=f"instrument:{instrument_id}",
+        scheduled_for=datetime.now(UTC).replace(tzinfo=None),
+        idempotency_key=idempotency_key,
+    )
+    session.commit()
+    session.refresh(job)
+    return _job_out(job)
+
+
+@router.get("/reviews", response_model=ReviewListOut)
+def reviews(session: SessionDep) -> ReviewListOut:
+    return ReviewListOut(items=[_review_out(report) for report in list_review_reports(session)])
+
+
+@router.post("/reviews/{report_id}/approve", response_model=ReviewDecisionOut)
+def approve(report_id: int, session: SessionDep) -> ReviewDecisionOut:
+    try:
+        report = approve_review(session, report_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    return ReviewDecisionOut(report_id=report.id, status=report.status, ranking_rebuilt=True)
+
+
+@router.post("/reviews/{report_id}/reject", response_model=ReviewDecisionOut)
+def reject(report_id: int, session: SessionDep) -> ReviewDecisionOut:
+    try:
+        report = reject_review(session, report_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    return ReviewDecisionOut(report_id=report.id, status=report.status, ranking_rebuilt=False)
+
+
 def _schedule_out(schedule: ScheduleSetting) -> ScheduleOut:
     return ScheduleOut(
         enabled=schedule.enabled,
@@ -237,4 +268,29 @@ def _job_out(job: JobRun) -> JobOut:
         error=job.error,
         details=job.details,
         created_at=job.created_at,
+    )
+
+
+def _review_out(report: ValuationReport) -> ReviewOut:
+    conclusion = report.raw_card.get("conclusion") or {}
+    return ReviewOut(
+        report_id=report.id,
+        instrument_id=report.instrument_id,
+        name=report.instrument.name,
+        analysis_date=report.analysis_date,
+        generated_at=report.generated_at,
+        thesis=str(conclusion.get("thesis") or ""),
+        confidence=str(conclusion.get("confidence") or ""),
+        markets=[
+            ReviewMarketOut(
+                valuation_market_id=market.id,
+                market=market.listing.market,
+                code=market.listing.code,
+                currency=market.listing.currency,
+                price=market.price,
+                fair_mid=market.fair_mid,
+                verdict=market.verdict,
+            )
+            for market in report.markets
+        ],
     )

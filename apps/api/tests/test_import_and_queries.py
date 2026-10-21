@@ -13,7 +13,6 @@ from app.services.queries import get_ranking, get_valuation_detail
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 LEGACY_DATA_DIR = PROJECT_ROOT.parent / "data"
-LEGACY_REPORTS_DIR = PROJECT_ROOT.parent
 
 
 @pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
@@ -26,7 +25,6 @@ def test_imports_legacy_cards_and_serves_ranking(tmp_path: Path) -> None:
         first = import_legacy_cards(
             session,
             data_dir=LEGACY_DATA_DIR,
-            reports_dir=LEGACY_REPORTS_DIR,
             settings=settings,
         )
         assert first.files == 21
@@ -53,7 +51,6 @@ def test_imports_legacy_cards_and_serves_ranking(tmp_path: Path) -> None:
         second = import_legacy_cards(
             session,
             data_dir=LEGACY_DATA_DIR,
-            reports_dir=LEGACY_REPORTS_DIR,
             settings=settings,
         )
         assert second.skipped_reports == 21

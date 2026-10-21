@@ -1,4 +1,5 @@
 from app.models.entities import (
+    AiRun,
     Instrument,
     JobRun,
     Listing,
@@ -12,6 +13,7 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "AiRun",
     "Instrument",
     "JobRun",
     "Listing",

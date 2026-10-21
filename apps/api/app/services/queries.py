@@ -222,7 +222,6 @@ def get_valuation_detail(
             band=entry.band,
         )
 
-    report_url = f"/api/v1/valuations/{valuation_market_id}/report" if report.report_path else None
     same_company = [
         MarketSummaryOut(
             valuation_market_id=other.id,
@@ -295,7 +294,6 @@ def get_valuation_detail(
         risk_flags=entry.risk_flags if entry else rebuilt.risk_flags,
         excluded_reasons=entry.excluded_reasons if entry else rebuilt.excluded_reasons,
         same_company=same_company,
-        report_url=report_url,
     )
 
 

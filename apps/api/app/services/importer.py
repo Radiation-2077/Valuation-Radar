@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -39,12 +38,10 @@ class ImportSummary:
 def import_legacy_cards(
     session: Session,
     data_dir: Path | None = None,
-    reports_dir: Path | None = None,
     settings: Settings | None = None,
 ) -> ImportSummary:
     resolved_settings = settings or get_settings()
     source_data = (data_dir or resolved_settings.legacy_data_dir).resolve()
-    source_reports = (reports_dir or resolved_settings.legacy_reports_dir).resolve()
     if not source_data.is_dir():
         raise FileNotFoundError(f"数据卡目录不存在：{source_data}")
 
@@ -63,8 +60,13 @@ def import_legacy_cards(
 
     imported = 0
     skipped = 0
-    for source_path, card in cards:
-        if _import_card(session, source_path, card, source_reports, resolved_settings):
+    for _, card in cards:
+        if _import_card(
+            session,
+            card,
+            source="legacy",
+            status="published",
+        ):
             imported += 1
         else:
             skipped += 1
@@ -141,35 +143,22 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
 
 def _import_card(
     session: Session,
-    source_path: Path,
     card: dict[str, Any],
-    reports_dir: Path,
-    settings: Settings,
+    source: str,
+    status: str,
+    apply_metadata: bool = True,
 ) -> bool:
     card_bytes = json.dumps(card, ensure_ascii=False, sort_keys=True).encode("utf-8")
     card_hash = hashlib.sha256(card_bytes).hexdigest()
     analysis_date = date.fromisoformat(str(card["analysis_date"]))
-    quality = card["quality"]
     conclusion = card["conclusion"]
 
     instrument = session.scalar(select(Instrument).where(Instrument.name == card["name"]))
     if instrument is None:
         instrument = Instrument(name=str(card["name"]))
         session.add(instrument)
-    instrument.asset_type = str(card["asset_type"])
-    instrument.path = str(card["path"])
-    instrument.industry = str(card.get("industry") or "")
-    instrument.cycle_stage = str(card.get("cycle_stage") or "")
-    instrument.cycle_position = _optional_float(card.get("cycle_position"))
-    instrument.quality_rating = int(quality.get("rating") or 0)
-    instrument.quality_label = str(quality.get("label") or "")
-    instrument.quality_score = float(quality.get("score") or 0)
-    instrument.moat = str(quality.get("moat") or "")
-    instrument.gate_pass = bool(quality.get("gate_pass", False))
-    instrument.gate_reason = str(quality.get("gate_reason") or "")
-    instrument.verdict = str(conclusion.get("verdict") or "")
-    instrument.thesis = str(conclusion.get("thesis") or "")
-    instrument.confidence = str(conclusion.get("confidence") or "中")
+    if apply_metadata:
+        apply_instrument_metadata(instrument, card)
     session.flush()
 
     existing = session.scalar(
@@ -198,27 +187,17 @@ def _import_card(
         generated_at=generated_at,
         revision=revision,
         schema_version=str(card["schema_version"]),
-        source="legacy",
+        source=source,
         macro=dict(card.get("macro") or {}),
         risks=[str(item) for item in card.get("risks") or []],
         missing=[str(item) for item in card.get("missing") or []],
         notes=str(card.get("notes") or ""),
         raw_card=card,
         card_sha256=card_hash,
-        status="published",
+        status=status,
     )
     session.add(report)
     session.flush()
-
-    report_relative = _copy_report(
-        reports_dir,
-        str(card["name"]),
-        analysis_date,
-        revision,
-        settings,
-    )
-    if report_relative:
-        report.report_path = report_relative
 
     codes = card.get("codes") or {}
     for market in card["markets"]:
@@ -268,21 +247,53 @@ def _import_card(
     return True
 
 
-def _copy_report(
-    reports_dir: Path,
-    name: str,
-    analysis_date: date,
-    revision: int,
-    settings: Settings,
-) -> str:
-    source = reports_dir / f"{name}_估值分析_{analysis_date.isoformat()}.html"
-    if not source.exists():
-        return ""
-    destination_dir = settings.artifacts_dir / name / analysis_date.isoformat()
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    destination = destination_dir / f"revision-{revision}.html"
-    shutil.copy2(source, destination)
-    return destination.relative_to(settings.storage_root).as_posix()
+def import_candidate_card(
+    session: Session,
+    card_path: Path,
+) -> ValuationReport:
+    card = json.loads(card_path.read_text(encoding="utf-8"))
+    validate_card(card, card_path)
+    instrument = session.scalar(select(Instrument).where(Instrument.name == card["name"]))
+    if instrument is None:
+        raise CardValidationError(f"候选估值对应的标的不存在：{card['name']}")
+    imported = _import_card(
+        session,
+        card,
+        source="codex",
+        status="needs_review",
+        apply_metadata=False,
+    )
+    card_hash = hashlib.sha256(
+        json.dumps(card, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    report = session.scalar(
+        select(ValuationReport).where(
+            ValuationReport.instrument_id == instrument.id,
+            ValuationReport.card_sha256 == card_hash,
+        )
+    )
+    if report is None:
+        raise RuntimeError("候选估值导入后未能找到版本记录" if not imported else "候选估值导入失败")
+    return report
+
+
+def apply_instrument_metadata(instrument: Instrument, card: dict[str, Any]) -> None:
+    quality = card["quality"]
+    conclusion = card["conclusion"]
+    instrument.asset_type = str(card["asset_type"])
+    instrument.path = str(card["path"])
+    instrument.industry = str(card.get("industry") or "")
+    instrument.cycle_stage = str(card.get("cycle_stage") or "")
+    instrument.cycle_position = _optional_float(card.get("cycle_position"))
+    instrument.quality_rating = int(quality.get("rating") or 0)
+    instrument.quality_label = str(quality.get("label") or "")
+    instrument.quality_score = float(quality.get("score") or 0)
+    instrument.moat = str(quality.get("moat") or "")
+    instrument.gate_pass = bool(quality.get("gate_pass", False))
+    instrument.gate_reason = str(quality.get("gate_reason") or "")
+    instrument.verdict = str(conclusion.get("verdict") or "")
+    instrument.thesis = str(conclusion.get("thesis") or "")
+    instrument.confidence = str(conclusion.get("confidence") or "中")
 
 
 def _parse_datetime(value: object) -> datetime | None:

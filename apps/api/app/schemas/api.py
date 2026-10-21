@@ -149,7 +149,6 @@ class ValuationDetailOut(BaseModel):
     risk_flags: list[str]
     excluded_reasons: list[str]
     same_company: list[MarketSummaryOut]
-    report_url: str | None = None
 
 
 class InstrumentOut(BaseModel):
@@ -215,3 +214,34 @@ class JobCreate(BaseModel):
 
 class JobListOut(BaseModel):
     items: list[JobOut]
+
+
+class ReviewMarketOut(BaseModel):
+    valuation_market_id: int
+    market: str
+    code: str
+    currency: str
+    price: float
+    fair_mid: float
+    verdict: str
+
+
+class ReviewOut(BaseModel):
+    report_id: int
+    instrument_id: int
+    name: str
+    analysis_date: date
+    generated_at: datetime | None
+    thesis: str
+    confidence: str
+    markets: list[ReviewMarketOut]
+
+
+class ReviewListOut(BaseModel):
+    items: list[ReviewOut]
+
+
+class ReviewDecisionOut(BaseModel):
+    report_id: int
+    status: str
+    ranking_rebuilt: bool

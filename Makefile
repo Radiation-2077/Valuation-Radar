@@ -13,7 +13,7 @@ migrate:
 	pnpm db:migrate
 
 import-legacy:
-	PYTHONPATH=apps/api .venv/bin/python -m app.cli import-legacy --data-dir ../data --reports-dir ..
+	PYTHONPATH=apps/api .venv/bin/python -m app.cli import-legacy --data-dir ../data
 
 dev:
 	pnpm dev

@@ -13,7 +13,6 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     import_parser = subparsers.add_parser("import-legacy", help="导入现有 JSON 数据卡")
     import_parser.add_argument("--data-dir", required=True)
-    import_parser.add_argument("--reports-dir", required=True)
     args = parser.parse_args()
 
     if args.command == "import-legacy":
@@ -21,7 +20,6 @@ def main() -> None:
             summary = import_legacy_cards(
                 session,
                 data_dir=Path(args.data_dir),
-                reports_dir=Path(args.reports_dir),
             )
         print(json.dumps(summary.__dict__, ensure_ascii=False, indent=2))
 

@@ -20,15 +20,13 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'storage' / 'app.db'}"
     legacy_data_dir: Path = PROJECT_ROOT.parent / "data"
-    legacy_reports_dir: Path = PROJECT_ROOT.parent
     legacy_common_dir: Path = PROJECT_ROOT.parent / "common"
     timezone: str = "Asia/Shanghai"
+    codex_binary: str = "codex"
+    codex_timeout_seconds: int = 1_200
+    codex_model: str | None = None
     frontend_dist: Path = PROJECT_ROOT / "apps" / "web" / "dist"
     storage_root: Path = PROJECT_ROOT / "storage"
-
-    @property
-    def artifacts_dir(self) -> Path:
-        return self.storage_root / "artifacts"
 
     @property
     def staging_dir(self) -> Path:
@@ -37,7 +35,6 @@ class Settings(BaseSettings):
     def ensure_storage(self) -> None:
         for path in (
             self.storage_root,
-            self.artifacts_dir,
             self.staging_dir,
             self.storage_root / "backups",
             self.storage_root / "logs",

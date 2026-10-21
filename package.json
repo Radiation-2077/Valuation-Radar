@@ -20,7 +20,7 @@
     "lint:api": ".venv/bin/ruff check apps/api",
     "lint:web": "pnpm --dir apps/web lint",
     "db:migrate": ".venv/bin/alembic -c apps/api/alembic.ini upgrade head",
-    "import:legacy": ".venv/bin/python -m app.cli import-legacy --data-dir ../data --reports-dir .."
+    "import:legacy": ".venv/bin/python -m app.cli import-legacy --data-dir ../data"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
