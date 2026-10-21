@@ -245,7 +245,13 @@ function rowProps(row: RankingItem) {
         </NGrid>
       </NSpace>
 
-      <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="16">
+      <NGrid
+        responsive="screen"
+        class="analysis-grid"
+        cols="1 m:3"
+        :x-gap="16"
+        :y-gap="16"
+      >
         <NGridItem span="1 m:2">
           <NCard class="chart-card">
             <NSpace vertical :size="16">

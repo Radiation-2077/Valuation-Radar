@@ -53,3 +53,28 @@ test("risk profile controls do not overlap the freshness bar", async ({ page }) 
   expect(freshnessBox).not.toBeNull();
   expect(profileBox!.y + profileBox!.height).toBeLessThan(freshnessBox!.y);
 });
+
+test("dashboard and update cards keep consistent spacing and heights", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+
+  const chartBox = await page.locator(".chart-card").boundingBox();
+  const filterBox = await page.locator(".filter-card").boundingBox();
+  expect(chartBox).not.toBeNull();
+  expect(filterBox).not.toBeNull();
+  expect(Math.abs(chartBox!.height - filterBox!.height)).toBeLessThan(1);
+
+  await page.goto("/updates");
+  const statusCards = page.locator(".ops-status-grid .n-card");
+  await expect(statusCards).toHaveCount(4);
+  const first = await statusCards.nth(0).boundingBox();
+  const second = await statusCards.nth(1).boundingBox();
+  const hero = await page.locator(".updates-hero").boundingBox();
+  const statusGrid = await page.locator(".ops-status-grid").boundingBox();
+  expect(first).not.toBeNull();
+  expect(second).not.toBeNull();
+  expect(hero).not.toBeNull();
+  expect(statusGrid).not.toBeNull();
+  expect(second!.x - (first!.x + first!.width)).toBeGreaterThanOrEqual(12);
+  expect(statusGrid!.y - (hero!.y + hero!.height)).toBeGreaterThanOrEqual(12);
+});

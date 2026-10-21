@@ -257,7 +257,7 @@ function openMarket(id: number) {
     </NAlert>
 
     <template v-else-if="scheduleQuery.data.value">
-      <NGrid class="ops-status-grid" responsive="screen" cols="1 s:2 l:4" :x-gap="12" :y-gap="12">
+      <NGrid class="ops-status-grid" responsive="screen" cols="1 s:2 l:4" :x-gap="16" :y-gap="16">
         <NGridItem>
           <NCard size="small" :bordered="false">
             <NStatistic label="自动更新" :value="form.enabled ? '已开启' : '已暂停'" />
@@ -292,7 +292,7 @@ function openMarket(id: number) {
         </NGridItem>
       </NGrid>
 
-      <NGrid responsive="screen" cols="1 l:2" :x-gap="16" :y-gap="16">
+      <NGrid class="updates-grid" responsive="screen" cols="1 l:2" :x-gap="16" :y-gap="16">
         <NGridItem>
         <NCard class="schedule-panel" :bordered="false">
           <NSpace vertical :size="16">
