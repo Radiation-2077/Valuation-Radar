@@ -54,6 +54,8 @@ class CodexExecutor:
             "--skip-git-repo-check",
             "--sandbox",
             "workspace-write",
+            "--config",
+            "sandbox_workspace_write.network_access=true",
             "--output-schema",
             str(output_schema),
             "--output-last-message",

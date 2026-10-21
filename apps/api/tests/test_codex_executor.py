@@ -54,6 +54,10 @@ def test_codex_executor_runs_non_interactively(
     assert command[-1] == "只返回 manifest"
     assert "--approve-for-me" not in command
     assert command[command.index("--sandbox") + 1] == "workspace-write"
+    assert (
+        command[command.index("--config") + 1]
+        == "sandbox_workspace_write.network_access=true"
+    )
     assert options["stdin"] is subprocess.DEVNULL
     assert options["stdout"] is not None
     assert options["stderr"] is not None
