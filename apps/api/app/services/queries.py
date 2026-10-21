@@ -227,8 +227,29 @@ def get_valuation_detail(
             code=other.listing.code,
             currency=other.listing.currency,
             price=other.price,
+            fair_low=other.fair_low,
             fair_mid=other.fair_mid,
+            fair_high=other.fair_high,
             safety_margin_pct=other.safety_margin_pct,
+            pe=other.pe,
+            pb=other.pb,
+            dividend_yield_after_tax=other.dividend_yield_after_tax,
+            percentile=other.percentile,
+            expected_total=(
+                (other.expected_return or {}).get("total")
+                if isinstance((other.expected_return or {}).get("total"), (int, float))
+                else None
+            ),
+            max_drawdown_pct=(
+                (other.downside or {}).get("max_drawdown_pct")
+                if isinstance((other.downside or {}).get("max_drawdown_pct"), (int, float))
+                else None
+            ),
+            target_pct=(
+                (other.position or {}).get("target_pct")
+                if isinstance((other.position or {}).get("target_pct"), (int, float))
+                else None
+            ),
             verdict=other.verdict,
         )
         for other in report.markets
@@ -292,6 +313,7 @@ def get_valuation_detail(
         risk_flags=entry.risk_flags if entry else rebuilt.risk_flags,
         excluded_reasons=entry.excluded_reasons if entry else rebuilt.excluded_reasons,
         same_company=same_company,
+        macro=report.macro,
     )
 
 

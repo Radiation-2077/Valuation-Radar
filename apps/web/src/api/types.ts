@@ -132,10 +132,20 @@ export interface ValuationDetail {
     code: string;
     currency: string;
     price: number;
+    fair_low: number;
     fair_mid: number;
+    fair_high: number;
     safety_margin_pct: number | null;
+    pe: number | null;
+    pb: number | null;
+    dividend_yield_after_tax: number | null;
+    percentile: number | null;
+    expected_total: number | null;
+    max_drawdown_pct: number | null;
+    target_pct: number | null;
     verdict: string;
   }>;
+  macro: Record<string, number | string | null>;
 }
 
 export interface RankingFilters {

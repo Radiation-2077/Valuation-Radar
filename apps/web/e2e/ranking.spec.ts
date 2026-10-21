@@ -37,8 +37,12 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page).toHaveURL(/profile=aggressive/);
   await expect(page.locator(".n-drawer")).toBeVisible();
   await expect(page.locator(".n-drawer .detail-panel h1")).toContainText("宁德时代");
+  await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByText("价格相对合理区间")).toBeVisible();
-  await expect(page.getByText("评分拆解")).toBeVisible();
+  await expect(page.getByText("四维评分拆解")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "标的质地" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "产业周期" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "同一资产的跨市场对照" })).toBeVisible();
   await expect(page.getByText("预期年化来自哪里")).toBeVisible();
 });
 
@@ -57,7 +61,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await page.locator(".top-card").first().click();
   await expect(page.locator(".n-drawer")).toBeVisible();
   await expect(page.getByText("仓位与执行")).toBeVisible();
-  await expect(page.getByText("关键风险与反证")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "风险提示" })).toBeVisible();
   await expect(page).toHaveURL(/profile=balanced/);
 });
 

@@ -105,8 +105,17 @@ class MarketSummaryOut(BaseModel):
     code: str
     currency: str
     price: float
+    fair_low: float
     fair_mid: float
+    fair_high: float
     safety_margin_pct: float | None
+    pe: float | None
+    pb: float | None
+    dividend_yield_after_tax: float | None
+    percentile: float | None
+    expected_total: float | None
+    max_drawdown_pct: float | None
+    target_pct: float | None
     verdict: str
 
 
@@ -149,6 +158,7 @@ class ValuationDetailOut(BaseModel):
     risk_flags: list[str]
     excluded_reasons: list[str]
     same_company: list[MarketSummaryOut]
+    macro: dict[str, Any]
 
 
 class InstrumentOut(BaseModel):
