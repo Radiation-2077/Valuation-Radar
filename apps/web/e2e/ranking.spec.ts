@@ -38,15 +38,17 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".n-drawer")).toBeVisible();
   await expect(page.locator(".n-drawer .detail-panel h1")).toContainText("宁德时代");
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "A 股估值" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "H 股估值" })).toBeVisible();
-  await expect(page.getByText("A/H 溢价分解")).toHaveCount(0);
-  expect(await page.locator(".n-drawer canvas").count()).toBeGreaterThanOrEqual(10);
-  await expect(page.getByText("四维评分拆解")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "标的质地" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "产业周期" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "A 股预期收益" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "H 股预期收益" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /三、跨市场校正/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /A\/H 溢价分解：/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /A 股估值/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /H 股估值/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /七、预期收益率/ })).toBeVisible();
+  expect(await page.locator(".n-drawer canvas").count()).toBeGreaterThanOrEqual(6);
 });
 
 test("keeps the ranking usable on a narrow screen", async ({ page }) => {
@@ -63,8 +65,8 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
 
   await page.locator(".top-card").first().click();
   await expect(page.locator(".n-drawer")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "A 股仓位与执行" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "风险提示" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /八、风险提示/ })).toBeVisible();
   await expect(page).toHaveURL(/profile=balanced/);
 });
 

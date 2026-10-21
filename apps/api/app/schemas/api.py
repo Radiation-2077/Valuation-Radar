@@ -163,6 +163,7 @@ class ValuationDetailOut(BaseModel):
     excluded_reasons: list[str]
     same_company: list[MarketSummaryOut]
     macro: dict[str, Any]
+    report_detail: dict[str, Any]
 
 
 class InstrumentOut(BaseModel):

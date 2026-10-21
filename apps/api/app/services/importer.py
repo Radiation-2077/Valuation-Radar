@@ -19,6 +19,7 @@ from app.models import (
     ValuationReport,
 )
 from app.services.ranking import RankingService
+from app.services.report_parser import parse_report_detail
 
 
 class CardValidationError(ValueError):
@@ -42,6 +43,7 @@ def import_legacy_cards(
 ) -> ImportSummary:
     resolved_settings = settings or get_settings()
     source_data = (data_dir or resolved_settings.legacy_data_dir).resolve()
+    source_reports = resolved_settings.legacy_reports_dir.resolve()
     if not source_data.is_dir():
         raise FileNotFoundError(f"数据卡目录不存在：{source_data}")
 
@@ -61,9 +63,12 @@ def import_legacy_cards(
     imported = 0
     skipped = 0
     for _, card in cards:
+        html_path = source_reports / f"{card['name']}_估值分析_{card['analysis_date']}.html"
+        detail_json = parse_report_detail(html_path) if html_path.is_file() else {}
         if _import_card(
             session,
             card,
+            detail_json,
             source="legacy",
             status="published",
         ):
@@ -144,6 +149,7 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
 def _import_card(
     session: Session,
     card: dict[str, Any],
+    detail_json: dict[str, Any],
     source: str,
     status: str,
     apply_metadata: bool = True,
@@ -169,6 +175,8 @@ def _import_card(
         )
     )
     if existing is not None:
+        if detail_json:
+            existing.detail_json = detail_json
         return False
 
     revision = (
@@ -193,6 +201,7 @@ def _import_card(
         missing=[str(item) for item in card.get("missing") or []],
         notes=str(card.get("notes") or ""),
         raw_card=card,
+        detail_json=detail_json,
         card_sha256=card_hash,
         status=status,
     )
@@ -259,6 +268,7 @@ def import_candidate_card(
     imported = _import_card(
         session,
         card,
+        {},
         source="codex",
         status="needs_review",
         apply_metadata=False,

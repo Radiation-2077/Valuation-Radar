@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'storage' / 'app.db'}"
     legacy_data_dir: Path = PROJECT_ROOT.parent / "data"
+    legacy_reports_dir: Path = PROJECT_ROOT.parent
     legacy_common_dir: Path = PROJECT_ROOT.parent / "common"
     timezone: str = "Asia/Shanghai"
     codex_binary: str = "codex"

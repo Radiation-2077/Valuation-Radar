@@ -158,6 +158,20 @@ export interface ValuationDetail {
     verdict: string;
   }>;
   macro: Record<string, number | string | null>;
+  report_detail: {
+    sections?: ReportDetailSection[];
+    foot?: string;
+  };
+}
+
+export interface ReportDetailBlock {
+  type: string;
+  [key: string]: unknown;
+}
+
+export interface ReportDetailSection {
+  title: string;
+  blocks: ReportDetailBlock[];
 }
 
 export interface RankingFilters {

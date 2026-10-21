@@ -318,6 +318,7 @@ def get_valuation_detail(
         excluded_reasons=entry.excluded_reasons if entry else rebuilt.excluded_reasons,
         same_company=same_company,
         macro=report.macro,
+        report_detail=report.detail_json or {},
     )
 
 

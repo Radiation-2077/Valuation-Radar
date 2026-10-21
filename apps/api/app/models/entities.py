@@ -100,6 +100,7 @@ class ValuationReport(TimestampMixin, Base):
     missing: Mapped[list[str]] = mapped_column(JSON, default=list)
     notes: Mapped[str] = mapped_column(Text, default="")
     raw_card: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    detail_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=dict)
     card_sha256: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(30), default="published", index=True)
 
