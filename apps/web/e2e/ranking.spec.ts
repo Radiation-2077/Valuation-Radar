@@ -143,6 +143,10 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     expect(premiumDonutLabel).toContain(label);
   }
   if (page.viewportSize()!.width > 720) expect(premiumDonutBox!.width).toBeGreaterThan(450);
+  const rangePositionChart = page.locator(".n-drawer .range-position-chart").last();
+  await expect(rangePositionChart).toContainText("合理区间");
+  await expect(rangePositionChart.locator(".range-position-status")).toContainText("现价");
+  expect(await rangePositionChart.getAttribute("data-position")).toMatch(/^(low|fair|high)$/);
   await expect(page.getByRole("heading", { name: /A 股估值/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /H 股估值/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();

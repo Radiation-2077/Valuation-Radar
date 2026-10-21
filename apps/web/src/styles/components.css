@@ -316,6 +316,19 @@
   font-size: 1.35rem;
 }
 
+.range-position-chart {
+  width: 100%;
+}
+
+.range-position-meta {
+  width: 100%;
+}
+
+.range-position-canvas {
+  width: 100%;
+  height: 150px;
+}
+
 .detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
