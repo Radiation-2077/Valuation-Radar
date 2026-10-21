@@ -285,10 +285,7 @@ function openMarket(id: number) {
           <NSpace vertical :size="16">
             <NSpace class="card-heading" align="center" justify="space-between">
               <NH2>收盘后更新设置</NH2>
-            <NSwitch v-model:value="form.enabled">
-              <template #checked>ON</template>
-              <template #unchecked>OFF</template>
-            </NSwitch>
+            <NSwitch v-model:value="form.enabled" />
             </NSpace>
 
           <NForm label-placement="top" :show-feedback="false">
