@@ -262,6 +262,10 @@
   border-bottom: 0;
 }
 
+.report-block-stack .table-shell tbody .n-ellipsis {
+  display: block;
+}
+
 .report-section-body .n-h2 {
   margin: 0;
 }

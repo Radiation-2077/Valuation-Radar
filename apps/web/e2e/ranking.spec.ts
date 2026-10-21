@@ -98,6 +98,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .first()
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(reportTableBorderBottom).toBe("0px");
+  await expect(
+    qualityCard.locator(".table-shell").first().locator("tbody .n-ellipsis").first(),
+  ).toHaveCSS("-webkit-line-clamp", "1");
   const scoreTableAlignment = await qualityCard.evaluate((card) => {
     const scoreRows = [...card.querySelectorAll(".score-row")];
     const bodyRows = [...card.querySelectorAll("tbody tr")];

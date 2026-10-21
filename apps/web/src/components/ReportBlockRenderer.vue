@@ -2,6 +2,7 @@
 import {
   NAlert,
   NCard,
+  NEllipsis,
   NGrid,
   NGridItem,
   NH3,
@@ -144,7 +145,9 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
         </NThead>
         <NTbody>
           <NTr v-for="(row, rowIndex) in tableRows(block)" :key="rowIndex">
-            <NTd v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cell }}</NTd>
+            <NTd v-for="(cell, cellIndex) in row" :key="cellIndex">
+              <NEllipsis :line-clamp="1" tooltip>{{ cell }}</NEllipsis>
+            </NTd>
           </NTr>
         </NTbody>
       </NTable>
