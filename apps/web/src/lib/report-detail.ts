@@ -98,7 +98,7 @@ export function visibleReportSections(
   sections: ReportDetailSection[],
   market: string,
 ): ReportDetailSection[] {
-  return sections
+  return normalizeDashboardSections(sections, market)
     .filter((section) => {
       if (section.market && section.market !== "common" && section.market !== market) {
         return false;
@@ -120,6 +120,35 @@ export function visibleReportSections(
       };
     })
     .filter((section) => section.blocks.length > 0);
+}
+
+export function normalizeDashboardSections(
+  sections: ReportDetailSection[],
+  market: string,
+): ReportDetailSection[] {
+  return sections.flatMap((section) => {
+    if (
+      section.market !== "common" ||
+      (section.id !== "dashboard" && !section.title.includes("结论仪表盘"))
+    ) {
+      return [section];
+    }
+    const gaugeMarkets = new Set(
+      section.blocks
+        .filter((block) => block.type === "gauges" && typeof block.market === "string")
+        .map((block) => String(block.market)),
+    );
+    if (!gaugeMarkets.has("A") || !gaugeMarkets.has("H")) return [section];
+    return [
+      {
+        ...section,
+        id: `dashboard-${market}`,
+        market,
+        title: `${market === "A" ? "A 股" : "H 股"}结论仪表盘`,
+        blocks: section.blocks.filter((block) => block.market === market),
+      },
+    ];
+  });
 }
 
 export function normalizeQualityScorecard(

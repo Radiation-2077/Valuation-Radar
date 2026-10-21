@@ -6,6 +6,7 @@ import {
   cleanReportNarrative,
   flattenPositionLayout,
   mergeScenarioIntoRange,
+  normalizeDashboardSections,
   normalizeQualityScorecard,
   parseConicGradient,
   visibleReportSections,
@@ -180,5 +181,29 @@ describe("report detail helpers", () => {
       "quality",
       "position-H",
     ]);
+  });
+
+  it("splits a legacy common dashboard by market", () => {
+    const sections = [
+      {
+        id: "dashboard",
+        title: "结论仪表盘",
+        market: "common",
+        blocks: [
+          { type: "heading", text: "结论仪表盘" },
+          { type: "table", headers: ["市场"], rows: [["A"], ["H"]] },
+          { type: "gauges", market: "A", items: [] },
+          { type: "gauges", market: "H", items: [] },
+          { type: "callout", title: "A/H 混合结论", body: "混合内容" },
+        ],
+      },
+    ];
+
+    const [aSection] = normalizeDashboardSections(sections, "A");
+    const [hSection] = normalizeDashboardSections(sections, "H");
+    expect(aSection.blocks.map((block) => block.type)).toEqual(["gauges"]);
+    expect(aSection.blocks.find((block) => block.type === "gauges")?.market).toBe("A");
+    expect(hSection.blocks.map((block) => block.type)).toEqual(["gauges"]);
+    expect(hSection.blocks.find((block) => block.type === "gauges")?.market).toBe("H");
   });
 });
