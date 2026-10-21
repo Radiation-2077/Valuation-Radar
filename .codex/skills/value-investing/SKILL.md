@@ -16,7 +16,7 @@ metadata:
 3. **使用 schema 1.1。** 完整字段按 [references/数据卡规范.md](references/数据卡规范.md)，可用控件块按 [references/报告区块规范.md](references/报告区块规范.md)。不要自造 HTML class、CSS、内联样式或前端组件名。
 4. **质量章必须使用 `quality_scorecard` 复合块。** 固定五个维度、固定五行指标，一一对应：利润现金含量、资产负债表、ROE 水平、护城河强度、生存能力。每一行同时包含 `score`、`indicator`、`value`、`assessment`，禁止拆成互不对齐的评分块和表格。
 5. **结论先行。** `conclusion` 给出总方向；`markets[].verdict` 给出分市场方向；`presentation` 第一个业务章节放仪表盘和关键结论。A+H 结论词使用「A/H + 结论」，但不要在前端字段里塞布局或样式。
-6. **公式与取值透明。** 关键数字给出 `method` 或 `calculation` 文本，例如 `g = r − p/PE = 9% − 55%/16.9 ≈ 5.7%`。
+6. **公式与取值透明。** 复杂推导使用 `formula` 块，行内数学使用 `\(...\)`；关键数字给出 `method` 或 `calculation` 文本，例如 `g = r − p/PE = 9% − 55%/16.9 ≈ 5.7%`。
 7. **给区间，不给假精确。** 合理 PE、安全边际和结构性溢价使用区间字段；单个数字用于后续打分时必须写清口径。
 8. **免责声明必须存在。** 放在 `presentation.sections` 最后一个 `disclaimer` 章节，正文使用 `paragraph` 或 `callout` 块。
 9. **A+H 两地上市必须做跨市场校正。** 先算名义溢价，再拆股息税、贴现率、市场分割/筹码；只有残余计入相对贵贱。A/H 估值分市场保存为 `markets[]` 和独立 `presentation` 章节。方法见 [references/AH与跨市场估值.md](references/AH与跨市场估值.md)。

@@ -28,7 +28,8 @@ REQUIRED_MARKET = [
 REQUIRED_ER = ["dividend", "growth", "valuation", "total"]
 VALID_SCHEMA = {"1.0", "1.1"}
 VALID_BLOCKS = {
-    "heading", "paragraph", "callout", "table", "scores", "quality_scorecard",
+    "heading", "paragraph", "callout", "table", "formula", "bullets",
+    "scores", "quality_scorecard",
     "gauges", "valuation_scenarios", "range_position", "premium_donut",
     "position_tiers", "return_stack", "risk_cards", "grid", "metric_cards",
     "scenario_bars", "donut", "steps", "scale",

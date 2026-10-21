@@ -275,6 +275,30 @@
   margin: 0;
 }
 
+.math-formula {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.math-formula--display {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.math-formula .katex {
+  font-size: 1.05em;
+}
+
+.math-formula--display .katex {
+  font-size: 1.2em;
+}
+
+.n-card .n-list {
+  margin: 0;
+}
+
 .table-shell > .n-data-table {
   overflow: hidden;
   border-radius: var(--radius-sm);

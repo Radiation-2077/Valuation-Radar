@@ -19,11 +19,14 @@ import {
 } from "naive-ui";
 
 import type { ReportDetailBlock } from "@/api/types";
+import BulletList from "@/components/BulletList.vue";
+import FormulaBlock from "@/components/FormulaBlock.vue";
 import MetricGauge from "@/components/MetricGauge.vue";
 import PositionTierChart from "@/components/PositionTierChart.vue";
 import PremiumDonutChart from "@/components/PremiumDonutChart.vue";
 import QualityScorecard from "@/components/QualityScorecard.vue";
 import RangePositionChart from "@/components/RangePositionChart.vue";
+import RichText from "@/components/RichText.vue";
 import ReturnStackChart from "@/components/ReturnStackChart.vue";
 import ScenarioBarChart from "@/components/ScenarioBarChart.vue";
 import {
@@ -116,26 +119,40 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
 <template>
   <NSpace class="report-block-stack" vertical :size="20">
     <template v-for="(block, index) in blocks" :key="`${block.type}-${index}`">
-    <NH3 v-if="block.type === 'heading'">{{ blockText(block) }}</NH3>
+    <NH3 v-if="block.type === 'heading'">
+      <RichText :text="blockText(block)" />
+    </NH3>
 
     <NText
       v-else-if="block.type === 'paragraph'"
       :depth="block.note ? 3 : 2"
       style="white-space: pre-line; line-height: 1.8"
     >
-      {{ cleanReportNarrative(blockText(block)) }}
+      <RichText :text="cleanReportNarrative(blockText(block))" />
     </NText>
 
     <NAlert
       v-else-if="block.type === 'callout'"
       :type="calloutType(blockText(block, 'tone'))"
-      :title="cleanReportNarrative(blockText(block, 'title'))"
       :bordered="false"
     >
+      <template #header>
+        <RichText :text="cleanReportNarrative(blockText(block, 'title'))" />
+      </template>
       <span style="white-space: pre-line">
-        {{ cleanReportNarrative(blockText(block, "body")) }}
+        <RichText :text="cleanReportNarrative(blockText(block, 'body'))" />
       </span>
     </NAlert>
+
+    <FormulaBlock
+      v-else-if="block.type === 'formula'"
+      :block="block"
+    />
+
+    <BulletList
+      v-else-if="block.type === 'bullets'"
+      :block="block"
+    />
 
     <QualityScorecard
       v-else-if="block.type === 'quality_scorecard'"
@@ -153,9 +170,9 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
           <NTr v-for="(row, rowIndex) in tableRows(block)" :key="rowIndex">
             <NTd v-for="(cell, cellIndex) in row" :key="cellIndex">
               <NEllipsis v-if="alignScoresWithTable" :line-clamp="1" tooltip>
-                {{ cell }}
+                <RichText :text="cell" />
               </NEllipsis>
-              <template v-else>{{ cell }}</template>
+              <RichText v-else :text="cell" />
             </NTd>
           </NTr>
         </NTbody>
