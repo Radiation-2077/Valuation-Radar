@@ -347,7 +347,7 @@ function rowProps(row: RankingItem) {
 
       <NCard class="top3-card">
         <NSpace vertical :size="20">
-          <NSpace class="section-heading" align="center" justify="space-between" :wrap="true">
+          <NSpace class="card-heading" align="center" justify="space-between" :wrap="true">
             <NH2>性价比Top3</NH2>
             <NTag :bordered="false">
               {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
@@ -371,7 +371,7 @@ function rowProps(row: RankingItem) {
         <NGridItem span="1 m:2">
           <NCard class="chart-card">
             <NSpace vertical :size="16">
-              <NSpace align="center" justify="space-between">
+              <NSpace class="card-heading" align="center" justify="space-between">
                 <NH2>性价比象限</NH2>
                 <NTag size="small" :bordered="false">气泡越大，安全边际越高</NTag>
               </NSpace>
@@ -411,7 +411,7 @@ function rowProps(row: RankingItem) {
 
       <NCard class="ranking-card">
         <NSpace vertical :size="16">
-          <NSpace align="center" justify="space-between">
+          <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>完整性价比排名</NH2>
             <NTag size="small" :bordered="false">点击行在同页展开详情</NTag>
           </NSpace>
@@ -435,7 +435,7 @@ function rowProps(row: RankingItem) {
 
       <NCard v-if="query.data.value.etfs.length" class="ranking-card">
         <NSpace vertical :size="16">
-          <NSpace align="center" justify="space-between">
+          <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>ETF 独立观察</NH2>
             <NTag size="small" :bordered="false">{{ query.data.value.etfs.length }} 条</NTag>
           </NSpace>
@@ -458,7 +458,7 @@ function rowProps(row: RankingItem) {
 
       <NCard v-if="query.data.value.excluded.length" class="ranking-card">
         <NSpace vertical :size="16">
-          <NSpace align="center" justify="space-between">
+          <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>排除 / 观察区</NH2>
             <NTag size="small" :bordered="false">
               {{ query.data.value.excluded.length }} 条

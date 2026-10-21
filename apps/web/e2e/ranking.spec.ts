@@ -81,6 +81,14 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
     (element) => getComputedStyle(element).borderBottomWidth,
   );
   expect(tableBottomBorder).toBe("0px");
+  const rankingHeading = page.locator(".ranking-card").first().locator(".card-heading");
+  const headingBox = await rankingHeading.locator(".n-h").boundingBox();
+  const badgeBox = await rankingHeading.locator(".n-tag").boundingBox();
+  expect(headingBox).not.toBeNull();
+  expect(badgeBox).not.toBeNull();
+  const headingCenter = headingBox!.y + headingBox!.height / 2;
+  const badgeCenter = badgeBox!.y + badgeBox!.height / 2;
+  expect(Math.abs(headingCenter - badgeCenter)).toBeLessThanOrEqual(1);
 
   await page.goto("/updates");
   const statusCards = page.locator(".ops-status-grid .n-card");

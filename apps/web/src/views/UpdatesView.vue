@@ -296,7 +296,7 @@ function openMarket(id: number) {
         <NGridItem>
         <NCard class="schedule-panel" :bordered="false">
           <NSpace vertical :size="16">
-            <NSpace align="center" justify="space-between">
+            <NSpace class="card-heading" align="center" justify="space-between">
               <NH2>收盘后更新设置</NH2>
             <NSwitch v-model:value="form.enabled">
               <template #checked>ON</template>
@@ -387,7 +387,7 @@ function openMarket(id: number) {
 
       <NCard class="jobs-panel" :bordered="false">
         <NSpace vertical :size="16">
-          <NSpace align="center" justify="space-between">
+          <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>最近任务</NH2>
           <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
           </NSpace>
@@ -407,7 +407,7 @@ function openMarket(id: number) {
 
       <NCard class="review-panel" :bordered="false">
         <NSpace vertical :size="16">
-          <NSpace align="center" justify="space-between">
+          <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>待复核 Codex 估值</NH2>
           <NTag :bordered="false" size="small">{{ reviews.length }} 个候选版本</NTag>
           </NSpace>

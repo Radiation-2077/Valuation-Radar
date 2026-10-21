@@ -46,6 +46,14 @@
   box-shadow: var(--shadow-card);
 }
 
+.card-heading {
+  align-items: center;
+}
+
+.card-heading .n-h {
+  margin: 0;
+}
+
 .top-card {
   position: relative;
   overflow: hidden;
