@@ -127,10 +127,12 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
     <NAlert
       v-else-if="block.type === 'callout'"
       :type="calloutType(blockText(block, 'tone'))"
-      :title="blockText(block, 'title')"
+      :title="cleanReportNarrative(blockText(block, 'title'))"
       :bordered="false"
     >
-      <span style="white-space: pre-line">{{ blockText(block, "body") }}</span>
+      <span style="white-space: pre-line">
+        {{ cleanReportNarrative(blockText(block, "body")) }}
+      </span>
     </NAlert>
 
     <div v-else-if="block.type === 'table'" class="table-shell">

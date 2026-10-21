@@ -22,7 +22,8 @@ export function parseConicGradient(background: string): ConicGradientSegment[] {
 export function cleanReportNarrative(text: string): string {
   return text
     .replace(/^只放\s*[AH]\s*股数据[，,。]\s*/, "")
-    .replace(/^lv-h\s*高\s*\/\s*lv-m\s*中\s*\/\s*lv-l\s*低。/, "风险等级：高 / 中 / 低。");
+    .replace(/^lv-h\s*高\s*\/\s*lv-m\s*中\s*\/\s*lv-l\s*低。/, "风险等级：高 / 中 / 低。")
+    .replace(/\s*[／/]\s*(?=[AH]\s*股)/g, "；");
 }
 
 export function mergeScenarioIntoRange(

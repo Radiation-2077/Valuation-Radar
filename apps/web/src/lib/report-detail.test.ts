@@ -34,6 +34,11 @@ describe("report detail helpers", () => {
     expect(
       cleanReportNarrative("lv-h 高 / lv-m 中 / lv-l 低。共同风险在前，市场间风险在后。"),
     ).toBe("风险等级：高 / 中 / 低。共同风险在前，市场间风险在后。");
+    expect(
+      cleanReportNarrative(
+        "最大回撤情景：A 股约 −31.3%（¥160）／ H 股约 −33.7%（HK$250）",
+      ),
+    ).toBe("最大回撤情景：A 股约 −31.3%（¥160）；H 股约 −33.7%（HK$250）");
   });
 
   it("merges scenario bars and their explanation into the range block", () => {

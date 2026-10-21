@@ -216,6 +216,8 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(
     page.getByText("风险等级：高 / 中 / 低。共同风险在前，市场间风险在后。"),
   ).toBeVisible();
+  await expect(page.getByText(/／ H 股/)).toHaveCount(0);
+  await expect(page.getByText(/；H 股约/)).toBeVisible();
   await expect(page).toHaveURL(/profile=balanced/);
 });
 
