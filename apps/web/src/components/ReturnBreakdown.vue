@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NProgress, NStatistic } from "naive-ui";
 import { computed } from "vue";
 
 import { formatPercent } from "@/lib/format";
@@ -25,17 +26,16 @@ const maximum = computed(() =>
   <div class="return-breakdown">
     <div v-for="item in items" :key="item.label" class="return-row">
       <span>{{ item.label }}</span>
-      <div class="return-track">
-        <i
-          :class="{ negative: item.value < 0 }"
-          :style="{ width: `${(Math.abs(item.value) / maximum) * 100}%` }"
-        ></i>
-      </div>
+      <NProgress
+        type="line"
+        :percentage="(Math.abs(item.value) / maximum) * 100"
+        :height="6"
+        :show-indicator="false"
+        :color="item.value < 0 ? '#ee8c78' : '#80c7ff'"
+        rail-color="rgba(158, 190, 210, 0.10)"
+      />
       <strong :class="{ negative: item.value < 0 }">{{ formatPercent(item.value) }}</strong>
     </div>
-    <div class="return-total">
-      <span>合计年化</span>
-      <strong>{{ formatPercent(data.total) }}</strong>
-    </div>
+    <NStatistic class="return-total" label="合计年化" :value="formatPercent(data.total)" />
   </div>
 </template>

@@ -136,7 +136,6 @@ export interface ValuationDetail {
     safety_margin_pct: number | null;
     verdict: string;
   }>;
-  report_url: string | null;
 }
 
 export interface RankingFilters {
@@ -188,4 +187,35 @@ export interface Job {
 
 export interface JobList {
   items: Job[];
+}
+
+export interface ReviewMarket {
+  valuation_market_id: number;
+  market: string;
+  code: string;
+  currency: string;
+  price: number;
+  fair_mid: number;
+  verdict: string;
+}
+
+export interface Review {
+  report_id: number;
+  instrument_id: number;
+  name: string;
+  analysis_date: string;
+  generated_at: string | null;
+  thesis: string;
+  confidence: string;
+  markets: ReviewMarket[];
+}
+
+export interface ReviewList {
+  items: Review[];
+}
+
+export interface ReviewDecision {
+  report_id: number;
+  status: string;
+  ranking_rebuilt: boolean;
 }

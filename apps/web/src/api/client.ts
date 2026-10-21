@@ -3,6 +3,8 @@ import type {
   JobList,
   RankingFilters,
   RankingResponse,
+  ReviewDecision,
+  ReviewList,
   Schedule,
   SchedulePatch,
   ValuationDetail,
@@ -86,5 +88,25 @@ export async function createRefreshJob(): Promise<Job> {
       "Idempotency-Key": `manual-${crypto.randomUUID()}`,
     },
     body: JSON.stringify({ job_type: "market_refresh", scope: "all" }),
+  });
+}
+
+export async function requestRevaluation(instrumentId: number): Promise<Job> {
+  return request<Job>(`/api/v1/instruments/${instrumentId}/revaluations`, {
+    method: "POST",
+    headers: { "Idempotency-Key": `revaluation-${crypto.randomUUID()}` },
+  });
+}
+
+export async function fetchReviews(): Promise<ReviewList> {
+  return request<ReviewList>("/api/v1/reviews");
+}
+
+export async function decideReview(
+  reportId: number,
+  decision: "approve" | "reject",
+): Promise<ReviewDecision> {
+  return request<ReviewDecision>(`/api/v1/reviews/${reportId}/${decision}`, {
+    method: "POST",
   });
 }

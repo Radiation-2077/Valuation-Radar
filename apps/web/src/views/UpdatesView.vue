@@ -1,22 +1,51 @@
 <script setup lang="ts">
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
-import { computed, reactive, watch } from "vue";
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDataTable,
+  NEmpty,
+  NForm,
+  NFormItem,
+  NGrid,
+  NGridItem,
+  NSelect,
+  NSpin,
+  NStatistic,
+  NSwitch,
+  NTag,
+  NTimePicker,
+  useMessage,
+  type DataTableColumns,
+} from "naive-ui";
+import { computed, h, reactive, watch } from "vue";
+import { useRouter } from "vue-router";
 
 import {
   createRefreshJob,
+  decideReview,
   fetchJobs,
+  fetchReviews,
   fetchSchedule,
   updateSchedule,
 } from "@/api/client";
-import type { Schedule, SchedulePatch } from "@/api/types";
+import type { Job, Schedule, SchedulePatch } from "@/api/types";
 import { formatDateTime } from "@/lib/format";
 
 const queryClient = useQueryClient();
+const router = useRouter();
+const message = useMessage();
 const scheduleQuery = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
 const jobsQuery = useQuery({
   queryKey: ["jobs"],
   queryFn: fetchJobs,
   refetchInterval: 3_000,
+});
+const reviewsQuery = useQuery({
+  queryKey: ["reviews"],
+  queryFn: fetchReviews,
+  refetchInterval: 5_000,
 });
 
 const form = reactive<SchedulePatch>({
@@ -47,17 +76,30 @@ const saveMutation = useMutation({
   onSuccess: async (schedule) => {
     queryClient.setQueryData(["schedule"], schedule);
     await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success("更新设置已保存");
   },
 });
-
 const refreshMutation = useMutation({
   mutationFn: createRefreshJob,
   onSuccess: async () => {
     await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success("行情刷新任务已加入队列");
+  },
+});
+const reviewMutation = useMutation({
+  mutationFn: ({ reportId, decision }: { reportId: number; decision: "approve" | "reject" }) =>
+    decideReview(reportId, decision),
+  onSuccess: async (result) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["reviews"] }),
+      queryClient.invalidateQueries({ queryKey: ["ranking"] }),
+    ]);
+    message.success(result.ranking_rebuilt ? "候选估值已发布并重算排名" : "候选估值已拒绝");
   },
 });
 
 const jobs = computed(() => jobsQuery.data.value?.items ?? []);
+const reviews = computed(() => reviewsQuery.data.value?.items ?? []);
 const activeJob = computed(() =>
   jobs.value.find((job) => ["queued", "running"].includes(job.status)),
 );
@@ -65,13 +107,20 @@ const latestSucceeded = computed(() =>
   jobs.value.find((job) => ["succeeded", "partial"].includes(job.status)),
 );
 
-function save() {
-  saveMutation.mutate({ ...form });
-}
-
-function runNow() {
-  refreshMutation.mutate();
-}
+const frequencyOptions = [
+  { label: "每个交易日", value: "trading_daily" },
+  { label: "每周五", value: "weekly" },
+  { label: "仅手动", value: "manual" },
+];
+const calendarOptions = [
+  { label: "A 股交易日", value: "CN" },
+  { label: "H 股交易日", value: "HK" },
+  { label: "任一市场开市", value: "ANY" },
+];
+const staleOptions = [3, 7, 14, 30].map((value) => ({
+  label: `${value} 天`,
+  value,
+}));
 
 function jobLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -85,24 +134,95 @@ function jobLabel(status: string): string {
   return labels[status] ?? status;
 }
 
-function frequencyLabel(value: string): string {
-  return (
-    {
-      trading_daily: "每个交易日",
-      weekly: "每周五",
-      manual: "仅手动",
-    }[value] ?? value
-  );
+function statusType(status: string): "default" | "success" | "warning" | "error" | "info" {
+  if (status === "succeeded") return "success";
+  if (status === "partial") return "warning";
+  if (status === "failed") return "error";
+  if (["running", "queued"].includes(status)) return "info";
+  return "default";
 }
 
-function calendarLabel(value: string): string {
-  return (
-    {
-      CN: "A 股交易日",
-      HK: "H 股交易日",
-      ANY: "任一市场开市",
-    }[value] ?? value
-  );
+function jobTypeLabel(value: string): string {
+  return value === "valuation_refresh" ? "Codex 重估" : "行情刷新";
+}
+
+function phaseLabel(value: string): string {
+  const labels: Record<string, string> = {
+    queued: "排队",
+    fetching: "取数",
+    valuing: "模型估值",
+    awaiting_review: "待复核",
+    completed: "完成",
+    failed: "失败",
+    cancelled: "取消",
+  };
+  return labels[value] ?? value;
+}
+
+const jobColumns = computed<DataTableColumns<Job>>(() => [
+  {
+    title: "任务",
+    key: "id",
+    render: (job) => `#${job.id} · ${jobTypeLabel(job.job_type)}`,
+  },
+  {
+    title: "触发",
+    key: "trigger",
+    render: (job) => (job.trigger === "manual" ? "手动" : "定时"),
+  },
+  {
+    title: "状态",
+    key: "status",
+    render: (job) =>
+      h(
+        NTag,
+        { size: "small", type: statusType(job.status), bordered: false },
+        { default: () => jobLabel(job.status) },
+      ),
+  },
+  {
+    title: "阶段",
+    key: "phase",
+    render: (job) => phaseLabel(job.phase),
+  },
+  {
+    title: "行情写入",
+    key: "quotes_saved",
+    render: (job) => String(job.details.quotes_saved ?? "—"),
+  },
+  {
+    title: "开始",
+    key: "started_at",
+    render: (job) => formatDateTime(job.started_at ?? job.created_at),
+  },
+  {
+    title: "耗时",
+    key: "duration",
+    render: (job) => {
+      if (!job.started_at || !job.finished_at) return "—";
+      const seconds = Math.max(
+        1,
+        Math.round(
+          (new Date(`${job.finished_at}Z`).getTime() -
+            new Date(`${job.started_at}Z`).getTime()) /
+            1_000,
+        ),
+      );
+      return `${seconds} 秒`;
+    },
+  },
+]);
+
+function save() {
+  saveMutation.mutate({ ...form });
+}
+
+function runNow() {
+  refreshMutation.mutate();
+}
+
+function openMarket(id: number) {
+  router.push({ name: "valuation", params: { id }, query: { profile: "balanced" } });
 }
 </script>
 
@@ -123,160 +243,213 @@ function calendarLabel(value: string): string {
     </section>
 
     <div v-if="scheduleQuery.isPending.value" class="loading-state">
-      <span class="loader"></span>
-      正在读取调度设置…
+      <NSpin size="large" />
+      <span>正在读取调度设置…</span>
     </div>
-    <div v-else-if="scheduleQuery.isError.value" class="error-panel">
-      <strong>调度设置读取失败</strong>
-      <p>{{ scheduleQuery.error.value?.message }}</p>
-    </div>
+    <NAlert v-else-if="scheduleQuery.isError.value" type="error" title="调度设置读取失败">
+      {{ scheduleQuery.error.value?.message }}
+    </NAlert>
 
     <template v-else-if="scheduleQuery.data.value">
-      <section class="ops-status-grid">
-        <article :class="{ active: form.enabled }">
-          <small>自动更新</small>
-          <strong>{{ form.enabled ? "已开启" : "已暂停" }}</strong>
-          <span>{{ frequencyLabel(String(form.frequency)) }}</span>
-        </article>
-        <article>
-          <small>下次计划</small>
-          <strong>{{ formatDateTime(scheduleQuery.data.value.next_run_at) }}</strong>
-          <span>{{ calendarLabel(String(form.calendar_mode)) }}</span>
-        </article>
-        <article>
-          <small>最近成功</small>
-          <strong>{{ formatDateTime(latestSucceeded?.finished_at) }}</strong>
-          <span>{{ latestSucceeded ? jobLabel(latestSucceeded.status) : "尚未运行" }}</span>
-        </article>
-        <article>
-          <small>当前任务</small>
-          <strong>{{ activeJob ? jobLabel(activeJob.status) : "空闲" }}</strong>
-          <span>{{ activeJob ? `#${activeJob.id} · ${activeJob.phase}` : "等待下一轮" }}</span>
-        </article>
-      </section>
+      <NGrid class="ops-status-grid" responsive="screen" cols="1 s:2 l:4" :x-gap="12" :y-gap="12">
+        <NGridItem>
+          <NCard size="small" :bordered="false">
+            <NStatistic label="自动更新" :value="form.enabled ? '已开启' : '已暂停'" />
+            <NTag :type="form.enabled ? 'success' : 'default'" size="small" :bordered="false">
+              {{ frequencyOptions.find((item) => item.value === form.frequency)?.label }}
+            </NTag>
+          </NCard>
+        </NGridItem>
+        <NGridItem>
+          <NCard size="small" :bordered="false">
+            <NStatistic label="下次计划" :value="formatDateTime(scheduleQuery.data.value.next_run_at)" />
+            <NTag size="small" :bordered="false">
+              {{ calendarOptions.find((item) => item.value === form.calendar_mode)?.label }}
+            </NTag>
+          </NCard>
+        </NGridItem>
+        <NGridItem>
+          <NCard size="small" :bordered="false">
+            <NStatistic label="最近成功" :value="formatDateTime(latestSucceeded?.finished_at)" />
+            <NTag size="small" :bordered="false">
+              {{ latestSucceeded ? jobLabel(latestSucceeded.status) : "尚未运行" }}
+            </NTag>
+          </NCard>
+        </NGridItem>
+        <NGridItem>
+          <NCard size="small" :bordered="false">
+            <NStatistic label="当前任务" :value="activeJob ? jobLabel(activeJob.status) : '空闲'" />
+            <NTag size="small" :bordered="false">
+              {{ activeJob ? `#${activeJob.id} · ${phaseLabel(activeJob.phase)}` : "等待下一轮" }}
+            </NTag>
+          </NCard>
+        </NGridItem>
+      </NGrid>
 
       <section class="updates-layout">
-        <article class="panel schedule-panel">
+        <NCard class="schedule-panel" :bordered="false">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">SCHEDULE</p>
               <h2>收盘后更新设置</h2>
             </div>
-            <label class="switch-control">
-              <input v-model="form.enabled" type="checkbox" />
-              <span></span>
-              <b>{{ form.enabled ? "ON" : "OFF" }}</b>
-            </label>
+            <NSwitch v-model:value="form.enabled">
+              <template #checked>ON</template>
+              <template #unchecked>OFF</template>
+            </NSwitch>
           </div>
 
-          <div class="schedule-fields">
-            <label>
-              <span>更新频率</span>
-              <select v-model="form.frequency">
-                <option value="trading_daily">每个交易日</option>
-                <option value="weekly">每周五</option>
-                <option value="manual">仅手动</option>
-              </select>
-            </label>
-            <label>
-              <span>执行时间</span>
-              <input v-model="form.run_time" type="time" />
-            </label>
-            <label>
-              <span>交易日历</span>
-              <select v-model="form.calendar_mode">
-                <option value="CN">A 股交易日</option>
-                <option value="HK">H 股交易日</option>
-                <option value="ANY">任一市场开市</option>
-              </select>
-            </label>
-            <label>
-              <span>估值过期提醒</span>
-              <select v-model.number="form.stale_after_days">
-                <option :value="3">3 天</option>
-                <option :value="7">7 天</option>
-                <option :value="14">14 天</option>
-                <option :value="30">30 天</option>
-              </select>
-            </label>
-          </div>
+          <NForm label-placement="top" :show-feedback="false">
+            <NGrid responsive="screen" cols="1 s:2" :x-gap="16" :y-gap="4">
+              <NGridItem>
+                <NFormItem label="更新频率">
+                  <NSelect
+                    v-model:value="form.frequency"
+                    :options="frequencyOptions"
+                    aria-label="更新频率"
+                  />
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="执行时间">
+                  <NTimePicker
+                    :formatted-value="form.run_time ?? null"
+                    format="HH:mm"
+                    value-format="HH:mm"
+                    aria-label="执行时间"
+                    @update:formatted-value="
+                      (value: string | null) => {
+                        if (value) form.run_time = value;
+                      }
+                    "
+                  />
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="交易日历">
+                  <NSelect v-model:value="form.calendar_mode" :options="calendarOptions" />
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="估值过期提醒">
+                  <NSelect v-model:value="form.stale_after_days" :options="staleOptions" />
+                </NFormItem>
+              </NGridItem>
+            </NGrid>
+          </NForm>
 
           <div class="schedule-actions">
-            <button
-              class="primary-button"
-              type="button"
-              :disabled="saveMutation.isPending.value"
+            <NButton
+              type="primary"
+              :loading="saveMutation.isPending.value"
               @click="save"
             >
-              {{ saveMutation.isPending.value ? "保存中…" : "保存设置" }}
-            </button>
-            <button
-              class="ghost-button"
-              type="button"
-              :disabled="Boolean(activeJob) || refreshMutation.isPending.value"
+              保存设置
+            </NButton>
+            <NButton
+              secondary
+              :loading="refreshMutation.isPending.value"
+              :disabled="Boolean(activeJob)"
               @click="runNow"
             >
-              {{ activeJob ? "已有任务执行中" : refreshMutation.isPending.value ? "提交中…" : "立即刷新行情" }}
-            </button>
-            <span v-if="saveMutation.isSuccess.value" class="success-note">设置已保存</span>
-            <span v-if="refreshMutation.isSuccess.value" class="success-note">刷新任务已加入队列</span>
+              {{ activeJob ? "已有任务执行中" : "立即刷新行情" }}
+            </NButton>
           </div>
           <p class="schedule-note">
             自动更新会刷新行情、宏观缓存和当前排名。完整 Codex 重估按独立策略运行，不会未经校验覆盖当前估值。
           </p>
-        </article>
+        </NCard>
 
-        <aside class="panel schedule-summary">
+        <NCard class="schedule-summary" :bordered="false">
           <p class="eyebrow">HOW IT RUNS</p>
           <h2>执行链路</h2>
-          <ol>
-            <li><span>01</span><div><strong>交易日检查</strong><small>休市日不投递</small></div></li>
-            <li><span>02</span><div><strong>行情抓取</strong><small>腾讯 A/H 字段分离</small></div></li>
-            <li><span>03</span><div><strong>写入快照</strong><small>保留原始响应</small></div></li>
-            <li><span>04</span><div><strong>排名重算</strong><small>不改写历史估值</small></div></li>
-          </ol>
+          <NForm label-placement="left" :show-feedback="false">
+            <NGrid :cols="1" :y-gap="12">
+              <NGridItem><NTag :bordered="false">01 交易日检查</NTag></NGridItem>
+              <NGridItem><NTag :bordered="false">02 行情抓取</NTag></NGridItem>
+              <NGridItem><NTag :bordered="false">03 写入快照</NTag></NGridItem>
+              <NGridItem><NTag :bordered="false">04 排名重算</NTag></NGridItem>
+            </NGrid>
+          </NForm>
           <p class="panel-footnote">
-            当前时区：{{ scheduleQuery.data.value.timezone }}。计划时间按本机上海时区计算。
+            当前时区：{{ scheduleQuery.data.value.timezone }}。计划时间按上海时区计算。
           </p>
-        </aside>
+        </NCard>
       </section>
 
-      <section class="panel jobs-panel">
+      <NCard class="jobs-panel" :bordered="false">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">JOB HISTORY</p>
             <h2>最近任务</h2>
           </div>
-          <span class="panel-note">每 3 秒自动刷新状态</span>
+          <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
         </div>
-        <div v-if="jobs.length" class="table-wrap">
-          <table class="jobs-table">
-            <thead>
-              <tr>
-                <th>任务</th>
-                <th>触发</th>
-                <th>状态</th>
-                <th>阶段</th>
-                <th>行情写入</th>
-                <th>开始</th>
-                <th>耗时</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="job in jobs" :key="job.id">
-                <td>#{{ job.id }} · {{ job.job_type }}</td>
-                <td>{{ job.trigger === "manual" ? "手动" : "定时" }}</td>
-                <td><span class="job-status" :class="`job-status--${job.status}`">{{ jobLabel(job.status) }}</span></td>
-                <td>{{ job.phase }}</td>
-                <td>{{ job.details.quotes_saved ?? "—" }}</td>
-                <td>{{ formatDateTime(job.started_at ?? job.created_at) }}</td>
-                <td>{{ job.finished_at && job.started_at ? `${Math.max(1, Math.round((new Date(`${job.finished_at}Z`).getTime() - new Date(`${job.started_at}Z`).getTime()) / 1000))} 秒` : "—" }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <NDataTable
+          v-if="jobs.length"
+          size="small"
+          :columns="jobColumns"
+          :data="jobs"
+          :bordered="false"
+          :single-line="false"
+          :pagination="false"
+        />
+        <NEmpty v-else description="还没有更新任务" />
+      </NCard>
+
+      <NCard class="review-panel" :bordered="false">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">HUMAN CHECKPOINT</p>
+            <h2>待复核 Codex 估值</h2>
+          </div>
+          <NTag :bordered="false" size="small">{{ reviews.length }} 个候选版本</NTag>
         </div>
-        <div v-else class="empty-panel">还没有更新任务。可先点击“立即刷新行情”。</div>
-      </section>
+        <div v-if="reviews.length" class="review-list">
+          <NCard v-for="review in reviews" :key="review.report_id" size="small" :bordered="false">
+            <div class="review-heading">
+              <div>
+                <strong>{{ review.name }}</strong>
+                <small>
+                  {{ formatDateTime(review.generated_at) }} · 置信度 {{ review.confidence }}
+                </small>
+              </div>
+              <NTag type="warning" :bordered="false">REVIEW</NTag>
+            </div>
+            <p>{{ review.thesis }}</p>
+            <div class="review-markets">
+              <NButton
+                v-for="market in review.markets"
+                :key="market.valuation_market_id"
+                size="tiny"
+                tertiary
+                @click="openMarket(market.valuation_market_id)"
+              >
+                {{ market.market }} · {{ market.code }} · {{ market.verdict }}
+              </NButton>
+            </div>
+            <div class="review-actions">
+              <NButton
+                type="primary"
+                size="small"
+                :loading="reviewMutation.isPending.value"
+                @click="reviewMutation.mutate({ reportId: review.report_id, decision: 'approve' })"
+              >
+                批准并发布
+              </NButton>
+              <NButton
+                secondary
+                size="small"
+                :disabled="reviewMutation.isPending.value"
+                @click="reviewMutation.mutate({ reportId: review.report_id, decision: 'reject' })"
+              >
+                拒绝候选
+              </NButton>
+            </div>
+          </NCard>
+        </div>
+        <NEmpty v-else description="没有待复核候选" />
+      </NCard>
     </template>
   </div>
 </template>

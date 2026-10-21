@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { NRadioButton, NRadioGroup } from "naive-ui";
+
 import type { ProfileCode } from "@/api/types";
 
 defineProps<{
@@ -17,19 +19,15 @@ const profiles: Array<{ code: ProfileCode; label: string; hint: string }> = [
 </script>
 
 <template>
-  <div class="profile-tabs" role="tablist" aria-label="风险偏好">
-    <button
-      v-for="profile in profiles"
-      :key="profile.code"
-      class="profile-tab"
-      :class="{ active: profile.code === modelValue }"
-      type="button"
-      role="tab"
-      :aria-selected="profile.code === modelValue"
-      @click="emit('update:modelValue', profile.code)"
-    >
+  <NRadioGroup
+    :value="modelValue"
+    name="risk-profile"
+    class="profile-tabs"
+    @update:value="(value: ProfileCode) => emit('update:modelValue', value)"
+  >
+    <NRadioButton v-for="profile in profiles" :key="profile.code" :value="profile.code">
       <span>{{ profile.label }}</span>
       <small>{{ profile.hint }}</small>
-    </button>
-  </div>
+    </NRadioButton>
+  </NRadioGroup>
 </template>

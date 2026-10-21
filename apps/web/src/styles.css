@@ -151,12 +151,19 @@ nav a.router-link-active {
   letter-spacing: 0.12em;
 }
 
-.environment i {
+.environment-dot {
+  display: inline-block;
   width: 6px;
   height: 6px;
+  margin-right: 0.35rem;
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 10px var(--accent);
+}
+
+.app-header > .n-menu {
+  flex: 1;
+  --n-color: transparent !important;
 }
 
 main {
@@ -245,36 +252,24 @@ h2 {
 }
 
 .profile-tabs {
-  display: flex;
-  gap: 0.4rem;
   padding: 0.35rem;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(7, 19, 31, 0.65);
 }
 
-.profile-tab {
-  display: flex;
-  flex-direction: column;
+.profile-tabs .n-radio-button {
   min-width: 130px;
   padding: 0.7rem 1rem;
   border-radius: 12px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
   text-align: left;
   transition: 180ms ease;
 }
 
-.profile-tab small {
+.profile-tabs small {
+  display: block;
   margin-top: 0.2rem;
   font-size: 0.64rem;
-}
-
-.profile-tab.active {
-  background: var(--accent);
-  color: var(--ink);
-  box-shadow: 0 8px 30px rgba(87, 214, 177, 0.16);
 }
 
 .ghost-button,
@@ -300,10 +295,6 @@ h2 {
 }
 
 .freshness-bar {
-  display: flex;
-  align-items: center;
-  gap: 2.3rem;
-  padding: 0.9rem 1.2rem;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(13, 32, 48, 0.5);
@@ -385,7 +376,6 @@ h2 {
 .top-card {
   position: relative;
   overflow: hidden;
-  padding: 1.4rem;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(18, 43, 61, 0.86), rgba(9, 25, 37, 0.8));
@@ -505,6 +495,15 @@ h2 {
 .top-metrics strong {
   margin-top: 0.25rem;
   font-size: 0.9rem;
+}
+
+.top-metrics .n-statistic-value {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.top-metrics .n-statistic-label {
+  font-size: 0.62rem;
 }
 
 .top-thesis {
@@ -804,6 +803,22 @@ h2 {
   cursor: pointer;
 }
 
+.standalone-detail {
+  width: min(1120px, 92vw);
+  margin: 0 auto;
+}
+
+.detail-panel {
+  min-height: 100%;
+}
+
+.n-drawer-body-content-wrapper {
+  padding: 0 !important;
+  background:
+    radial-gradient(circle at 80% 5%, rgba(87, 214, 177, 0.08), transparent 24rem),
+    #081622;
+}
+
 .detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
@@ -857,7 +872,7 @@ h2 {
   font-size: 0.66rem;
 }
 
-.verdict-panel > strong {
+.verdict-panel .n-card__content > strong {
   display: block;
   margin: 0.35rem 0 0.8rem;
   color: var(--accent);
@@ -866,7 +881,7 @@ h2 {
   font-weight: 500;
 }
 
-.verdict-panel > div {
+.verdict-meta {
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -874,10 +889,21 @@ h2 {
   font-size: 0.72rem;
 }
 
-.verdict-panel > small {
+.verdict-panel .n-card__content > small {
   display: block;
   margin-top: 1.2rem;
   color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.revalue-button {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.verdict-panel .success-note,
+.verdict-panel .negative {
+  margin: 0.7rem 0 0;
   font-size: 0.66rem;
 }
 
@@ -1271,7 +1297,7 @@ h2 {
   background: linear-gradient(120deg, rgba(13, 32, 48, 0.8), rgba(7, 19, 31, 0.35));
 }
 
-.source-section > div {
+.source-section .n-card__content {
   max-width: 850px;
 }
 
@@ -1543,6 +1569,68 @@ h2 {
   color: var(--warm);
 }
 
+.review-panel {
+  margin-top: 1rem;
+  padding: 1.35rem;
+}
+
+.review-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.review-list article {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ink-soft);
+}
+
+.review-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.review-heading strong,
+.review-heading small {
+  display: block;
+}
+
+.review-heading small {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.review-list article > p {
+  margin: 0.8rem 0;
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  line-height: 1.7;
+}
+
+.review-markets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.review-markets a {
+  padding: 0.28rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted-strong);
+  font-size: 0.66rem;
+}
+
+.review-actions {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
 @media (max-width: 1050px) {
   .top-grid,
   .detail-grid,
@@ -1589,7 +1677,8 @@ h2 {
     padding: 0 5vw;
   }
 
-  nav {
+  nav,
+  .app-header > .n-menu {
     display: none;
   }
 
@@ -1619,29 +1708,18 @@ h2 {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .profile-tab {
+  .profile-tabs .n-radio-button {
     min-width: 0;
     padding: 0.65rem 0.55rem;
     text-align: center;
   }
 
-  .profile-tab small {
+  .profile-tabs small {
     display: none;
   }
 
   .ghost-button {
     align-self: flex-end;
-  }
-
-  .freshness-bar {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .freshness-primary,
-  .freshness-warning {
-    grid-column: 1 / -1;
   }
 
   .top-grid {
@@ -1664,15 +1742,6 @@ h2 {
 
   .filter-panel {
     display: block;
-  }
-
-  .ranking-table th:nth-child(3),
-  .ranking-table td:nth-child(3),
-  .ranking-table th:nth-child(4),
-  .ranking-table td:nth-child(4),
-  .ranking-table th:nth-child(7),
-  .ranking-table td:nth-child(7) {
-    display: none;
   }
 
   .kpi-grid {

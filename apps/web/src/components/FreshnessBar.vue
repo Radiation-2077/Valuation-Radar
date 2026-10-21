@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { NCard, NGrid, NGridItem, NStatistic, NTag } from "naive-ui";
+
 import type { Freshness } from "@/api/types";
 import { formatDate, formatDateTime } from "@/lib/format";
 
@@ -9,28 +11,25 @@ defineProps<{
 </script>
 
 <template>
-  <section class="freshness-bar" aria-label="数据状态">
-    <div class="freshness-primary">
-      <span class="pulse" :class="`pulse--${freshness.status}`" aria-hidden="true"></span>
-      <div>
-        <small>排名计算</small>
-        <strong>{{ formatDateTime(freshness.ranking_as_of) }}</strong>
-      </div>
-    </div>
-    <div class="freshness-item">
-      <small>最新估值</small>
-      <strong>{{ formatDate(freshness.latest_analysis_date) }}</strong>
-    </div>
-    <div class="freshness-item">
-      <small>最新行情</small>
-      <strong>{{ formatDate(freshness.latest_price_date) }}</strong>
-    </div>
-    <div class="freshness-item">
-      <small>排序单元</small>
-      <strong>{{ counts.all ?? 0 }}</strong>
-    </div>
-    <div v-if="freshness.stale_units" class="freshness-warning">
-      {{ freshness.stale_units }} 条估值超过 {{ freshness.stale_after_days }} 天
-    </div>
-  </section>
+  <NCard class="freshness-bar" :bordered="false" size="small">
+    <NGrid responsive="screen" cols="1 s:2 m:3 l:5" :x-gap="20" :y-gap="12">
+      <NGridItem>
+        <NStatistic label="排名计算" :value="formatDateTime(freshness.ranking_as_of)" />
+      </NGridItem>
+      <NGridItem>
+        <NStatistic label="最新估值" :value="formatDate(freshness.latest_analysis_date)" />
+      </NGridItem>
+      <NGridItem>
+        <NStatistic label="最新行情" :value="formatDate(freshness.latest_price_date)" />
+      </NGridItem>
+      <NGridItem>
+        <NStatistic label="排序单元" :value="counts.all ?? 0" />
+      </NGridItem>
+      <NGridItem v-if="freshness.stale_units">
+        <NTag type="warning" :bordered="false">
+          {{ freshness.stale_units }} 条估值超过 {{ freshness.stale_after_days }} 天
+        </NTag>
+      </NGridItem>
+    </NGrid>
+  </NCard>
 </template>
