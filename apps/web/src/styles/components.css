@@ -263,7 +263,8 @@
 }
 
 .report-block-stack .table-shell tbody .n-ellipsis {
-  display: block;
+  display: -webkit-box;
+  vertical-align: middle;
 }
 
 .report-section-body .n-h2 {
