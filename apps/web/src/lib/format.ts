@@ -73,7 +73,7 @@ export const pathLabels: Record<string, string> = {
 export const marketLabels: Record<string, string> = {
   A: "A 股",
   H: "H 股",
-  CN: "中国市场",
+  CN: "中国 ETF",
   US: "美股",
 };
 

@@ -97,6 +97,9 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await expect(page.locator(".filter-popover")).toBeVisible();
   await expect(page.locator(".filter-popover .n-select")).toHaveCount(3);
   await expect(page.locator(".filter-popover .n-select").first()).toBeVisible();
+  await page.locator(".filter-popover .n-select").first().click();
+  await expect(page.getByText("中国市场", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("中国 ETF", { exact: true })).toHaveCount(0);
   const layoutAfterFilters = await page.locator(".top3-card").boundingBox();
   expect(layoutBeforeFilters).not.toBeNull();
   expect(layoutAfterFilters).not.toBeNull();

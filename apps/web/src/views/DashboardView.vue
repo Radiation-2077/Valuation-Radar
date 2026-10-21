@@ -23,7 +23,7 @@ import {
   type DataTableColumns,
 } from "naive-ui";
 import { FunnelOutline } from "@vicons/ionicons5";
-import { computed, h, ref } from "vue";
+import { computed, h, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { fetchRanking } from "@/api/client";
@@ -76,10 +76,12 @@ const query = useQuery<RankingResponse>({
 });
 
 const marketOptions = computed(() =>
-  (query.data.value?.available_markets ?? []).map((value) => ({
-    label: marketLabels[value] ?? value,
-    value,
-  })),
+  (query.data.value?.available_markets ?? [])
+    .filter((value) => value !== "CN")
+    .map((value) => ({
+      label: marketLabels[value] ?? value,
+      value,
+    })),
 );
 const pathOptions = computed(() =>
   (query.data.value?.available_paths ?? []).map((value) => ({
@@ -93,6 +95,12 @@ const industryOptions = computed(() =>
     value,
   })),
 );
+
+watch(marketOptions, (options) => {
+  if (market.value && !options.some((option) => option.value === market.value)) {
+    market.value = null;
+  }
+});
 
 const bandType = (band: string): "success" | "info" | "warning" | "error" => {
   if (band === "S") return "success";
@@ -435,7 +443,11 @@ function rowProps(row: RankingItem) {
               {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
             </NTag>
           </NSpace>
-          <NGrid responsive="screen" class="top-picks-grid" cols="1 m:3">
+          <NEmpty
+            v-if="!query.data.value.top_three.length"
+            description="当前市场没有主榜标的，请查看下方 ETF 独立观察"
+          />
+          <NGrid v-else responsive="screen" class="top-picks-grid" cols="1 m:3">
             <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
               <TopPickCard :item="item" @select="openValuation" />
             </NGridItem>
@@ -481,7 +493,7 @@ function rowProps(row: RankingItem) {
               :scroll-x="1120"
             />
           </div>
-          <NEmpty v-else description="当前筛选没有主榜标的" />
+          <NEmpty v-else description="当前市场没有主榜标的，请查看 ETF 独立观察" />
         </NSpace>
       </NCard>
 
