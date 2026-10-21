@@ -71,6 +71,14 @@ function render() {
         label: {
           show: true,
           position: "inside",
+          align:
+            tier.allocation < 12
+              ? index === tiers.value.length - 1
+                ? "right"
+                : index === 0
+                  ? "left"
+                  : "center"
+              : "center",
           color: "#07131f",
           fontSize: 12,
           fontWeight: 600,

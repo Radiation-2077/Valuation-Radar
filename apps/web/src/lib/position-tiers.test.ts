@@ -16,4 +16,14 @@ describe("position tier helpers", () => {
       { tier: "第 3 档", price: "HK$46", allocation: 30, active: false },
     ]);
   });
+
+  it("treats a final cumulative position as the remaining tranche", () => {
+    expect(
+      parsePositionTiers([
+        { title: "第 1 档 · 现价 ¥52.19", body: "建 40%（≈1.2% 仓位）", active: true },
+        { title: "第 2 档 · 回调至 ¥46–47", body: "加 30%" },
+        { title: "第 3 档 · 跌破 ¥42", body: "加至 3%，完成建仓" },
+      ]).map((tier) => tier.allocation),
+    ).toEqual([40, 30, 30]);
+  });
 });
