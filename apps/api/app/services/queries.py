@@ -240,16 +240,20 @@ def get_valuation_detail(
                 if isinstance((other.expected_return or {}).get("total"), (int, float))
                 else None
             ),
+            expected_return=other.expected_return,
             max_drawdown_pct=(
                 (other.downside or {}).get("max_drawdown_pct")
                 if isinstance((other.downside or {}).get("max_drawdown_pct"), (int, float))
                 else None
             ),
+            downside=other.downside,
             target_pct=(
                 (other.position or {}).get("target_pct")
                 if isinstance((other.position or {}).get("target_pct"), (int, float))
                 else None
             ),
+            position=other.position,
+            gauges=other.gauges,
             verdict=other.verdict,
         )
         for other in report.markets

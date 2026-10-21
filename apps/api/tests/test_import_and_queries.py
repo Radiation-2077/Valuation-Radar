@@ -47,6 +47,11 @@ def test_imports_legacy_cards_and_serves_ranking(tmp_path: Path) -> None:
         assert detail.name == ranking.top_three[0].name
         assert detail.fair_low <= detail.fair_mid <= detail.fair_high
         assert detail.score.total is not None
+        assert "hkd_cny" in detail.macro
+        if detail.same_company:
+            assert detail.same_company[0].fair_low <= detail.same_company[0].fair_mid
+            assert detail.same_company[0].gauges
+            assert detail.same_company[0].expected_return
 
         second = import_legacy_cards(
             session,

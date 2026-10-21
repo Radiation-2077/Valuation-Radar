@@ -141,8 +141,20 @@ export interface ValuationDetail {
     dividend_yield_after_tax: number | null;
     percentile: number | null;
     expected_total: number | null;
+    expected_return: Record<string, number | null>;
     max_drawdown_pct: number | null;
+    downside: {
+      max_drawdown_pct?: number | null;
+      scenario?: string;
+    };
     target_pct: number | null;
+    position: {
+      base_pct?: number;
+      target_pct?: number;
+      cap_pct?: number;
+      buy_points?: string;
+    };
+    gauges: Record<string, number>;
     verdict: string;
   }>;
   macro: Record<string, number | string | null>;

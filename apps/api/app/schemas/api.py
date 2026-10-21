@@ -114,8 +114,12 @@ class MarketSummaryOut(BaseModel):
     dividend_yield_after_tax: float | None
     percentile: float | None
     expected_total: float | None
+    expected_return: dict[str, Any]
     max_drawdown_pct: float | None
+    downside: dict[str, Any]
     target_pct: float | None
+    position: dict[str, Any]
+    gauges: dict[str, Any]
     verdict: str
 
 
