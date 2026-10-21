@@ -59,43 +59,38 @@
 
 .top-card.rank-1 {
   --medal-color: #f0c96b;
-  --medal-border: rgba(240, 201, 107, 0.72);
-  --medal-shine: rgba(255, 234, 167, 0.18);
-  border-color: var(--medal-border);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(255, 226, 139, 0.18), transparent 34%),
-    linear-gradient(140deg, #3b3424 0%, #272d29 42%, #131f29 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 238, 186, 0.24),
-    inset 0 0 36px rgba(240, 201, 107, 0.05),
-    0 18px 44px rgba(0, 0, 0, 0.3);
+  --medal-border: rgba(240, 201, 107, 0.5);
+  --medal-shine: rgba(255, 234, 167, 0.14);
+  --medal-glow: rgba(240, 201, 107, 0.12);
+  --medal-index: rgba(240, 201, 107, 0.12);
 }
 
 .top-card.rank-2 {
   --medal-color: #d8e0e8;
-  --medal-border: rgba(203, 213, 223, 0.62);
-  --medal-shine: rgba(234, 241, 247, 0.16);
-  border-color: var(--medal-border);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(230, 239, 247, 0.15), transparent 34%),
-    linear-gradient(140deg, #3d4852 0%, #273440 42%, #111e2a 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(245, 249, 252, 0.22),
-    inset 0 0 36px rgba(203, 213, 223, 0.04),
-    0 18px 44px rgba(0, 0, 0, 0.3);
+  --medal-border: rgba(203, 213, 223, 0.44);
+  --medal-shine: rgba(234, 241, 247, 0.12);
+  --medal-glow: rgba(203, 213, 223, 0.09);
+  --medal-index: rgba(218, 227, 236, 0.1);
 }
 
 .top-card.rank-3 {
   --medal-color: #d79a68;
-  --medal-border: rgba(207, 147, 98, 0.68);
-  --medal-shine: rgba(244, 190, 148, 0.14);
+  --medal-border: rgba(207, 147, 98, 0.48);
+  --medal-shine: rgba(244, 190, 148, 0.11);
+  --medal-glow: rgba(207, 147, 98, 0.1);
+  --medal-index: rgba(207, 147, 98, 0.11);
+}
+
+.top-card.rank-1,
+.top-card.rank-2,
+.top-card.rank-3 {
   border-color: var(--medal-border);
   background:
-    radial-gradient(circle at 18% 0%, rgba(226, 158, 106, 0.16), transparent 34%),
-    linear-gradient(140deg, #49372c 0%, #302b27 42%, #131f29 100%);
+    radial-gradient(circle at 82% 0%, var(--medal-glow), transparent 34%),
+    linear-gradient(145deg, #122331 0%, #0b1a26 100%);
   box-shadow:
-    inset 0 1px 0 rgba(248, 207, 177, 0.2),
-    inset 0 0 36px rgba(207, 147, 98, 0.045),
+    inset 0 1px 0 var(--medal-shine),
+    inset 0 0 30px rgba(0, 0, 0, 0.08),
     0 18px 44px rgba(0, 0, 0, 0.3);
 }
 
@@ -108,15 +103,29 @@
 .top-card[class*="rank-"]::before {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    115deg,
-    transparent 12%,
-    var(--medal-shine) 38%,
-    transparent 58%
-  );
+  background:
+    linear-gradient(
+      90deg,
+      transparent 3%,
+      var(--medal-color) 50%,
+      transparent 97%
+    )
+    top / 100% 2px no-repeat,
+    linear-gradient(
+      115deg,
+      transparent 18%,
+      var(--medal-shine) 42%,
+      transparent 64%
+    );
   content: "";
-  opacity: 0.72;
+  opacity: 0.78;
   pointer-events: none;
+}
+
+.top-card.rank-1 .top-rank,
+.top-card.rank-2 .top-rank,
+.top-card.rank-3 .top-rank {
+  color: var(--medal-index);
 }
 
 .profile-stage {
