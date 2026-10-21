@@ -231,6 +231,38 @@ class JobListOut(BaseModel):
     items: list[JobOut]
 
 
+class JobEventOut(BaseModel):
+    at: str
+    phase: str
+    message: str
+
+
+class AiRunDebugOut(BaseModel):
+    id: int
+    status: str
+    model: str
+    cli_version: str
+    exit_code: int | None
+    prompt_path: str
+    output_path: str
+    stderr: str
+    metadata: dict[str, Any]
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class JobDebugOut(BaseModel):
+    job: JobOut
+    events: list[JobEventOut]
+    ai_runs: list[AiRunDebugOut]
+    stdout: str
+    stderr: str
+
+
+class ClearJobsOut(BaseModel):
+    deleted: int
+
+
 class ReviewMarketOut(BaseModel):
     valuation_market_id: int
     market: str

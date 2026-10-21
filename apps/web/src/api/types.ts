@@ -224,6 +224,38 @@ export interface JobList {
   items: Job[];
 }
 
+export interface JobDebugEvent {
+  at: string;
+  phase: string;
+  message: string;
+}
+
+export interface AiRunDebug {
+  id: number;
+  status: string;
+  model: string;
+  cli_version: string;
+  exit_code: number | null;
+  prompt_path: string;
+  output_path: string;
+  stderr: string;
+  metadata: Record<string, unknown>;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface JobDebug {
+  job: Job;
+  events: JobDebugEvent[];
+  ai_runs: AiRunDebug[];
+  stdout: string;
+  stderr: string;
+}
+
+export interface ClearJobsResult {
+  deleted: number;
+}
+
 export interface ReviewMarket {
   valuation_market_id: number;
   market: string;

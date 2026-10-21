@@ -19,11 +19,27 @@ def test_codex_executor_runs_non_interactively(
         command: list[str],
         **kwargs: object,
     ) -> SimpleNamespace:
+        return SimpleNamespace(returncode=0, stdout="codex-cli 0.162.1", stderr="")
+
+    class FakeProcess:
+        def wait(self, timeout: int) -> int:
+            assert timeout == 30
+            return 0
+
+        def kill(self) -> None:
+            raise AssertionError("进程不应被终止")
+
+    def fake_popen(command: list[str], **kwargs: object) -> FakeProcess:
         calls.append((command, kwargs))
-        stdout = "codex-cli 0.162.1" if command[-1] == "--version" else '{"type":"done"}\n'
-        return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+        stdout = kwargs["stdout"]
+        stderr = kwargs["stderr"]
+        assert hasattr(stdout, "write") and hasattr(stderr, "write")
+        stdout.write('{"type":"done"}\n')
+        stderr.write("")
+        return FakeProcess()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
     executor = CodexExecutor(binary="codex", timeout_seconds=30, model="test-model")
 
     result = executor.run(
@@ -39,6 +55,8 @@ def test_codex_executor_runs_non_interactively(
     assert "--approve-for-me" not in command
     assert command[command.index("--sandbox") + 1] == "workspace-write"
     assert options["stdin"] is subprocess.DEVNULL
+    assert options["stdout"] is not None
+    assert options["stderr"] is not None
     assert result.exit_code == 0
     assert result.version == "codex-cli 0.162.1"
     assert result.stdout_path.read_text(encoding="utf-8") == '{"type":"done"}\n'

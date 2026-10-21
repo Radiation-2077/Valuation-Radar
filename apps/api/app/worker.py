@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import JobRun
+from app.services.job_events import append_job_event
 from app.services.refresh import RefreshSummary, refresh_market_data
 from app.services.revaluation import run_valuation_refresh
 from app.services.schedule import scheduler_tick
@@ -30,7 +31,7 @@ def process_next_job() -> bool:
         current_phase = "valuing" if job.job_type == "valuation_refresh" else "fetching"
         details: dict[str, Any] = {}
         job.status = "running"
-        job.phase = current_phase
+        append_job_event(job, current_phase, "任务开始执行")
         job.started_at = datetime.now(UTC).replace(tzinfo=None)
         session.commit()
 
@@ -40,8 +41,9 @@ def process_next_job() -> bool:
             live = session.get(JobRun, job_id)
             if live is None or live.status == "cancelled":
                 return
-            live.phase = phase
-            live.details = dict(details)
+            if live.phase != phase:
+                append_job_event(live, phase, _phase_message(phase))
+            live.details = {**live.details, **details}
             session.commit()
 
         try:
@@ -57,19 +59,19 @@ def process_next_job() -> bool:
                     diagnostic = "；".join(summary.quote_errors) or "行情源未返回有效报价"
                     raise RuntimeError(f"本轮没有取得任何有效行情：{diagnostic}")
                 update_phase("finalizing")
-                job.phase = "completed"
                 job.status = "partial" if summary.quote_errors else "succeeded"
-                job.details = details
+                job.details = {**job.details, **details}
+                append_job_event(job, "completed", "任务完成")
             elif job.job_type == "valuation_refresh":
                 report = run_valuation_refresh(session, job, get_settings())
-                job.phase = "awaiting_review"
                 job.status = "succeeded"
                 details = {
                     "report_id": report.id,
                     "instrument": report.instrument.name,
                     "review_required": True,
                 }
-                job.details = details
+                append_job_event(job, "awaiting_review", "候选估值已生成，等待人工复核")
+                job.details = {**job.details, **details}
             else:
                 raise ValueError(f"暂不支持任务类型：{job.job_type}")
             job.finished_at = datetime.now(UTC).replace(tzinfo=None)
@@ -87,10 +89,12 @@ def process_next_job() -> bool:
                 if str(exc) not in detail_errors:
                     detail_errors.append(str(exc))
                 failed.details = {
+                    **failed.details,
                     **details,
                     "failed_phase": current_phase,
                     "errors": detail_errors,
                 }
+                append_job_event(failed, current_phase, f"任务失败：{exc}")
                 failed.finished_at = datetime.now(UTC).replace(tzinfo=None)
                 session.commit()
             print(f"job {job_id} failed: {exc}", flush=True)
@@ -111,6 +115,17 @@ def _market_refresh_details(summary: RefreshSummary) -> dict[str, Any]:
         ),
         "errors": summary.quote_errors,
     }
+
+
+def _phase_message(phase: str) -> str:
+    messages = {
+        "fetching": "开始抓取最新行情",
+        "saving_quotes": "写入行情快照并执行时间戳去重",
+        "loading_macro": "更新宏观缓存",
+        "rebuilding_ranking": "行情或宏观发生变化，重算排名",
+        "finalizing": "整理任务结果",
+    }
+    return messages.get(phase, phase)
 
 
 def run_worker(poll_seconds: float = 3.0) -> None:

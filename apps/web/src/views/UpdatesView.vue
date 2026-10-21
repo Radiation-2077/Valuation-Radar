@@ -12,6 +12,7 @@ import {
   NGridItem,
   NH1,
   NH2,
+  NPopconfirm,
   NP,
   NSelect,
   NSpace,
@@ -26,10 +27,11 @@ import {
   useMessage,
   type DataTableColumns,
 } from "naive-ui";
-import { computed, h, reactive, watch } from "vue";
+import { computed, h, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import {
+  clearJobs,
   createRefreshJob,
   decideReview,
   fetchJobs,
@@ -38,6 +40,7 @@ import {
   updateSchedule,
 } from "@/api/client";
 import type { Job, Schedule, SchedulePatch } from "@/api/types";
+import JobDebugPanel from "@/components/JobDebugPanel.vue";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 
 const queryClient = useQueryClient();
@@ -104,6 +107,17 @@ const reviewMutation = useMutation({
     message.success(result.ranking_rebuilt ? "候选估值已发布并重算排名" : "候选估值已拒绝");
   },
 });
+const clearMutation = useMutation({
+  mutationFn: clearJobs,
+  onSuccess: async (result) => {
+    debugJobId.value = null;
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success(`已清除 ${result.deleted} 条任务记录`);
+  },
+  onError: (error: Error) => {
+    message.error(error.message);
+  },
+});
 
 const jobs = computed(() => jobsQuery.data.value?.items ?? []);
 const reviews = computed(() => reviewsQuery.data.value?.items ?? []);
@@ -117,6 +131,8 @@ const latestJobTime = computed(() => {
   const latest = jobs.value[0];
   return latest?.finished_at ?? latest?.started_at ?? latest?.created_at ?? null;
 });
+const debugJobId = ref<number | null>(null);
+const expandedRowKeys = computed(() => (debugJobId.value === null ? [] : [debugJobId.value]));
 
 const frequencyOptions = [
   { label: "每个交易日", value: "trading_daily" },
@@ -166,6 +182,8 @@ function phaseLabel(value: string): string {
     rebuilding_ranking: "重算排名",
     finalizing: "收尾",
     valuing: "模型估值",
+    validating: "校验候选",
+    candidate_ready: "候选已入库",
     awaiting_review: "待复核",
     completed: "完成",
     failed: "失败",
@@ -175,6 +193,10 @@ function phaseLabel(value: string): string {
 }
 
 const jobColumns = computed<DataTableColumns<Job>>(() => [
+  {
+    type: "expand",
+    renderExpand: renderDebugExpand,
+  },
   {
     title: "任务",
     key: "id",
@@ -225,6 +247,22 @@ const jobColumns = computed<DataTableColumns<Job>>(() => [
       );
       return `${seconds} 秒`;
     },
+  },
+  {
+    title: "调试",
+    key: "debug",
+    width: 96,
+    render: (job) =>
+      h(
+        NButton,
+        {
+          size: "tiny",
+          secondary: true,
+          type: debugJobId.value === job.id ? "primary" : "default",
+          onClick: () => toggleDebug(job.id),
+        },
+        { default: () => (debugJobId.value === job.id ? "收起 Debug" : "Debug 信息") },
+      ),
   },
 ]);
 
@@ -333,7 +371,9 @@ function workflowIndex(job: Job): number {
   const phase =
     typeof job.details.failed_phase === "string" ? job.details.failed_phase : job.phase;
   if (job.job_type === "valuation_refresh") {
-    if (["valuing", "awaiting_review"].includes(phase)) return 1;
+    if (phase === "valuing") return 1;
+    if (["validating", "candidate_ready"].includes(phase)) return 2;
+    if (phase === "awaiting_review") return 3;
     if (phase === "completed") return 3;
     return 0;
   }
@@ -350,6 +390,22 @@ function save() {
 
 function runNow() {
   refreshMutation.mutate();
+}
+
+function clearAllJobs() {
+  clearMutation.mutate();
+}
+
+function toggleDebug(jobId: number) {
+  debugJobId.value = debugJobId.value === jobId ? null : jobId;
+}
+
+function updateExpandedRowKeys(keys: Array<string | number>) {
+  debugJobId.value = keys.length ? Number(keys[0]) : null;
+}
+
+function renderDebugExpand(job: Job) {
+  return h(JobDebugPanel, { jobId: job.id });
 }
 
 function openMarket(id: number) {
@@ -524,13 +580,32 @@ function openMarket(id: number) {
         <NSpace vertical :size="16">
           <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>最近任务</NH2>
-          <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
+            <NSpace align="center">
+              <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
+              <NPopconfirm @positive-click="clearAllJobs">
+                <template #trigger>
+                  <NButton
+                    size="small"
+                    type="error"
+                    secondary
+                    :disabled="Boolean(activeJob)"
+                    :loading="clearMutation.isPending.value"
+                  >
+                    清除所有
+                  </NButton>
+                </template>
+                将删除全部已结束任务记录，此操作不可恢复。
+              </NPopconfirm>
+            </NSpace>
           </NSpace>
         <NDataTable
           v-if="jobs.length"
           size="small"
           :columns="jobColumns"
           :data="jobs"
+          :row-key="(job: Job) => job.id"
+          :expanded-row-keys="expandedRowKeys"
+          @update:expanded-row-keys="updateExpandedRowKeys"
           :bordered="false"
           :bottom-bordered="false"
           :single-line="false"

@@ -127,6 +127,11 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert report.source == "codex"
         assert session.get(Instrument, instrument.id).verdict == original_verdict  # type: ignore[union-attr]
         assert [item.id for item in list_review_reports(session)] == [report.id]
+        session.refresh(job)
+        assert any(
+            "Codex 子进程" in event["message"]
+            for event in job.details["debug_events"]
+        )
 
         published = approve_review(session, report.id)
         assert published.status == "published"
@@ -184,6 +189,11 @@ def test_codex_failure_keeps_published_valuation(tmp_path: Path) -> None:
         assert failed_run.status == "rejected"
         assert failed_run.exit_code == 2
         assert "sandbox and approval options conflict" in failed_run.stderr
+        session.refresh(job)
+        assert any(
+            "重估失败" in event["message"]
+            for event in job.details["debug_events"]
+        )
 
 
 def _quality_presentation() -> dict:

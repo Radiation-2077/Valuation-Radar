@@ -1,5 +1,7 @@
 import type {
+  ClearJobsResult,
   Job,
+  JobDebug,
   JobList,
   RankingFilters,
   RankingResponse,
@@ -77,6 +79,16 @@ export async function updateSchedule(payload: SchedulePatch): Promise<Schedule> 
 
 export async function fetchJobs(): Promise<JobList> {
   return request<JobList>("/api/v1/jobs?limit=20");
+}
+
+export async function fetchJobDebug(jobId: number): Promise<JobDebug> {
+  return request<JobDebug>(`/api/v1/jobs/${jobId}/debug`);
+}
+
+export async function clearJobs(): Promise<ClearJobsResult> {
+  return request<ClearJobsResult>("/api/v1/jobs", {
+    method: "DELETE",
+  });
 }
 
 export async function createRefreshJob(): Promise<Job> {

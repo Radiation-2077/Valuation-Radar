@@ -1,18 +1,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.domain.scoring import ALGORITHM_VERSION, DEFAULT_PROFILE, PROFILES
-from app.models import Instrument, JobRun, ScheduleSetting, ValuationReport
+from app.models import AiRun, Instrument, JobRun, ScheduleSetting, ValuationReport
 from app.schemas.api import (
+    AiRunDebugOut,
+    ClearJobsOut,
     InstrumentListOut,
     JobCreate,
+    JobDebugOut,
+    JobEventOut,
     JobListOut,
     JobOut,
     MetaResponse,
@@ -145,6 +151,24 @@ def list_jobs(
     return JobListOut(items=[_job_out(job) for job in jobs])
 
 
+@router.delete("/jobs", response_model=ClearJobsOut)
+def clear_jobs(session: SessionDep) -> ClearJobsOut:
+    active = session.scalar(
+        select(func.count())
+        .select_from(JobRun)
+        .where(JobRun.status.in_(("queued", "running")))
+    )
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "存在排队中或执行中的任务，暂时不能清除任务记录"},
+        )
+    deleted = session.scalar(select(func.count()).select_from(JobRun)) or 0
+    session.execute(delete(JobRun))
+    session.commit()
+    return ClearJobsOut(deleted=deleted)
+
+
 @router.post("/jobs", response_model=JobOut, status_code=202)
 def create_job(
     payload: JobCreate,
@@ -170,6 +194,39 @@ def get_job(job_id: int, session: SessionDep) -> JobOut:
     if job is None:
         raise HTTPException(status_code=404, detail={"message": "任务不存在"})
     return _job_out(job)
+
+
+@router.get("/jobs/{job_id}/debug", response_model=JobDebugOut)
+def get_job_debug(job_id: int, session: SessionDep) -> JobDebugOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    ai_runs = session.scalars(
+        select(AiRun).where(AiRun.job_id == job_id).order_by(AiRun.id)
+    ).all()
+    raw_events = (job.details or {}).get("debug_events")
+    event_items = raw_events if isinstance(raw_events, list) else []
+    events = [
+        JobEventOut(
+            at=str(event.get("at") or ""),
+            phase=str(event.get("phase") or ""),
+            message=str(event.get("message") or ""),
+        )
+        for event in event_items
+        if isinstance(event, dict)
+    ]
+    latest = ai_runs[-1] if ai_runs else None
+    metadata = dict(latest.metadata_json or {}) if latest else {}
+    storage_root = get_settings().storage_root
+    stdout = _read_log_tail(metadata.get("stdout_path"), storage_root)
+    stderr_log = _read_log_tail(metadata.get("stderr_path"), storage_root)
+    return JobDebugOut(
+        job=_job_out(job),
+        events=events,
+        ai_runs=[_ai_run_debug_out(run) for run in ai_runs],
+        stdout=stdout,
+        stderr=stderr_log or (latest.stderr if latest else ""),
+    )
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=JobOut)
@@ -265,6 +322,38 @@ def _job_out(job: JobRun) -> JobOut:
         details=job.details,
         created_at=job.created_at,
     )
+
+
+def _ai_run_debug_out(run: AiRun) -> AiRunDebugOut:
+    return AiRunDebugOut(
+        id=run.id,
+        status=run.status,
+        model=run.model,
+        cli_version=run.cli_version,
+        exit_code=run.exit_code,
+        prompt_path=run.prompt_path,
+        output_path=run.output_path,
+        stderr=run.stderr,
+        metadata=dict(run.metadata_json or {}),
+        started_at=run.started_at,
+        finished_at=run.finished_at,
+    )
+
+
+def _read_log_tail(value: object, storage_root: Path) -> str:
+    if not isinstance(value, str) or not value:
+        return ""
+    path = Path(value).resolve()
+    root = storage_root.resolve()
+    if path != root and root not in path.parents:
+        return ""
+    if not path.is_file():
+        return ""
+    with path.open("rb") as file:
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(max(0, size - 120_000))
+        return file.read().decode("utf-8", errors="replace")
 
 
 def _review_out(report: ValuationReport) -> ReviewOut:

@@ -22,6 +22,7 @@ from app.models import (
     ValuationReport,
 )
 from app.services.importer import import_candidate_card, validate_card
+from app.services.job_events import append_job_event
 from app.services.macro import latest_macro_values
 
 
@@ -45,6 +46,7 @@ def run_valuation_refresh(
     instrument = session.get(Instrument, instrument_id)
     if instrument is None:
         raise ValueError(f"标的 {instrument_id} 不存在")
+    _record_job_event(session, job, "valuing", "准备估值目录、上一版数据卡与行情证据")
 
     staging = settings.staging_dir / f"job-{job.id}" / _safe_name(instrument.name)
     if staging.exists():
@@ -80,9 +82,14 @@ def run_valuation_refresh(
         instrument_id=instrument.id,
         status="running",
         prompt_path=str(prompt_path),
-        metadata_json={"analysis_date": analysis_date.isoformat()},
+        metadata_json={
+            "analysis_date": analysis_date.isoformat(),
+            "stdout_path": str(staging / "codex.stdout.jsonl"),
+            "stderr_path": str(staging / "codex.stderr.log"),
+        },
     )
     session.add(ai_run)
+    append_job_event(job, "valuing", "Codex 子进程已启动，等待模型输出")
     session.commit()
 
     codex = executor or CodexExecutor(
@@ -99,6 +106,12 @@ def run_valuation_refresh(
         )
         _record_result(ai_run, result)
         session.commit()
+        _record_job_event(
+            session,
+            job,
+            "validating",
+            f"Codex 已退出，退出码 {result.exit_code}，开始校验候选数据卡",
+        )
         if result.exit_code != 0:
             message = "Codex 执行超时" if result.timed_out else f"Codex 退出码 {result.exit_code}"
             raise RuntimeError(message)
@@ -114,6 +127,7 @@ def run_valuation_refresh(
             raise ValueError("候选数据卡分析日期不是本次任务日期")
 
         report = import_candidate_card(session, card_path)
+        _record_job_event(session, job, "candidate_ready", "候选数据卡已校验并写入待复核库")
         ai_run.status = "succeeded"
         ai_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         ai_run.output_path = str(card_path)
@@ -130,7 +144,10 @@ def run_valuation_refresh(
             failed.status = "rejected"
             failed.finished_at = datetime.now(UTC).replace(tzinfo=None)
             failed.stderr = f"{failed.stderr}\n{exc}".strip()
-            session.commit()
+        failed_job = session.get(JobRun, job.id)
+        if failed_job is not None:
+            append_job_event(failed_job, failed_job.phase, f"重估失败：{exc}")
+        session.commit()
         raise
 
 
@@ -143,6 +160,11 @@ def _instrument_id(scope: str) -> int:
 
 def _safe_name(value: str) -> str:
     return "".join(char for char in value if char not in '\\/:*?"<>|').strip() or "instrument"
+
+
+def _record_job_event(session: Session, job: JobRun, phase: str, message: str) -> None:
+    append_job_event(job, phase, message)
+    session.commit()
 
 
 def _latest_card(session: Session, instrument_id: int) -> dict[str, Any]:

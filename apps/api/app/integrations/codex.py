@@ -66,24 +66,28 @@ class CodexExecutor:
         command.append(prompt)
         timed_out = False
         try:
-            completed = subprocess.run(
-                command,
-                capture_output=True,
-                check=False,
-                stdin=subprocess.DEVNULL,
-                text=True,
-                timeout=self.timeout_seconds,
-            )
-            exit_code = completed.returncode
-            stdout = completed.stdout
-            stderr = completed.stderr
-        except subprocess.TimeoutExpired as exc:
-            timed_out = True
+            with stdout_path.open("w", encoding="utf-8") as stdout_file, stderr_path.open(
+                "w", encoding="utf-8"
+            ) as stderr_file:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                    text=True,
+                )
+                try:
+                    exit_code = process.wait(timeout=self.timeout_seconds)
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+                    process.kill()
+                    process.wait()
+                    exit_code = -1
+                    stderr_file.write("\nCodex execution timed out.")
+                    stderr_file.flush()
+        except OSError as exc:
             exit_code = -1
-            stdout = _as_text(exc.stdout)
-            stderr = _as_text(exc.stderr) + "\nCodex execution timed out."
-        stdout_path.write_text(stdout, encoding="utf-8")
-        stderr_path.write_text(stderr, encoding="utf-8")
+            stderr_path.write_text(f"Codex 启动失败：{exc}", encoding="utf-8")
         return CodexResult(
             exit_code=exit_code,
             version=self.version(),
@@ -92,11 +96,3 @@ class CodexExecutor:
             manifest_path=manifest_path,
             timed_out=timed_out,
         )
-
-
-def _as_text(value: bytes | str | None) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return value

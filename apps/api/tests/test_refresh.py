@@ -133,7 +133,9 @@ def test_worker_treats_unchanged_quotes_as_success(
         job = session.query(JobRun).one()
         assert job.status == "succeeded"
         assert job.phase == "completed"
-        assert job.details == {
+        details = dict(job.details)
+        events = details.pop("debug_events")
+        assert details == {
             "listings": 29,
             "quotes_fetched": 29,
             "quotes_saved": 0,
@@ -144,6 +146,11 @@ def test_worker_treats_unchanged_quotes_as_success(
             "latest_quote_at": "2026-10-21T08:00:00",
             "errors": [],
         }
+        assert [event["phase"] for event in events] == [
+            "fetching",
+            "finalizing",
+            "completed",
+        ]
 
 
 def test_worker_fails_only_when_no_valid_quote_is_fetched(
