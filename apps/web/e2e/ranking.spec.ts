@@ -161,9 +161,17 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(positionTierChart).toHaveAttribute("data-tier-count", "3");
   await expect(positionTierChart).toHaveAttribute("aria-label", /¥232\.74/);
   await expect(positionTierChart).toHaveAttribute("aria-label", /40%/);
+  await positionTierChart.scrollIntoViewIfNeeded();
   const positionTierCanvasBox = await positionTierChart.locator("canvas").boundingBox();
   expect(positionTierCanvasBox).not.toBeNull();
   expect(positionTierCanvasBox!.height).toBeCloseTo(48, 0);
+  if (page.viewportSize()!.width > 720) {
+    await page.mouse.move(
+      positionTierCanvasBox!.x + positionTierCanvasBox!.width * 0.85,
+      positionTierCanvasBox!.y + positionTierCanvasBox!.height / 2,
+    );
+    await expect(page.getByText("买入价 ¥198")).toBeVisible();
+  }
   const positionTableBox = await positionCard.locator(".table-shell").first().boundingBox();
   const positionCardBox = await positionCard.boundingBox();
   expect(positionTableBox).not.toBeNull();

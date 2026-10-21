@@ -37,8 +37,8 @@ function render() {
       yAxis: { type: "category", data: [""], show: false },
       tooltip: {
         trigger: "item",
-        formatter: ({ dataIndex }: { dataIndex: number }) => {
-          const tier = tiers.value[dataIndex];
+        formatter: ({ seriesIndex }: { seriesIndex: number }) => {
+          const tier = tiers.value[seriesIndex];
           return tier
             ? `${tier.tier}<br/>买入价 ${tier.price}<br/>占目标仓位 ${tier.allocation}%`
             : "";
@@ -51,14 +51,22 @@ function render() {
         barWidth: 32,
         itemStyle: {
           color: POSITION_TIER_COLORS[index % POSITION_TIER_COLORS.length],
-          borderColor: tier.active ? "#dce7ef" : "transparent",
-          borderWidth: tier.active ? 2 : 0,
           borderRadius:
             index === 0
               ? [8, 0, 0, 8]
               : index === tiers.value.length - 1
                 ? [0, 8, 8, 0]
                 : 0,
+        },
+        emphasis: {
+          focus: "series",
+          itemStyle: {
+            borderColor: "#dce7ef",
+            borderWidth: 2,
+          },
+        },
+        blur: {
+          itemStyle: { opacity: 0.55 },
         },
         label: {
           show: true,
