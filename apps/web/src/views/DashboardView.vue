@@ -15,6 +15,7 @@ import {
   NH2,
   NIcon,
   NP,
+  NPopover,
   NSelect,
   NSpace,
   NSpin,
@@ -332,29 +333,27 @@ function rowProps(row: RankingItem) {
       <NSpace align="center" justify="space-between" :wrap="true" :size="16">
         <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
         <NSpace align="center" :size="8">
-          <NButton
-            secondary
-            :aria-expanded="filtersOpen"
-            @click="filtersOpen = !filtersOpen"
+          <NPopover
+            v-model:show="filtersOpen"
+            trigger="click"
+            placement="bottom-end"
+            :width="420"
           >
-            <template #icon>
-              <NIcon :component="FunnelOutline" />
+            <template #trigger>
+              <NButton
+                secondary
+                :aria-expanded="filtersOpen"
+              >
+                <template #icon>
+                  <NIcon :component="FunnelOutline" />
+                </template>
+                筛选
+                <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
+                  {{ activeFilterCount }}
+                </NTag>
+              </NButton>
             </template>
-            筛选
-            <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
-              {{ activeFilterCount }}
-            </NTag>
-          </NButton>
-          <NButton v-if="activeFilterCount" text @click="clearFilters">
-            清除筛选
-          </NButton>
-        </NSpace>
-      </NSpace>
-
-      <template v-if="filtersOpen">
-        <NCard class="filter-panel" size="small">
-          <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="8">
-            <NGridItem>
+            <NSpace class="filter-popover" vertical :size="12">
               <NFormItem label="市场" :show-feedback="false">
                 <NSelect
                   v-model:value="market"
@@ -363,8 +362,6 @@ function rowProps(row: RankingItem) {
                   placeholder="全部市场"
                 />
               </NFormItem>
-            </NGridItem>
-            <NGridItem>
               <NFormItem label="估值路径" :show-feedback="false">
                 <NSelect
                   v-model:value="path"
@@ -373,8 +370,6 @@ function rowProps(row: RankingItem) {
                   placeholder="全部路径"
                 />
               </NFormItem>
-            </NGridItem>
-            <NGridItem>
               <NFormItem label="行业" :show-feedback="false">
                 <NSelect
                   v-model:value="industry"
@@ -384,10 +379,18 @@ function rowProps(row: RankingItem) {
                   placeholder="全部行业"
                 />
               </NFormItem>
-            </NGridItem>
-          </NGrid>
-        </NCard>
-      </template>
+              <NButton
+                v-if="activeFilterCount"
+                block
+                tertiary
+                @click="clearFilters"
+              >
+                清除筛选
+              </NButton>
+            </NSpace>
+          </NPopover>
+        </NSpace>
+      </NSpace>
     </NSpace>
 
     <NSpin v-if="query.isPending.value" size="large" />

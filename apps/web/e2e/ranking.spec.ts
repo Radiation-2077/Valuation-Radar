@@ -66,9 +66,16 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
   await expect(page.locator(".filter-card")).toHaveCount(0);
-  await expect(page.locator(".filter-panel")).toHaveCount(0);
+  await expect(page.locator(".filter-popover")).toHaveCount(0);
+  const layoutBeforeFilters = await page.locator(".status-card").boundingBox();
   await page.getByRole("button", { name: "筛选" }).click();
-  await expect(page.locator(".filter-panel .n-select")).toHaveCount(3);
+  await expect(page.locator(".filter-popover")).toBeVisible();
+  await expect(page.locator(".filter-popover .n-select")).toHaveCount(3);
+  await expect(page.locator(".filter-popover .n-select").first()).toBeVisible();
+  const layoutAfterFilters = await page.locator(".status-card").boundingBox();
+  expect(layoutBeforeFilters).not.toBeNull();
+  expect(layoutAfterFilters).not.toBeNull();
+  expect(Math.abs(layoutBeforeFilters!.y - layoutAfterFilters!.y)).toBeLessThan(1);
   const tableShellStyle = await page.locator(".table-shell").first().evaluate((element) => {
     const style = getComputedStyle(element);
     return {
