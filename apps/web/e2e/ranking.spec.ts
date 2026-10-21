@@ -35,6 +35,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   ).toBeChecked();
   await expect(page.locator(".status-card")).toBeVisible();
   await expect(page.locator(".top-card").first()).toBeVisible();
+  await expect(page.locator(".etf-table")).toBeVisible();
   await expect(page.locator(".excluded-table")).toBeVisible();
 
   await page.locator(".top-card").first().click();

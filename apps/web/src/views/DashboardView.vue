@@ -209,6 +209,78 @@ const excludedColumns = computed<DataTableColumns<RankingItem>>(() => [
   },
 ]);
 
+const etfColumns = computed<DataTableColumns<RankingItem>>(() => [
+  {
+    title: "ETF",
+    key: "name",
+    minWidth: 170,
+    render: (row) =>
+      h(NSpace, { vertical: true, size: 2 }, {
+        default: () => [
+          h(NText, { strong: true }, { default: () => row.name }),
+          h(NText, { depth: 3 }, { default: () => row.code }),
+        ],
+      }),
+  },
+  {
+    title: "行业 / 路径",
+    key: "industry",
+    minWidth: 150,
+    render: (row) => `${row.industry} / ${pathLabels[row.path] ?? row.path}`,
+  },
+  {
+    title: "现价",
+    key: "price",
+    width: 100,
+    render: (row) => formatMoney(row.price, row.currency),
+  },
+  {
+    title: "安全边际",
+    key: "margin",
+    width: 110,
+    render: (row) =>
+      h(
+        NText,
+        { type: (row.safety_margin_pct ?? 0) >= 0 ? "success" : "error" },
+        { default: () => formatPercent(row.safety_margin_pct) },
+      ),
+  },
+  {
+    title: "预期年化",
+    key: "expected",
+    width: 110,
+    render: (row) => formatPercent(row.expected_return.total),
+  },
+  {
+    title: "最大回撤",
+    key: "drawdown",
+    width: 110,
+    render: (row) => formatPercent(row.max_drawdown_pct),
+  },
+  {
+    title: "综合分",
+    key: "score",
+    width: 105,
+    render: (row) =>
+      h(NSpace, { align: "center", size: 6 }, {
+        default: () => [
+          h(NText, { strong: true }, { default: () => formatNumber(row.score.total, 1) }),
+          h(
+            NTag,
+            { size: "small", type: bandType(row.score.band), bordered: false },
+            { default: () => row.score.band },
+          ),
+        ],
+      }),
+  },
+  {
+    title: "数据日期",
+    key: "date",
+    width: 100,
+    render: (row) => formatDate(row.analysis_date),
+  },
+]);
+
 function selectProfile(value: ProfileCode) {
   router.replace({ query: { ...route.query, profile: value } });
 }
@@ -358,23 +430,25 @@ function rowProps(row: RankingItem) {
         </NSpace>
       </NCard>
 
-      <NCard v-if="query.data.value.etfs.length">
+      <NCard v-if="query.data.value.etfs.length" class="ranking-card">
         <NSpace vertical :size="16">
-          <NH2>ETF 独立观察</NH2>
-          <NGrid responsive="screen" class="etf-grid" cols="1 s:2 m:3">
-            <NGridItem v-for="item in query.data.value.etfs" :key="item.valuation_market_id">
-              <NCard size="small" hoverable @click="openValuation(item.valuation_market_id)">
-                <NSpace vertical :size="8">
-                  <NTag :type="bandType(item.score.band)" :bordered="false">
-                    {{ item.score.band }} 档
-                  </NTag>
-                  <NText strong>{{ item.name }}</NText>
-                  <NText depth="3">{{ item.code }}</NText>
-                  <NText>预期年化 {{ formatPercent(item.expected_return.total) }}</NText>
-                </NSpace>
-              </NCard>
-            </NGridItem>
-          </NGrid>
+          <NSpace align="center" justify="space-between">
+            <NH2>ETF 独立观察</NH2>
+            <NTag size="small" :bordered="false">{{ query.data.value.etfs.length }} 条</NTag>
+          </NSpace>
+          <div class="table-shell">
+            <NDataTable
+              class="etf-table"
+              size="small"
+              :columns="etfColumns"
+              :data="query.data.value.etfs"
+              :row-props="rowProps"
+              :bordered="false"
+              :single-line="false"
+              :pagination="false"
+              :scroll-x="980"
+            />
+          </div>
         </NSpace>
       </NCard>
 
