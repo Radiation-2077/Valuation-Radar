@@ -397,6 +397,7 @@ function openMarket(id: number) {
           :columns="jobColumns"
           :data="jobs"
           :bordered="false"
+          :bottom-bordered="false"
           :single-line="false"
           :pagination="false"
         />

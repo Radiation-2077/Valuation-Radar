@@ -76,6 +76,10 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   expect(tableShellStyle.borderStyle).toBe("solid");
   expect(tableShellStyle.borderWidth).toBeGreaterThanOrEqual(1);
   expect(tableShellStyle.paddingLeft).toBeGreaterThanOrEqual(10);
+  const tableBottomBorder = await page.locator(".ranking-table").first().evaluate(
+    (element) => getComputedStyle(element).borderBottomWidth,
+  );
+  expect(tableBottomBorder).toBe("0px");
 
   await page.goto("/updates");
   const statusCards = page.locator(".ops-status-grid .n-card");
