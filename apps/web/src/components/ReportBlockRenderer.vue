@@ -76,8 +76,21 @@ function itemBoolean(item: Record<string, unknown>, key: string): boolean {
   return objectBoolean(item, key);
 }
 
-function gaugeValue(value: string): number {
-  return Number.parseFloat(value.replace("%", "")) || 0;
+function gaugeValue(item: Record<string, unknown>): number | null {
+  const value = item.value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseFloat(value.replace("%", ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function gaugeDisplay(item: Record<string, unknown>): string {
+  const display = itemString(item, "display_value");
+  if (display) return display;
+  const value = gaugeValue(item);
+  return value === null ? "暂无数据" : `${value}%`;
 }
 
 function gaugeColor(tone: string): string {
@@ -212,8 +225,8 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
       <NGridItem v-for="item in blockObjects(block, 'items')" :key="itemString(item, 'label')">
         <MetricGauge
           :label="itemString(item, 'label')"
-          :value="gaugeValue(itemString(item, 'value'))"
-          :display-value="itemString(item, 'value')"
+          :value="gaugeValue(item)"
+          :display-value="gaugeDisplay(item)"
           :color="gaugeColor(itemString(item, 'tone'))"
         />
       </NGridItem>
@@ -230,7 +243,9 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
         <NCard size="small">
           <NSpace vertical :size="6">
             <NText depth="3">{{ itemString(item, "label") }}</NText>
-            <NText strong style="font-size: 18px">{{ itemString(item, "value") }}</NText>
+            <NText strong style="font-size: 18px">
+              {{ itemString(item, "value") || "暂无数据" }}
+            </NText>
             <NText depth="3">{{ itemString(item, "detail") }}</NText>
           </NSpace>
         </NCard>
