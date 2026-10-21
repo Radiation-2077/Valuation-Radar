@@ -163,12 +163,21 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(positionTierChart).toHaveAttribute("aria-label", /40%/);
   const positionTierCanvasBox = await positionTierChart.locator("canvas").boundingBox();
   expect(positionTierCanvasBox).not.toBeNull();
-  expect(positionTierCanvasBox!.height).toBeCloseTo(64, 0);
+  expect(positionTierCanvasBox!.height).toBeCloseTo(48, 0);
   const positionTableBox = await positionCard.locator(".table-shell").first().boundingBox();
   const positionCardBox = await positionCard.boundingBox();
   expect(positionTableBox).not.toBeNull();
   expect(positionCardBox).not.toBeNull();
   expect(positionTableBox!.width / positionCardBox!.width).toBeGreaterThan(0.84);
+  const lastTableCellBorderBottom = await positionCard
+    .locator(".table-shell")
+    .first()
+    .locator("tbody tr")
+    .last()
+    .locator("td")
+    .last()
+    .evaluate((element) => getComputedStyle(element).borderBottomWidth);
+  expect(lastTableCellBorderBottom).toBe("0px");
   await expect(page.getByRole("heading", { name: /七、预期收益率/ })).toBeVisible();
   expect(await page.locator(".n-drawer canvas").count()).toBeGreaterThanOrEqual(6);
 });

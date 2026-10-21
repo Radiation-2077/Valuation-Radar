@@ -48,7 +48,7 @@ function render() {
         type: "bar" as const,
         stack: "position",
         data: [tier.allocation],
-        barWidth: 48,
+        barWidth: 32,
         itemStyle: {
           color: colors[index % colors.length],
           borderColor: tier.active ? "#dce7ef" : "transparent",
@@ -67,7 +67,7 @@ function render() {
           fontSize: 12,
           fontWeight: 600,
           lineHeight: 16,
-          formatter: `${tier.tier}\n${tier.price}\n${tier.allocation}%`,
+          formatter: `level${index + 1}：${tier.price}`,
         },
       })),
     },
