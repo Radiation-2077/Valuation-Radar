@@ -6,6 +6,7 @@ import { formatPercent } from "@/lib/format";
 
 defineProps<{
   item: RankingItem;
+  position: number;
 }>();
 
 const emit = defineEmits<{
@@ -22,14 +23,14 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
 
 <template>
   <NCard
-    :class="['top-card', `rank-${item.rank}`]"
+    :class="['top-card', `rank-${position}`]"
     hoverable
     role="button"
     tabindex="0"
     @click="emit('select', item.valuation_market_id)"
     @keydown.enter="emit('select', item.valuation_market_id)"
   >
-    <span class="top-rank">0{{ item.rank }}</span>
+    <span class="top-rank">0{{ position }}</span>
     <NTag :type="bandType(item.score.band)" size="small" :bordered="false">
       {{ item.score.band }} 档
     </NTag>

@@ -169,3 +169,18 @@ test("naive scrollbar keeps page width stable between routes", async ({ page }) 
   expect(Math.abs(homeHeader!.x - updatesHeader!.x)).toBeLessThan(1);
   expect(Math.abs(homeHeader!.width - updatesHeader!.width)).toBeLessThan(1);
 });
+
+test("filtered top three keeps gold silver bronze positions", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "筛选" }).click();
+  await page.locator(".filter-popover .n-select").first().click();
+  await page.locator(".n-base-select-option").filter({ hasText: "H 股" }).click();
+  await page.keyboard.press("Escape");
+
+  await expect(page.locator(".top-card.rank-1")).toHaveCount(1);
+  await expect(page.locator(".top-card.rank-2")).toHaveCount(1);
+  await expect(page.locator(".top-card.rank-3")).toHaveCount(1);
+  await expect(page.locator(".top-card.rank-1 .top-rank")).toHaveText("01");
+  await expect(page.locator(".top-card.rank-2 .top-rank")).toHaveText("02");
+  await expect(page.locator(".top-card.rank-3 .top-rank")).toHaveText("03");
+});

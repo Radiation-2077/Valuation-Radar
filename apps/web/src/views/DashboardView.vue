@@ -448,8 +448,11 @@ function rowProps(row: RankingItem) {
             description="当前市场没有主榜标的，请查看下方 ETF 独立观察"
           />
           <NGrid v-else responsive="screen" class="top-picks-grid" cols="1 m:3">
-            <NGridItem v-for="item in query.data.value.top_three" :key="item.valuation_market_id">
-              <TopPickCard :item="item" @select="openValuation" />
+            <NGridItem
+              v-for="(item, index) in query.data.value.top_three"
+              :key="item.valuation_market_id"
+            >
+              <TopPickCard :item="item" :position="index + 1" @select="openValuation" />
             </NGridItem>
           </NGrid>
         </NSpace>
