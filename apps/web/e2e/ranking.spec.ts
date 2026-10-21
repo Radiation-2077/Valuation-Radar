@@ -13,6 +13,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.getByText("排序单元")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "性价比Top3" })).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
+  await expect(page.locator(".top-card.rank-1")).toHaveCount(1);
+  await expect(page.locator(".top-card.rank-2")).toHaveCount(1);
+  await expect(page.locator(".top-card.rank-3")).toHaveCount(1);
   await expect(page.getByRole("table").first()).toBeVisible();
 
   const aggressiveTab = page.locator('.n-tabs-tab[data-name="aggressive"]');
@@ -78,6 +81,10 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
+  const chartBox = await analysisCard.locator(".scatter-chart").boundingBox();
+  expect(chartBox).not.toBeNull();
+  expect(chartBox!.height).toBeGreaterThanOrEqual(540);
+  expect(chartBox!.width).toBeGreaterThan(chartBox!.height);
   await expect(page.locator(".filter-card")).toHaveCount(0);
   await expect(page.locator(".filter-popover")).toHaveCount(0);
   const layoutBeforeFilters = await page.locator(".top3-card").boundingBox();

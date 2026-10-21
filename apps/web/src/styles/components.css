@@ -57,6 +57,37 @@
   background: linear-gradient(145deg, rgba(18, 43, 61, 0.9), rgba(9, 25, 37, 0.82));
 }
 
+.top-card.rank-1 {
+  --medal-color: #f0c96b;
+  --medal-border: rgba(240, 201, 107, 0.42);
+  --medal-bg: rgba(240, 201, 107, 0.09);
+}
+
+.top-card.rank-2 {
+  --medal-color: #cbd5df;
+  --medal-border: rgba(203, 213, 223, 0.34);
+  --medal-bg: rgba(203, 213, 223, 0.07);
+}
+
+.top-card.rank-3 {
+  --medal-color: #cf9362;
+  --medal-border: rgba(207, 147, 98, 0.36);
+  --medal-bg: rgba(207, 147, 98, 0.08);
+}
+
+.top-card.rank-1,
+.top-card.rank-2,
+.top-card.rank-3 {
+  border-color: var(--medal-border);
+  background: linear-gradient(145deg, var(--medal-bg), rgba(9, 25, 37, 0.86));
+}
+
+.top-card.rank-1 .top-score,
+.top-card.rank-2 .top-score,
+.top-card.rank-3 .top-score {
+  color: var(--medal-color);
+}
+
 .profile-stage {
   position: relative;
   display: grid;

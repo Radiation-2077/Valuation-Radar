@@ -22,7 +22,7 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
 
 <template>
   <NCard
-    class="top-card"
+    :class="['top-card', `rank-${item.rank}`]"
     hoverable
     role="button"
     tabindex="0"
