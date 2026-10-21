@@ -57,6 +57,53 @@
   background: linear-gradient(145deg, rgba(18, 43, 61, 0.9), rgba(9, 25, 37, 0.82));
 }
 
+.profile-stage {
+  position: relative;
+  display: grid;
+}
+
+.profile-content-layer {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.profile-slide-left-enter-active,
+.profile-slide-left-leave-active,
+.profile-slide-right-enter-active,
+.profile-slide-right-leave-active {
+  transition:
+    transform 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 220ms ease;
+}
+
+.profile-slide-left-leave-active,
+.profile-slide-right-leave-active {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+}
+
+.profile-slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(7%);
+}
+
+.profile-slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-7%);
+}
+
+.profile-slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-7%);
+}
+
+.profile-slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(7%);
+}
+
 .top-card::after {
   position: absolute;
   right: -92px;
@@ -239,5 +286,14 @@
 
   .table-shell {
     padding: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-slide-left-enter-active,
+  .profile-slide-left-leave-active,
+  .profile-slide-right-enter-active,
+  .profile-slide-right-leave-active {
+    transition: none;
   }
 }

@@ -17,6 +17,8 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
 
   const aggressiveTab = page.locator('.n-tabs-tab[data-name="aggressive"]');
   await aggressiveTab.click();
+  await page.waitForSelector(".profile-slide-left-enter-active");
+  await expect(page.locator(".n-spin")).toHaveCount(0);
   await expect(page).toHaveURL(/profile=aggressive/);
   await expect(aggressiveTab).toHaveClass(/n-tabs-tab--active/);
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
   NAlert,
   NButton,
@@ -43,6 +43,8 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
+const PROFILE_ORDER: ProfileCode[] = ["conservative", "balanced", "aggressive"];
 const profile = computed<ProfileCode>(() => {
   const value = String(route.query.profile ?? "balanced");
   return ["conservative", "balanced", "aggressive"].includes(value)
@@ -55,6 +57,8 @@ const industry = ref<string | null>(null);
 const filtersOpen = ref(false);
 const selectedValuationId = ref<number | null>(null);
 const detailOpen = ref(false);
+const slideDirection = ref<"left" | "right">("left");
+const slideTransition = computed(() => `profile-slide-${slideDirection.value}`);
 
 const filters = computed(() => ({
   profile: profile.value,
@@ -68,6 +72,7 @@ const activeFilterCount = computed(
 const query = useQuery<RankingResponse>({
   queryKey: computed(() => ["ranking", filters.value]),
   queryFn: () => fetchRanking(filters.value),
+  staleTime: 30_000,
 });
 
 const marketOptions = computed(() =>
@@ -283,8 +288,23 @@ const etfColumns = computed<DataTableColumns<RankingItem>>(() => [
   },
 ]);
 
-function selectProfile(value: ProfileCode) {
-  router.replace({ query: { ...route.query, profile: value } });
+async function selectProfile(value: ProfileCode) {
+  if (value === profile.value) return;
+
+  const currentIndex = PROFILE_ORDER.indexOf(profile.value);
+  const nextIndex = PROFILE_ORDER.indexOf(value);
+  slideDirection.value = nextIndex > currentIndex ? "left" : "right";
+
+  const targetFilters = { ...filters.value, profile: value };
+  try {
+    await queryClient.prefetchQuery({
+      queryKey: ["ranking", targetFilters],
+      queryFn: () => fetchRanking(targetFilters),
+      staleTime: 30_000,
+    });
+  } finally {
+    router.replace({ query: { ...route.query, profile: value } });
+  }
 }
 
 function openValuation(id: number) {
@@ -397,7 +417,16 @@ function rowProps(row: RankingItem) {
       </NSpace>
     </NAlert>
 
-    <template v-else-if="query.data.value">
+    <div v-else class="profile-stage">
+      <Transition :name="slideTransition">
+        <NSpace
+          v-if="query.data.value"
+          :key="profile"
+          class="profile-content-layer"
+          :data-profile="profile"
+          vertical
+          :size="20"
+        >
       <NCard class="top3-card">
         <NSpace vertical :size="20">
           <NSpace class="card-heading" align="center" justify="space-between" :wrap="true">
@@ -503,7 +532,9 @@ function rowProps(row: RankingItem) {
           </div>
         </NSpace>
       </NCard>
-    </template>
+        </NSpace>
+      </Transition>
+    </div>
 
     <NDrawer
       v-model:show="detailOpen"
