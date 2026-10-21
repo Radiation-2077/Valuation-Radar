@@ -10,11 +10,10 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".top-card")).toHaveCount(3);
   await expect(page.getByRole("table").first()).toBeVisible();
 
-  await page.locator(".n-radio-button").filter({ hasText: "进取" }).click();
+  const aggressiveTab = page.locator('.n-tabs-tab[data-name="aggressive"]');
+  await aggressiveTab.click();
   await expect(page).toHaveURL(/profile=aggressive/);
-  await expect(
-    page.locator(".n-radio-button").filter({ hasText: "进取" }).locator("input"),
-  ).toBeChecked();
+  await expect(aggressiveTab).toHaveClass(/n-tabs-tab--active/);
 
   const firstCard = page.locator(".top-card").first();
   await expect(firstCard).toContainText("宁德时代");
@@ -31,9 +30,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
 test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await page.goto("/?profile=balanced");
 
-  await expect(
-    page.locator(".n-radio-button").filter({ hasText: "均衡" }).locator("input"),
-  ).toBeChecked();
+  await expect(page.locator('.n-tabs-tab[data-name="balanced"]')).toHaveClass(
+    /n-tabs-tab--active/,
+  );
   await expect(page.locator(".status-card")).toBeVisible();
   await expect(page.locator(".top-card").first()).toBeVisible();
   await expect(page.locator(".etf-table")).toBeVisible();
@@ -51,7 +50,7 @@ test("risk profile controls do not overlap the freshness bar", async ({ page }) 
   await page.setViewportSize({ width: 960, height: 720 });
   await page.goto("/?profile=conservative");
 
-  const profileBox = await page.locator(".n-radio-group").boundingBox();
+  const profileBox = await page.locator(".n-tabs").boundingBox();
   const freshnessBox = await page.locator(".status-card").boundingBox();
   expect(profileBox).not.toBeNull();
   expect(freshnessBox).not.toBeNull();

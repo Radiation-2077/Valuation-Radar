@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NRadioButton, NRadioGroup } from "naive-ui";
+import { NTabPane, NTabs } from "naive-ui";
 
 import type { ProfileCode } from "@/api/types";
 
@@ -19,13 +19,19 @@ const profiles: Array<{ code: ProfileCode; label: string }> = [
 </script>
 
 <template>
-  <NRadioGroup
+  <NTabs
+    type="line"
+    animated
     :value="modelValue"
-    name="risk-profile"
-    @update:value="(value: ProfileCode) => emit('update:modelValue', value)"
+    @update:value="(value: string) => emit('update:modelValue', value as ProfileCode)"
   >
-    <NRadioButton v-for="profile in profiles" :key="profile.code" :value="profile.code">
-      {{ profile.label }}
-    </NRadioButton>
-  </NRadioGroup>
+    <NTabPane
+      v-for="profile in profiles"
+      :key="profile.code"
+      :name="profile.code"
+      :tab="profile.label"
+    >
+      <template #tab>{{ profile.label }}</template>
+    </NTabPane>
+  </NTabs>
 </template>
