@@ -197,7 +197,7 @@ function rowProps(row: RankingItem) {
 
 <template>
   <NSpace vertical :size="24">
-    <NGrid responsive="screen" cols="1 m:2" align-items="end">
+    <NGrid responsive="screen" class="dashboard-hero" cols="1 m:2" align-items="end">
       <NGridItem>
         <NSpace vertical :size="10">
           <NTag :bordered="false">DECISION SYSTEM / LIVE RANK</NTag>
@@ -212,7 +212,7 @@ function rowProps(row: RankingItem) {
       </NGridItem>
     </NGrid>
 
-    <NSpace align="center" justify="space-between" :wrap="true" :size="16">
+    <NSpace class="toolbar" align="center" justify="space-between" :wrap="true" :size="16">
       <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
       <NButton tertiary @click="clearFilters">清除筛选</NButton>
     </NSpace>
@@ -232,7 +232,7 @@ function rowProps(row: RankingItem) {
       />
 
       <NSpace vertical :size="16">
-        <NSpace align="center" justify="space-between" :wrap="true">
+        <NSpace class="section-heading" align="center" justify="space-between" :wrap="true">
           <NH2>当前最值得看的三条</NH2>
           <NTag :bordered="false">
             {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
@@ -247,7 +247,7 @@ function rowProps(row: RankingItem) {
 
       <NGrid responsive="screen" cols="1 m:3" :x-gap="16" :y-gap="16">
         <NGridItem span="1 m:2">
-          <NCard>
+          <NCard class="chart-card">
             <NSpace vertical :size="16">
               <NSpace align="center" justify="space-between">
                 <NH2>性价比象限</NH2>
@@ -262,7 +262,7 @@ function rowProps(row: RankingItem) {
         </NGridItem>
 
         <NGridItem>
-          <NCard>
+          <NCard class="filter-card">
             <NSpace vertical :size="12">
               <NH2>筛选池子</NH2>
               <NFormItem label="市场" :show-feedback="false">
@@ -287,7 +287,7 @@ function rowProps(row: RankingItem) {
         </NGridItem>
       </NGrid>
 
-      <NCard>
+      <NCard class="ranking-card">
         <NSpace vertical :size="16">
           <NSpace align="center" justify="space-between">
             <NH2>完整性价比排名</NH2>
@@ -348,8 +348,8 @@ function rowProps(row: RankingItem) {
 
     <NDrawer
       v-model:show="detailOpen"
+      class="detail-drawer"
       placement="right"
-      width="min(1120px, 94vw)"
       :trap-focus="true"
       @after-leave="selectedValuationId = null"
     >

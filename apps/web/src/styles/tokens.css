@@ -1,0 +1,40 @@
+:root {
+  color-scheme: dark;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --ui-bg: #07131f;
+  --ui-surface: rgba(13, 32, 48, 0.84);
+  --ui-line: rgba(158, 190, 210, 0.16);
+  --ui-muted: #8296a5;
+  --ui-accent: #57d6b1;
+  --ui-warm: #e8b86d;
+  --ui-red: #ee8c78;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+  --shadow-card: 0 22px 70px rgba(0, 0, 0, 0.18);
+  --content-width: 1380px;
+  --space-page: 24px;
+  --space-section: 28px;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 82% 4%, rgba(87, 214, 177, 0.09), transparent 28rem),
+    radial-gradient(circle at 4% 46%, rgba(128, 199, 255, 0.05), transparent 32rem),
+    var(--ui-bg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

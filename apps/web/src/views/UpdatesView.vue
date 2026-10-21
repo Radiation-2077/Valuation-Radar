@@ -233,7 +233,7 @@ function openMarket(id: number) {
 
 <template>
   <div class="updates-view">
-    <NGrid responsive="screen" cols="1 m:2" align-items="end">
+    <NGrid responsive="screen" class="updates-hero" cols="1 m:2" align-items="end">
       <NGridItem>
         <NSpace vertical :size="10">
           <NTag :bordered="false">DATA OPERATIONS / 02</NTag>

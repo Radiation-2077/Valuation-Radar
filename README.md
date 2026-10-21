@@ -20,6 +20,8 @@
 
 架构细节见 [docs/architecture.md](docs/architecture.md)，完整阶段计划见 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)。
 
+视觉样式统一由 `apps/web/src/theme.ts` 和 `apps/web/src/styles/` 管理：主题 token、页面布局和少量品牌组件样式分别集中，不在页面组件中散落自定义视觉规则。
+
 ## 首次启动
 
 前置要求：Python 3.12、Node.js、pnpm、已登录的 Codex CLI。

@@ -2,6 +2,7 @@
 import {
   NConfigProvider,
   NDialogProvider,
+  NIcon,
   NLayout,
   NLayoutContent,
   NLayoutHeader,
@@ -13,29 +14,48 @@ import {
   dateZhCN,
   zhCN,
 } from "naive-ui";
-import { computed } from "vue";
+import { AnalyticsOutline, PulseOutline, SyncOutline } from "@vicons/ionicons5";
+import { computed, h } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+
+import { themeOverrides } from "@/theme";
 
 const route = useRoute();
 const router = useRouter();
 const menuOptions = [
-  { label: "性价比排名", key: "/" },
-  { label: "更新中心", key: "/updates" },
+  {
+    label: "性价比排名",
+    key: "/",
+    icon: () => h(NIcon, null, { default: () => h(AnalyticsOutline) }),
+  },
+  {
+    label: "更新中心",
+    key: "/updates",
+    icon: () => h(NIcon, null, { default: () => h(SyncOutline) }),
+  },
 ];
 const activeMenu = computed(() => (route.path === "/updates" ? "/updates" : "/"));
 </script>
 
 <template>
-  <NConfigProvider :theme="darkTheme" :locale="zhCN" :date-locale="dateZhCN">
+  <NConfigProvider
+    :theme="darkTheme"
+    :theme-overrides="themeOverrides"
+    :locale="zhCN"
+    :date-locale="dateZhCN"
+  >
     <NDialogProvider>
       <NMessageProvider>
         <NLayout class="app-layout">
           <NLayoutHeader bordered>
             <div class="header-layout">
               <RouterLink to="/">
-                <NSpace align="center">
-                  <NTag type="success" :bordered="false">估</NTag>
-                  <strong>估值雷达</strong>
+                <NSpace align="center" class="brand">
+                  <span class="brand-mark">估</span>
+                  <span class="brand-copy">
+                    <strong>估值雷达</strong>
+                    <small>VALUATION RADAR</small>
+                  </span>
                 </NSpace>
               </RouterLink>
               <div class="header-menu">
@@ -46,7 +66,10 @@ const activeMenu = computed(() => (route.path === "/updates" ? "/updates" : "/")
                   @update:value="(key: string) => router.push(key)"
                 />
               </div>
-              <NTag type="success" :bordered="false">LOCAL DATA</NTag>
+              <NTag type="success" :bordered="false" class="header-status">
+                <NIcon :component="PulseOutline" />
+                LOCAL DATA
+              </NTag>
             </div>
           </NLayoutHeader>
           <NLayoutContent>

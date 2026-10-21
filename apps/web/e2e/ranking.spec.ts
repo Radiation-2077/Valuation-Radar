@@ -33,7 +33,7 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(
     page.locator(".n-radio-button").filter({ hasText: "均衡" }).locator("input"),
   ).toBeChecked();
-  await expect(page.locator(".freshness-bar")).toBeVisible();
+  await expect(page.locator(".status-card")).toBeVisible();
   await expect(page.locator(".top-card").first()).toBeVisible();
 
   await page.locator(".top-card").first().click();
@@ -48,7 +48,7 @@ test("risk profile controls do not overlap the freshness bar", async ({ page }) 
   await page.goto("/?profile=conservative");
 
   const profileBox = await page.locator(".n-radio-group").boundingBox();
-  const freshnessBox = await page.locator(".freshness-bar").boundingBox();
+  const freshnessBox = await page.locator(".status-card").boundingBox();
   expect(profileBox).not.toBeNull();
   expect(freshnessBox).not.toBeNull();
   expect(profileBox!.y + profileBox!.height).toBeLessThan(freshnessBox!.y);

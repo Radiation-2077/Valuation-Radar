@@ -1,0 +1,217 @@
+.brand {
+  min-width: max-content;
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(87, 214, 177, 0.5);
+  border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-xs);
+  color: var(--ui-accent);
+  font-weight: 700;
+}
+
+.brand-copy strong,
+.brand-copy small {
+  display: block;
+}
+
+.brand-copy small {
+  color: var(--ui-muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+}
+
+.header-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+}
+
+.dashboard-hero .n-tag {
+  width: max-content;
+  letter-spacing: 0.12em;
+}
+
+.dashboard-hero .n-h1 {
+  max-width: 860px;
+}
+
+.n-card {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.top-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 310px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(18, 43, 61, 0.9), rgba(9, 25, 37, 0.82));
+}
+
+.top-card::after {
+  position: absolute;
+  right: -92px;
+  bottom: -112px;
+  width: 220px;
+  height: 220px;
+  border: 1px solid rgba(87, 214, 177, 0.12);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.top-rank {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  color: rgba(255, 255, 255, 0.05);
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 78px;
+  line-height: 1;
+}
+
+.top-card-heading {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.top-card-heading h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.top-card-heading p {
+  margin: 4px 0 0;
+}
+
+.top-score {
+  color: var(--ui-accent);
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 2.35rem;
+  font-weight: 500;
+}
+
+.top-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--ui-line);
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.top-thesis {
+  min-height: 4.8em;
+  margin: 0 0 16px;
+  line-height: 1.65;
+}
+
+.status-card,
+.chart-card,
+.filter-card,
+.ranking-card {
+  border: 1px solid var(--ui-line);
+}
+
+.score-row,
+.return-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-row > :last-child,
+.return-row > :last-child {
+  text-align: right;
+}
+
+.detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.detail-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.detail-title .n-h1 {
+  margin: 0;
+}
+
+.detail-thesis {
+  max-width: 760px;
+  line-height: 1.75;
+}
+
+.verdict-panel {
+  border: 1px solid var(--ui-line);
+}
+
+.verdict-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.revalue-button {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.quality-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.buy-points {
+  margin: 16px 0;
+  line-height: 1.7;
+}
+
+.same-company-button {
+  margin-bottom: 8px;
+}
+
+.ops-status-grid > .n-grid-item > .n-card {
+  height: 100%;
+}
+
+@media (max-width: 960px) {
+  .detail-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .top-card {
+    min-height: 0;
+  }
+
+  .score-row,
+  .return-row {
+    grid-template-columns: 72px minmax(0, 1fr) 54px;
+  }
+}

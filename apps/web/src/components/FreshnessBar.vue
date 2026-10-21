@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <NCard class="freshness-bar" :bordered="false" size="small">
+  <NCard class="status-card" :bordered="false" size="small">
     <NGrid responsive="screen" cols="1 s:2 m:3 l:5" :x-gap="20" :y-gap="12">
       <NGridItem>
         <NStatistic label="排名计算" :value="formatDateTime(freshness.ranking_as_of)" />
