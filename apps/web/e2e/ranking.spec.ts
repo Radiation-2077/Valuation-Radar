@@ -101,6 +101,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(
     qualityCard.locator(".table-shell").first().locator("tbody .n-ellipsis").first(),
   ).toHaveCSS("-webkit-line-clamp", "1");
+  await expect(
+    page.locator(".table-shell").filter({ hasText: "对应溢价" }).locator(".n-ellipsis"),
+  ).toHaveCount(0);
   const scoreTableAlignment = await qualityCard.evaluate((card) => {
     const scoreRows = [...card.querySelectorAll(".score-row")];
     const bodyRows = [...card.querySelectorAll("tbody tr")];

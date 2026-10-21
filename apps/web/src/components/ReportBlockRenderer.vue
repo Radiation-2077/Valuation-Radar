@@ -146,7 +146,10 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
         <NTbody>
           <NTr v-for="(row, rowIndex) in tableRows(block)" :key="rowIndex">
             <NTd v-for="(cell, cellIndex) in row" :key="cellIndex">
-              <NEllipsis :line-clamp="1" tooltip>{{ cell }}</NEllipsis>
+              <NEllipsis v-if="alignScoresWithTable" :line-clamp="1" tooltip>
+                {{ cell }}
+              </NEllipsis>
+              <template v-else>{{ cell }}</template>
             </NTd>
           </NTr>
         </NTbody>
