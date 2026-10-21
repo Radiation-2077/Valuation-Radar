@@ -34,6 +34,7 @@ import {
   objectText,
   tableHeaders,
   tableRows,
+  cleanReportNarrative,
 } from "@/lib/report-detail";
 
 defineOptions({ name: "ReportBlockRenderer" });
@@ -119,7 +120,7 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
       :depth="block.note ? 3 : 2"
       style="white-space: pre-line; line-height: 1.8"
     >
-      {{ blockText(block) }}
+      {{ cleanReportNarrative(blockText(block)) }}
     </NText>
 
     <NAlert
@@ -257,6 +258,13 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
       :pin-left="blockNumber(block, 'pin_left')"
       :pin-label="blockText(block, 'pin_label')"
       :axis="(block.axis as string[] | undefined) ?? []"
+      :scenarios="
+        blockObjects(block, 'scenarios').map((item) => ({
+          label: itemString(item, 'label'),
+          highlight: itemBoolean(item, 'highlight'),
+        }))
+      "
+      :explanation="blockText(block, 'scenario_explanation')"
     />
 
     <ReturnStackChart

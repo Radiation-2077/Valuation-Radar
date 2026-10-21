@@ -329,6 +329,13 @@
   height: 150px;
 }
 
+.range-position-explanation {
+  display: block;
+  margin-top: 8px;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
 .detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);

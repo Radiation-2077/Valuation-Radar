@@ -9,6 +9,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   classifyPricePosition,
   pricePositionColor,
+  scenarioMarkerColor,
   type PricePosition,
 } from "@/lib/range-position";
 
@@ -18,6 +19,8 @@ const props = defineProps<{
   pinLeft: number;
   pinLabel: string;
   axis: string[];
+  scenarios?: Array<{ label: string; highlight?: boolean }>;
+  explanation?: string;
 }>();
 
 use([BarChart, GridComponent, MarkLineComponent, CanvasRenderer]);
@@ -71,6 +74,36 @@ const formatPrice = (value: number) =>
   }).format(value)}`;
 const rangeLabel = computed(
   () => `${formatPrice(axisBounds.value.low)}–${formatPrice(axisBounds.value.high).replace(axisSymbol.value, "")}`,
+);
+const scenarioLabels = ["保守", "中性", "乐观"];
+const scenarioMarkers = computed(() =>
+  (props.scenarios ?? [])
+    .map((scenario, index) => {
+      const value = Number.parseFloat(scenario.label.replace(/[^\d.-]/g, ""));
+      if (!Number.isFinite(value)) return null;
+      const color = scenarioMarkerColor(index);
+      return {
+        xAxis: value,
+        symbol: ["none", "none"],
+        label: {
+          show: true,
+          formatter: `${scenarioLabels[index] ?? `情景${index + 1}`} ${scenario.label}`,
+          color,
+          fontWeight: scenario.highlight ? 600 : 400,
+          backgroundColor: "rgba(7,19,31,.92)",
+          borderColor: color,
+          borderWidth: 1,
+          borderRadius: 4,
+          padding: [3, 6],
+        },
+        lineStyle: {
+          color,
+          width: 1,
+          type: "dashed",
+        },
+      };
+    })
+    .filter((marker): marker is NonNullable<typeof marker> => marker !== null),
 );
 
 function render() {
@@ -145,7 +178,10 @@ function render() {
             width: 2,
             type: "dashed",
           },
-          data: [{ xAxis: axisBounds.value.current }],
+          data: [
+            ...scenarioMarkers.value,
+            { xAxis: axisBounds.value.current },
+          ],
         },
         barWidth: 14,
       },
@@ -168,7 +204,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="range-position-chart" :data-position="position">
+  <div
+    class="range-position-chart"
+    :data-position="position"
+    :data-scenarios="scenarios?.map((scenario) => scenario.label).join('|')"
+  >
     <NSpace class="range-position-meta" align="center" justify="space-between" :size="8">
       <NSpace align="center" :size="6">
         <NText depth="3">合理区间</NText>
@@ -184,5 +224,8 @@ onBeforeUnmount(() => {
       </NTag>
     </NSpace>
     <div ref="element" class="range-position-canvas" />
+    <NText v-if="explanation" class="range-position-explanation" depth="2">
+      {{ explanation }}
+    </NText>
   </div>
 </template>

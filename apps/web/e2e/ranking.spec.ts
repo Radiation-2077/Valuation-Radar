@@ -146,6 +146,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   const rangePositionChart = page.locator(".n-drawer .range-position-chart").last();
   await expect(rangePositionChart).toContainText("合理区间");
   await expect(rangePositionChart.locator(".range-position-status")).toContainText("现价");
+  await expect(rangePositionChart).toContainText("正常化 EPS");
+  expect(await rangePositionChart.getAttribute("data-scenarios")).toContain("¥320");
+  await expect(page.getByRole("heading", { name: /估值情景对比/ })).toHaveCount(0);
   expect(await rangePositionChart.getAttribute("data-position")).toMatch(/^(low|fair|high)$/);
   await expect(page.getByRole("heading", { name: /A 股估值/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /H 股估值/ })).toHaveCount(0);

@@ -19,6 +19,52 @@ export function parseConicGradient(background: string): ConicGradientSegment[] {
   return segments;
 }
 
+export function cleanReportNarrative(text: string): string {
+  return text.replace(/^只放\s*[AH]\s*股数据[，,。]\s*/, "");
+}
+
+export function mergeScenarioIntoRange(
+  blocks: ReportDetailBlock[],
+): ReportDetailBlock[] {
+  const rangeIndex = blocks.findIndex((block) => block.type === "range_bar");
+  const scenarioIndex = blocks.findIndex((block) => block.type === "scenario_bars");
+  if (rangeIndex < 0 || scenarioIndex < 0) return blocks;
+
+  const scenario = blocks[scenarioIndex];
+  const explanationIndex =
+    blocks[scenarioIndex + 1]?.type === "paragraph" ? scenarioIndex + 1 : -1;
+  const rangeExplanationIndex =
+    blocks[rangeIndex + 1]?.type === "paragraph" ? rangeIndex + 1 : -1;
+  const headingIndex =
+    blocks[scenarioIndex - 1]?.type === "heading" &&
+    blockText(blocks[scenarioIndex - 1]).includes("情景对比")
+      ? scenarioIndex - 1
+      : -1;
+  const removed = new Set([
+    scenarioIndex,
+    explanationIndex,
+    rangeExplanationIndex,
+    headingIndex,
+  ]);
+
+  return blocks.flatMap((block, index) => {
+    if (index === rangeIndex) {
+      return [
+        {
+          ...block,
+          scenarios: blockObjects(scenario, "items"),
+          scenario_explanation: [explanationIndex, rangeExplanationIndex]
+            .filter((index) => index >= 0)
+            .map((index) => cleanReportNarrative(blockText(blocks[index])))
+            .filter(Boolean)
+            .join("\n"),
+        },
+      ];
+    }
+    return removed.has(index) ? [] : [block];
+  });
+}
+
 export function visibleReportSections(
   sections: ReportDetailSection[],
   market: string,
@@ -31,11 +77,12 @@ export function visibleReportSections(
     })
     .map((section) => {
       const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
+      const mergedBlocks = mergeScenarioIntoRange(visibleBlocks);
       return {
         ...section,
         blocks: section.title.includes("决策仪表盘")
-          ? visibleBlocks.filter((block) => block.type === "gauges")
-          : visibleBlocks,
+          ? mergedBlocks.filter((block) => block.type === "gauges")
+          : mergedBlocks,
       };
     })
     .filter((section) => section.blocks.length > 0);
