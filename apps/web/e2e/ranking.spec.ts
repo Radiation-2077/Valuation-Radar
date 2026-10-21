@@ -23,12 +23,13 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".top-thesis").first()).toHaveCSS("-webkit-line-clamp", "4");
   await expect(page.getByRole("table").first()).toBeVisible();
 
-  const aggressiveTab = page.locator('.n-tabs-tab[data-name="aggressive"]');
-  await aggressiveTab.click();
+  const aggressiveButton = page.getByRole("button", { name: "进取", exact: true });
+  await expect(page.locator(".profile-switcher").getByRole("button")).toHaveCount(3);
+  await aggressiveButton.click();
   await page.waitForSelector(".profile-slide-left-enter-active");
   await expect(page.locator(".n-spin")).toHaveCount(0);
   await expect(page).toHaveURL(/profile=aggressive/);
-  await expect(aggressiveTab).toHaveClass(/n-tabs-tab--active/);
+  await expect(aggressiveButton).toHaveAttribute("aria-pressed", "true");
 
   const firstCard = page.locator(".top-card").first();
   await expect(firstCard).toContainText("宁德时代");
@@ -54,9 +55,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
 test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await page.goto("/?profile=balanced");
 
-  await expect(page.locator('.n-tabs-tab[data-name="balanced"]')).toHaveClass(
-    /n-tabs-tab--active/,
-  );
+  await expect(
+    page.getByRole("button", { name: "均衡", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".status-card")).toHaveCount(0);
   await expect(page.locator(".top-card").first()).toBeVisible();
   await expect(page.locator(".etf-table")).toBeVisible();
@@ -75,7 +76,7 @@ test("risk profile controls do not overlap the top three container", async ({ pa
   await page.goto("/?profile=conservative");
   await page.waitForSelector(".top3-card");
 
-  const profileBox = await page.locator(".n-tabs").boundingBox();
+  const profileBox = await page.locator(".profile-switcher").boundingBox();
   const topThreeBox = await page.locator(".top3-card").boundingBox();
   expect(profileBox).not.toBeNull();
   expect(topThreeBox).not.toBeNull();
@@ -89,17 +90,20 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   const analysisCard = page.locator(".analysis-card");
   const staleTag = await page.locator(".dashboard-stale-tag").boundingBox();
   const titleBox = await page.locator(".dashboard-title").boundingBox();
-  const tabsBox = await page.locator(".n-tabs").boundingBox();
   const toolbarBox = await page.locator(".toolbar").boundingBox();
   const topThreeBox = await page.locator(".top3-card").boundingBox();
   expect(staleTag).not.toBeNull();
   expect(titleBox).not.toBeNull();
-  expect(tabsBox).not.toBeNull();
   expect(toolbarBox).not.toBeNull();
   expect(topThreeBox).not.toBeNull();
   expect(titleBox!.y - (staleTag!.y + staleTag!.height)).toBeCloseTo(8, 0);
-  expect(tabsBox!.y - (titleBox!.y + titleBox!.height)).toBeCloseTo(4, 0);
+  expect(toolbarBox!.y - (titleBox!.y + titleBox!.height)).toBeCloseTo(4, 0);
   expect(topThreeBox!.y - (toolbarBox!.y + toolbarBox!.height)).toBeCloseTo(12, 0);
+  const profileSwitcherBox = await page.locator(".profile-switcher").boundingBox();
+  const filterButtonBox = await page.getByRole("button", { name: "筛选" }).boundingBox();
+  expect(profileSwitcherBox).not.toBeNull();
+  expect(filterButtonBox).not.toBeNull();
+  expect(profileSwitcherBox!.height).toBeCloseTo(filterButtonBox!.height, 0);
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();

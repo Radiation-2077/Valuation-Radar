@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NTabPane, NTabs } from "naive-ui";
+import { NButton, NButtonGroup } from "naive-ui";
 
 import type { ProfileCode } from "@/api/types";
 
@@ -19,19 +19,21 @@ const profiles: Array<{ code: ProfileCode; label: string }> = [
 </script>
 
 <template>
-  <NTabs
-    type="line"
-    animated
-    :value="modelValue"
-    @update:value="(value: string) => emit('update:modelValue', value as ProfileCode)"
+  <NButtonGroup
+    class="profile-switcher"
+    size="medium"
+    role="group"
+    aria-label="风险偏好"
   >
-    <NTabPane
+    <NButton
       v-for="profile in profiles"
       :key="profile.code"
-      :name="profile.code"
-      :tab="profile.label"
+      :type="modelValue === profile.code ? 'primary' : 'default'"
+      :secondary="modelValue !== profile.code"
+      :aria-pressed="modelValue === profile.code"
+      @click="emit('update:modelValue', profile.code)"
     >
-      <template #tab>{{ profile.label }}</template>
-    </NTabPane>
-  </NTabs>
+      {{ profile.label }}
+    </NButton>
+  </NButtonGroup>
 </template>

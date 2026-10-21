@@ -28,7 +28,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import { fetchRanking } from "@/api/client";
 import type { ProfileCode, RankingItem, RankingResponse } from "@/api/types";
-import ProfileTabs from "@/components/ProfileTabs.vue";
+import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
 import RankingScatter from "@/components/RankingScatter.vue";
 import TopPickCard from "@/components/TopPickCard.vue";
 import ValuationDetailPanel from "@/components/ValuationDetailPanel.vue";
@@ -353,68 +353,65 @@ function rowProps(row: RankingItem) {
       <NH1 class="dashboard-title">风险调整后的性价比</NH1>
     </NSpace>
 
-    <NSpace class="toolbar" vertical :size="12">
-      <NSpace align="center" justify="space-between" :wrap="true" :size="16">
-        <ProfileTabs :model-value="profile" @update:model-value="selectProfile" />
-        <NSpace align="center" :size="8">
-          <NPopover
-            v-model:show="filtersOpen"
-            trigger="click"
-            placement="bottom-end"
-            :width="420"
+    <NSpace class="toolbar" align="center" justify="end" :wrap="true" :size="8">
+      <ProfileSwitcher :model-value="profile" @update:model-value="selectProfile" />
+      <NPopover
+        v-model:show="filtersOpen"
+        trigger="click"
+        placement="bottom-end"
+        :width="420"
+      >
+        <template #trigger>
+          <NButton
+            size="medium"
+            secondary
+            :aria-expanded="filtersOpen"
           >
-            <template #trigger>
-              <NButton
-                secondary
-                :aria-expanded="filtersOpen"
-              >
-                <template #icon>
-                  <NIcon :component="FunnelOutline" />
-                </template>
-                筛选
-                <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
-                  {{ activeFilterCount }}
-                </NTag>
-              </NButton>
+            <template #icon>
+              <NIcon :component="FunnelOutline" />
             </template>
-            <NSpace class="filter-popover" vertical :size="12">
-              <NFormItem label="市场" :show-feedback="false">
-                <NSelect
-                  v-model:value="market"
-                  :options="marketOptions"
-                  clearable
-                  placeholder="全部市场"
-                />
-              </NFormItem>
-              <NFormItem label="估值路径" :show-feedback="false">
-                <NSelect
-                  v-model:value="path"
-                  :options="pathOptions"
-                  clearable
-                  placeholder="全部路径"
-                />
-              </NFormItem>
-              <NFormItem label="行业" :show-feedback="false">
-                <NSelect
-                  v-model:value="industry"
-                  :options="industryOptions"
-                  clearable
-                  filterable
-                  placeholder="全部行业"
-                />
-              </NFormItem>
-              <NButton
-                v-if="activeFilterCount"
-                block
-                tertiary
-                @click="clearFilters"
-              >
-                清除筛选
-              </NButton>
-            </NSpace>
-          </NPopover>
+            筛选
+            <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
+              {{ activeFilterCount }}
+            </NTag>
+          </NButton>
+        </template>
+        <NSpace class="filter-popover" vertical :size="12">
+          <NFormItem label="市场" :show-feedback="false">
+            <NSelect
+              v-model:value="market"
+              :options="marketOptions"
+              clearable
+              placeholder="全部市场"
+            />
+          </NFormItem>
+          <NFormItem label="估值路径" :show-feedback="false">
+            <NSelect
+              v-model:value="path"
+              :options="pathOptions"
+              clearable
+              placeholder="全部路径"
+            />
+          </NFormItem>
+          <NFormItem label="行业" :show-feedback="false">
+            <NSelect
+              v-model:value="industry"
+              :options="industryOptions"
+              clearable
+              filterable
+              placeholder="全部行业"
+            />
+          </NFormItem>
+          <NButton
+            v-if="activeFilterCount"
+            block
+            tertiary
+            @click="clearFilters"
+          >
+            清除筛选
+          </NButton>
         </NSpace>
-      </NSpace>
+      </NPopover>
     </NSpace>
 
     <NSpin v-if="query.isPending.value" size="large" />
