@@ -110,6 +110,7 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     });
   });
   expect(scoreTableAlignment).toHaveLength(5);
+  await expect(qualityCard.locator(".table-shell").first().locator("thead")).toHaveCount(0);
   if (page.viewportSize()!.width > 720) {
     for (const difference of scoreTableAlignment) expect(difference).toBeLessThanOrEqual(1);
   }

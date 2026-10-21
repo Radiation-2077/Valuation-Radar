@@ -361,7 +361,7 @@
   .score-list--table-aligned {
     --score-row-height: 2.21rem;
     gap: 0 !important;
-    padding-top: calc(11px + var(--score-row-height));
+    padding-top: 11px;
   }
 
   .score-list--table-aligned .score-row {

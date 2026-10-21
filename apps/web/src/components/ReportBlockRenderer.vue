@@ -111,7 +111,7 @@ function gridPairsScoresWithTable(block: ReportDetailBlock): boolean {
 
     <div v-else-if="block.type === 'table'" class="table-shell">
       <NTable size="small" :bordered="false" :single-line="false">
-        <NThead v-if="tableHeaders(block).length">
+        <NThead v-if="tableHeaders(block).length && !alignScoresWithTable">
           <NTr>
             <NTh v-for="header in tableHeaders(block)" :key="header">{{ header }}</NTh>
           </NTr>
