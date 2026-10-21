@@ -10,10 +10,15 @@ export function visibleReportSections(
       if (section.title.includes("H 股估值") && market !== "H") return false;
       return true;
     })
-    .map((section) => ({
-      ...section,
-      blocks: filterMarketBlocks(section.title, section.blocks, market),
-    }))
+    .map((section) => {
+      const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
+      return {
+        ...section,
+        blocks: section.title.includes("决策仪表盘")
+          ? visibleBlocks.filter((block) => block.type === "gauges")
+          : visibleBlocks,
+      };
+    })
     .filter((section) => section.blocks.length > 0);
 }
 

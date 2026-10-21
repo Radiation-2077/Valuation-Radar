@@ -53,6 +53,15 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .locator(".n-statistic-value__content");
   await expect(fairRangeValue).toHaveText("¥320–400");
   expect((await fairRangeValue.boundingBox())!.height).toBeLessThan(40);
+  const decisionDashboard = page.locator(".n-card").filter({
+    has: page.getByRole("heading", { name: "决策仪表盘", exact: true }),
+  });
+  await expect(decisionDashboard.locator(".metric-gauge")).toHaveCount(4);
+  await expect(decisionDashboard.getByText("A 股与 H 股分开评估")).toHaveCount(0);
+  await expect(
+    decisionDashboard.getByRole("heading", { name: "A 股 300750.SZ", exact: true }),
+  ).toHaveCount(0);
+  await expect(decisionDashboard.getByText(/较 ¥360 中枢折价/)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "决策仪表盘" })).toBeVisible();
   await expect(page.getByRole("heading", { name: /一、标的质地/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /二、产业周期定位/ })).toBeVisible();

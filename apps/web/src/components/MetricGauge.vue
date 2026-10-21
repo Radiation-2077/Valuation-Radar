@@ -3,7 +3,6 @@ import { GaugeChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
 import { init, use, type ECharts } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { NText } from "naive-ui";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 use([GaugeChart, TooltipComponent, CanvasRenderer]);
@@ -82,8 +81,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div style="display: grid; gap: 4px; justify-items: center">
-    <div ref="element" style="width: 100%; height: 150px" />
-    <NText depth="3">{{ label }}</NText>
-  </div>
+  <div
+    ref="element"
+    class="metric-gauge"
+    role="img"
+    :aria-label="`${label} ${displayValue}`"
+    style="width: 100%; height: 150px"
+  />
 </template>
