@@ -31,13 +31,8 @@
   border-radius: var(--radius-pill);
 }
 
-.dashboard-hero .n-tag {
-  width: max-content;
-  letter-spacing: 0.12em;
-}
-
-.dashboard-hero .n-h1 {
-  max-width: 860px;
+.dashboard-title {
+  margin: 0;
 }
 
 .n-card {

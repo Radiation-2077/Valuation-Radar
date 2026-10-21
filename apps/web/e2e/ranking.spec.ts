@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "把估值结论，压缩成可执行的排序。" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "风险调整后的性价比" })).toBeVisible();
+  await expect(page.getByText("DECISION SYSTEM / LIVE RANK")).toHaveCount(0);
+  await expect(page.getByText("把估值结论，压缩成可执行的排序。")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "性价比Top3" })).toBeVisible();
   await expect(page.locator(".top-card")).toHaveCount(3);
   await expect(page.getByRole("table").first()).toBeVisible();

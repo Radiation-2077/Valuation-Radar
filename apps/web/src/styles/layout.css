@@ -37,11 +37,6 @@
   padding: var(--space-section) var(--space-page) 64px;
 }
 
-.dashboard-hero {
-  align-items: end;
-  padding: 36px 0 12px;
-}
-
 .updates-hero {
   align-items: end;
   padding: 36px 0 12px;

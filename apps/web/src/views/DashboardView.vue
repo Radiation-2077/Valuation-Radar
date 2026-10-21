@@ -14,7 +14,6 @@ import {
   NH1,
   NH2,
   NIcon,
-  NP,
   NPopover,
   NSelect,
   NSpace,
@@ -314,20 +313,7 @@ function rowProps(row: RankingItem) {
 
 <template>
   <NSpace vertical class="dashboard-stack" :size="24">
-    <NGrid responsive="screen" class="dashboard-hero" cols="1 m:2" align-items="end">
-      <NGridItem>
-        <NSpace vertical :size="10">
-          <NTag :bordered="false">DECISION SYSTEM / LIVE RANK</NTag>
-          <NH1>把估值结论，压缩成可执行的排序。</NH1>
-          <NP depth="3">
-            同一把尺子比较安全边际、基础收益、抗跌性与稳定性。价格变化不会改写历史估值，只会改变它今天的位置。
-          </NP>
-        </NSpace>
-      </NGridItem>
-      <NGridItem>
-        <NText depth="3">风险调整后的性价比</NText>
-      </NGridItem>
-    </NGrid>
+    <NH1 class="dashboard-title">风险调整后的性价比</NH1>
 
     <NSpace class="toolbar" vertical :size="12">
       <NSpace align="center" justify="space-between" :wrap="true" :size="16">
