@@ -372,6 +372,7 @@ def _validate_presentation(card: dict[str, Any], label: str) -> None:
             f"{label} schema 1.1 必须且只能包含一个 quality_scorecard"
         )
     _validate_quality_scorecard(quality_cards[0], label)
+    _validate_ah_sections(card, sections, label)
 
 
 def _validate_quality_scorecard(block: dict[str, Any], label: str) -> None:
@@ -404,6 +405,74 @@ def _validate_quality_scorecard(block: dict[str, Any], label: str) -> None:
         ):
             raise CardValidationError(
                 f"{label} quality_scorecard 维度 {dimension.get('key')} 分数越界"
+            )
+
+
+def _validate_ah_sections(
+    card: dict[str, Any],
+    sections: list[Any],
+    label: str,
+) -> None:
+    market_names = {
+        str(market.get("market"))
+        for market in card.get("markets") or []
+        if isinstance(market, dict)
+    }
+    if not {"A", "H"}.issubset(market_names):
+        return
+    expected_markets = {
+        "dashboard-A": "A",
+        "dashboard-H": "H",
+        "quality": "common",
+        "cycle": "common",
+        "cross_market": "common",
+        "valuation-A": "A",
+        "valuation-H": "H",
+        "position-A": "A",
+        "position-H": "H",
+        "expected_return-A": "A",
+        "expected_return-H": "H",
+        "risks-A": "A",
+        "risks-H": "H",
+        "conclusion-A": "A",
+        "conclusion-H": "H",
+        "sources": "common",
+        "disclaimer": "common",
+    }
+    sections_by_id = {
+        str(section.get("id")): section
+        for section in sections
+        if isinstance(section, dict)
+    }
+    missing = sorted(set(expected_markets) - set(sections_by_id))
+    if missing:
+        raise CardValidationError(
+            f"{label} A+H presentation 缺少 section：{', '.join(missing)}"
+        )
+    for section_id, expected_market in expected_markets.items():
+        section = sections_by_id[section_id]
+        if section.get("market") != expected_market:
+            raise CardValidationError(
+                f"{label} {section_id}.market 必须为 {expected_market}"
+            )
+        if expected_market != "common":
+            for block in section.get("blocks") or []:
+                block_market = block.get("market") if isinstance(block, dict) else None
+                if block_market not in {None, expected_market}:
+                    raise CardValidationError(
+                        f"{label} {section_id} 混入 {block_market} 市场区块"
+                    )
+    forbidden_cross_market_blocks = {
+        "valuation_scenarios",
+        "range_position",
+        "position_tiers",
+        "return_stack",
+    }
+    cross_market = sections_by_id["cross_market"]
+    for block in cross_market.get("blocks") or []:
+        if isinstance(block, dict) and block.get("type") in forbidden_cross_market_blocks:
+            raise CardValidationError(
+                f"{label} cross_market 不得包含 {block['type']}，该章只比较溢价"
             )
 
 

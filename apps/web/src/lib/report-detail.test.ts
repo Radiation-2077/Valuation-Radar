@@ -6,7 +6,9 @@ import {
   cleanReportNarrative,
   flattenPositionLayout,
   mergeScenarioIntoRange,
+  normalizeQualityScorecard,
   parseConicGradient,
+  visibleReportSections,
 } from "./report-detail";
 
 describe("report detail helpers", () => {
@@ -96,5 +98,87 @@ describe("report detail helpers", () => {
 
     expect(columns).toHaveLength(1);
     expect(columns[0].map((block) => block.type)).toEqual(["table", "group"]);
+  });
+
+  it("normalizes the legacy quality grid into the shared scorecard", () => {
+    const blocks: ReportDetailBlock[] = [
+      {
+        type: "grid",
+        columns: [
+          [
+            {
+              type: "scores",
+              items: [
+                { label: "利润现金含量", score: "9.2", width: 92 },
+                { label: "资产负债表", score: "6.8", width: 68 },
+                { label: "ROE 水平", score: "8.6", width: 86 },
+                { label: "护城河强度", score: "8.2", width: 82 },
+                { label: "生存能力", score: "7.6", width: 76 },
+              ],
+            },
+          ],
+          [
+            {
+              type: "table",
+              headers: ["维度", "结果", "评价"],
+              rows: [
+                ["经营现金流 / 净利润", "2.7 倍", "真实"],
+                ["有息负债率", "13.4%", "安全"],
+                ["ROE（近 3 年均值）", "21.9%", "优秀"],
+                ["护城河", "成本优势", "强"],
+                ["危机年份", "均盈利", "通过"],
+              ],
+            },
+          ],
+        ],
+      },
+    ];
+
+    const normalized = normalizeQualityScorecard(blocks, "一、标的质地");
+    expect(normalized[0]).toMatchObject({
+      type: "quality_scorecard",
+      scale_max: 10,
+    });
+    expect(
+      (normalized[0].dimensions as Record<string, unknown>[]).map((item) => item.key),
+    ).toEqual([
+      "profit_cash_quality",
+      "balance_sheet",
+      "roe",
+      "moat",
+      "survival",
+    ]);
+  });
+
+  it("hides market-specific sections from the other market", () => {
+    const sections = [
+      {
+        id: "quality",
+        title: "一、标的质地",
+        market: "common",
+        blocks: [{ type: "paragraph", text: "共用结论" }],
+      },
+      {
+        id: "position-A",
+        title: "六、A 股仓位",
+        market: "A",
+        blocks: [{ type: "paragraph", text: "仅 A 股" }],
+      },
+      {
+        id: "position-H",
+        title: "六、H 股仓位",
+        market: "H",
+        blocks: [{ type: "paragraph", text: "仅 H 股" }],
+      },
+    ];
+
+    expect(visibleReportSections(sections, "A").map((section) => section.id)).toEqual([
+      "quality",
+      "position-A",
+    ]);
+    expect(visibleReportSections(sections, "H").map((section) => section.id)).toEqual([
+      "quality",
+      "position-H",
+    ]);
   });
 });

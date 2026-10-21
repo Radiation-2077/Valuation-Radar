@@ -98,28 +98,13 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
     .first()
     .evaluate((element) => getComputedStyle(element).borderBottomWidth);
   expect(reportTableBorderBottom).toBe("0px");
-  await expect(
-    qualityCard.locator(".table-shell").first().locator("tbody .n-ellipsis").first(),
-  ).toHaveCSS("-webkit-line-clamp", "1");
+  const qualityScorecard = qualityCard.locator(".table-shell").first();
+  await expect(qualityScorecard.locator("thead")).toHaveCount(0);
+  await expect(qualityScorecard.locator("tbody tr")).toHaveCount(5);
+  await expect(qualityCard.locator(".score-row")).toHaveCount(0);
   await expect(
     page.locator(".table-shell").filter({ hasText: "对应溢价" }).locator(".n-ellipsis"),
   ).toHaveCount(0);
-  const scoreTableAlignment = await qualityCard.evaluate((card) => {
-    const scoreRows = [...card.querySelectorAll(".score-row")];
-    const bodyRows = [...card.querySelectorAll("tbody tr")];
-    return scoreRows.map((row, index) => {
-      const scoreCenter = row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
-      const tableCenter =
-        bodyRows[index].getBoundingClientRect().top +
-        bodyRows[index].getBoundingClientRect().height / 2;
-      return Math.abs(scoreCenter - tableCenter);
-    });
-  });
-  expect(scoreTableAlignment).toHaveLength(5);
-  await expect(qualityCard.locator(".table-shell").first().locator("thead")).toHaveCount(0);
-  if (page.viewportSize()!.width > 720) {
-    for (const difference of scoreTableAlignment) expect(difference).toBeLessThanOrEqual(1);
-  }
   const cycleSignalGap = await page
     .locator(".detail-panel h3")
     .filter({ hasText: "周期位置信号" })

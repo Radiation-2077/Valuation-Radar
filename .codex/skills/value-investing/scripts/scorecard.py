@@ -160,7 +160,76 @@ def _validate_presentation(card: dict) -> tuple[list[str], list[str]]:
 
     if len(quality_cards) != 1:
         errs.append(f"presentation 必须且只能包含 1 个 quality_scorecard，实际 {len(quality_cards)}")
+    _validate_ah_sections(card, sections, errs)
     return errs, warn
+
+
+def _validate_ah_sections(card: dict, sections: list, errs: list[str]) -> None:
+    market_names = {
+        market.get("market")
+        for market in card.get("markets") or []
+        if isinstance(market, dict)
+    }
+    if not {"A", "H"}.issubset(market_names):
+        return
+    expected_markets = {
+        "dashboard-A": "A",
+        "dashboard-H": "H",
+        "quality": "common",
+        "cycle": "common",
+        "cross_market": "common",
+        "valuation-A": "A",
+        "valuation-H": "H",
+        "position-A": "A",
+        "position-H": "H",
+        "expected_return-A": "A",
+        "expected_return-H": "H",
+        "risks-A": "A",
+        "risks-H": "H",
+        "conclusion-A": "A",
+        "conclusion-H": "H",
+        "sources": "common",
+        "disclaimer": "common",
+    }
+    sections_by_id = {
+        section.get("id"): section
+        for section in sections
+        if isinstance(section, dict)
+    }
+    missing = sorted(set(expected_markets) - set(sections_by_id))
+    if missing:
+        errs.append(f"A+H presentation 缺少 section：{', '.join(missing)}")
+    for section_id, expected_market in expected_markets.items():
+        section = sections_by_id.get(section_id)
+        if not isinstance(section, dict):
+            continue
+        if section.get("market") != expected_market:
+            errs.append(f"{section_id}.market 必须为 {expected_market}")
+        if expected_market == "common":
+            continue
+        for block in section.get("blocks") or []:
+            block_market = block.get("market") if isinstance(block, dict) else None
+            if block_market not in {None, expected_market}:
+                errs.append(f"{section_id} 混入 {block_market} 市场区块")
+    allowed_common = {
+        "quality", "cycle", "cross_market", "sources", "disclaimer",
+    }
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        section_id = section.get("id")
+        if section.get("market") == "common" and section_id not in allowed_common:
+            errs.append(f"A+H 不允许 common 业务 section：{section_id}")
+    cross_market = sections_by_id.get("cross_market")
+    if isinstance(cross_market, dict):
+        forbidden = {
+            "valuation_scenarios", "range_position", "position_tiers", "return_stack",
+        }
+        for block in cross_market.get("blocks") or []:
+            if isinstance(block, dict) and block.get("type") in forbidden:
+                errs.append(
+                    f"cross_market 不得包含 {block.get('type')}，该章只比较溢价"
+                )
 
 
 def validate_file(path: Path) -> list[str]:

@@ -171,7 +171,9 @@ export interface ReportDetailBlock {
 }
 
 export interface ReportDetailSection {
+  id?: string;
   title: string;
+  market?: string;
   blocks: ReportDetailBlock[];
 }
 

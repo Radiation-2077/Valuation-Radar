@@ -126,6 +126,18 @@ def test_schema_1_1_rejects_missing_quality_scorecard() -> None:
         validate_card(card)
 
 
+@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
+def test_schema_1_1_ah_requires_split_market_sections() -> None:
+    card = json.loads(
+        (LEGACY_DATA_DIR / "中国平安_2026-10-13.json").read_text(encoding="utf-8")
+    )
+    card["schema_version"] = "1.1"
+    card["presentation"] = _quality_presentation()
+
+    with pytest.raises(CardValidationError, match="dashboard-A"):
+        validate_card(card)
+
+
 def _quality_presentation() -> dict:
     dimensions = [
         {

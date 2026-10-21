@@ -163,13 +163,25 @@ H 股以港元/美元定价，边际投资者（国际资金）用**美元无风
 
 ---
 
-## 八、A+H 估值必须分市场成章（不要混排）
+## 八、A+H section 必须彻底分市场
 
 只要标的有 H 股，估值部分就**必须拆成两章、分市场各做一遍**，不要在同一张表里混排两地数据：
 
 - 「四、A 股估值」：只放 A 股的指标、情景、合理区间；
 - 「五、H 股估值」：只放 H 股的指标、情景、合理区间；
 - 跨市场的并列数据**只出现在「三、跨市场校正」一章**（那是它的主题），其余章节一律分章或分行，不混排。
+
+对应的 `presentation` section 固定为：
+
+- `dashboard-A` / `dashboard-H`
+- `quality` / `cycle` / `cross_market`（`common`）
+- `valuation-A` / `valuation-H`
+- `position-A` / `position-H`
+- `expected_return-A` / `expected_return-H`
+- `risks-A` / `risks-H`
+- `conclusion-A` / `conclusion-H`
+
+`cross_market` 只做溢价比较，不允许出现 `valuation_scenarios`、`range_position`、`position_tiers` 或 `return_stack`。
 
 两章各自必须包含：
 

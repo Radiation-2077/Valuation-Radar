@@ -100,6 +100,9 @@ export function visibleReportSections(
 ): ReportDetailSection[] {
   return sections
     .filter((section) => {
+      if (section.market && section.market !== "common" && section.market !== market) {
+        return false;
+      }
       if (section.title.includes("A 股估值") && market !== "A") return false;
       if (section.title.includes("H 股估值") && market !== "H") return false;
       return true;
@@ -107,7 +110,8 @@ export function visibleReportSections(
     .map((section) => {
       const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
       const mergedBlocks = mergeScenarioIntoRange(visibleBlocks);
-      const layoutBlocks = flattenPositionLayout(mergedBlocks, section.title);
+      const normalizedBlocks = normalizeQualityScorecard(mergedBlocks, section.title);
+      const layoutBlocks = flattenPositionLayout(normalizedBlocks, section.title);
       return {
         ...section,
         blocks: section.title.includes("决策仪表盘")
@@ -116,6 +120,61 @@ export function visibleReportSections(
       };
     })
     .filter((section) => section.blocks.length > 0);
+}
+
+export function normalizeQualityScorecard(
+  blocks: ReportDetailBlock[],
+  sectionTitle: string,
+): ReportDetailBlock[] {
+  if (!sectionTitle.includes("质地")) return blocks;
+  return blocks.map((block) => {
+    if (block.type !== "grid") return block;
+    const columns = blockColumns(block);
+    const scores = columns.flatMap((column) =>
+      column.filter((item) => item.type === "scores"),
+    )[0];
+    const table = columns.flatMap((column) =>
+      column.filter((item) => item.type === "table"),
+    )[0];
+    if (!scores || !table) return block;
+    const scoreItems = blockObjects(scores, "items");
+    const rows = tableRows(table);
+    if (scoreItems.length !== 5 || rows.length < 5) return block;
+    const dimensions = scoreItems.map((item, index) => {
+      const label = objectText(item, "label");
+      const scoreValue = item.score;
+      const score =
+        typeof scoreValue === "number"
+          ? scoreValue
+          : Number.parseFloat(String(scoreValue));
+      const row = rows[index];
+      return {
+        key: qualityDimensionKey(label),
+        label,
+        score,
+        indicator: row[0] ?? "",
+        value: row[1] ?? "",
+        assessment: row[2] ?? "",
+      };
+    });
+    if (
+      dimensions.some(
+        (item) =>
+          !item.key ||
+          !Number.isFinite(item.score) ||
+          !item.indicator ||
+          !item.value ||
+          !item.assessment,
+      )
+    ) {
+      return block;
+    }
+    return {
+      type: "quality_scorecard",
+      scale_max: 10,
+      dimensions,
+    };
+  });
 }
 
 export function blockText(block: ReportDetailBlock, key = "text"): string {
@@ -221,4 +280,15 @@ function filterMarketBlocks(
     if (activeMarket === null || activeMarket === market) filtered.push(block);
   }
   return filtered;
+}
+
+function qualityDimensionKey(label: string): string {
+  const keys: Record<string, string> = {
+    利润现金含量: "profit_cash_quality",
+    资产负债表: "balance_sheet",
+    "ROE 水平": "roe",
+    护城河强度: "moat",
+    生存能力: "survival",
+  };
+  return keys[label] ?? "";
 }

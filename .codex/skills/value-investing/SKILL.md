@@ -19,7 +19,7 @@ metadata:
 6. **公式与取值透明。** 复杂推导使用 `formula` 块，行内数学使用 `\(...\)`；关键数字给出 `method` 或 `calculation` 文本，例如 `g = r − p/PE = 9% − 55%/16.9 ≈ 5.7%`。
 7. **给区间，不给假精确。** 合理 PE、安全边际和结构性溢价使用区间字段；单个数字用于后续打分时必须写清口径。
 8. **免责声明必须存在。** 放在 `presentation.sections` 最后一个 `disclaimer` 章节，正文使用 `paragraph` 或 `callout` 块。
-9. **A+H 两地上市必须做跨市场校正。** 先算名义溢价，再拆股息税、贴现率、市场分割/筹码；只有残余计入相对贵贱。A/H 估值分市场保存为 `markets[]` 和独立 `presentation` 章节。方法见 [references/AH与跨市场估值.md](references/AH与跨市场估值.md)。
+9. **A+H 必须严格分市场。** 先算名义溢价，再拆股息税、贴现率、市场分割/筹码；只有残余计入相对贵贱。A/H 估值、仓位、预期收益、风险和结论分别写入 `market: "A"` / `"H"` 的独立 section；`cross_market` 只放溢价比较与成因，禁止混入单市场估值、仓位或收益。方法见 [references/AH与跨市场估值.md](references/AH与跨市场估值.md)。
 10. **每章必须有明确小结。** 每个业务章节末尾放一个 `callout` 块并设置 `"summary": true`；用一到两句话说明本章结论及其操作含义。
 11. **通用数据先查本地缓存。** 10 年期国债收益率、汇率、恒生 AH 溢价指数等先查 `common/` 24 小时缓存，缺失或过期再联网并回写。标的自身行情与财务数据不写入 `common/`。[references/本地数据缓存.md](references/本地数据缓存.md)
 12. **交稿前必须通过校验。** 运行 `python3 scripts/scorecard.py validate <文件>`。出现 schema、比例合计、区间顺序或演示块错误时修到通过，不要用前端补丁掩盖数据问题。
@@ -109,18 +109,21 @@ metadata:
 
 按 [references/报告区块规范.md](references/报告区块规范.md) 生成 `presentation.sections[]`。section 是页面章节容器，block 是稳定的语义控件；渲染器决定具体样式。
 
-推荐 section 顺序：
+单市场 section 顺序：`dashboard`、`quality`、`cycle`、`valuation`、`position`、`expected_return`、`risks`、`conclusion`、`sources`、`disclaimer`。
 
-1. `dashboard`：结论摘要、6 个 KPI、A/H 仪表盘。
-2. `quality`：必须包含一个 `quality_scorecard`，五个维度与五项指标逐行对应。
-3. `cycle`：周期标尺、判断表、阶段提示、本章小结。
-4. `cross_market`：仅 A+H 使用，包含名义溢价、`premium_donut`、成因表和残余结论。
-5. `valuation-A` / `valuation-H`：分市场估值表、`valuation_scenarios`、`range_position`。
-6. `position`：仓位计算表与 `position_tiers`。
-7. `expected_return`：分市场 `return_stack` 与明细表。
-8. `risks`：`risk_cards` 与最大回撤。
-9. `conclusion`：分市场结论与综合判断。
-10. `sources`：数据来源；免责声明放在最后。
+A+H 标的使用固定 section 契约：
+
+1. `dashboard-A` / `dashboard-H`：各自结论、KPI 和仪表盘，`market` 分别为 `A` / `H`。
+2. `quality` / `cycle`：公司与行业共用章节，`market: "common"`；结论需注明「A/H 共用」。
+3. `cross_market`：`market: "common"`，只允许溢价计算、税负比较、`premium_donut`、成因表和残余结论。
+4. `valuation-A` / `valuation-H`：各自估值表、情景和合理区间。
+5. `position-A` / `position-H`：各自仓位计算与 `position_tiers`。
+6. `expected_return-A` / `expected_return-H`：各自 `return_stack` 与收益明细。
+7. `risks-A` / `risks-H`：各自 `risk_cards` 与最大回撤；共同风险可在两章重复，不得用 common 混排。
+8. `conclusion-A` / `conclusion-H`：各自操作结论。
+9. `sources` / `disclaimer`：`market: "common"`。
+
+除 `quality`、`cycle`、`cross_market`、`sources`、`disclaimer` 外，A+H 数据卡不得创建其他 `market: "common"` 业务 section。
 
 约束：
 
@@ -129,6 +132,7 @@ metadata:
 - 情景价格、区间上下限、现价、仓位档位使用独立数值字段，不依赖自然语言解析。
 - 表格正文可以是字符串，但禁止 `rowspan`、颜色、tooltip、图表尺寸等表现层 HTML。
 - 每个业务 section 的最后一项都是 `{"type":"callout","summary":true,...}`。
+- `cross_market` 禁止出现 `valuation_scenarios`、`range_position`、`position_tiers`、`return_stack`。
 - 不输出 CSS、SVG、HTML 或组件名；颜色由 Web 主题决定，只有 `premium_donut` 的系列颜色可显式提供。
 
 写完 JSON 后运行 `python3 scripts/scorecard.py validate data/{标的名}_{YYYY-MM-DD}.json`，必须无 error。

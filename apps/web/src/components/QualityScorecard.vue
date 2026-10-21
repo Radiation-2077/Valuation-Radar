@@ -6,8 +6,6 @@ import {
   NTbody,
   NTd,
   NText,
-  NTh,
-  NThead,
   NTr,
 } from "naive-ui";
 import { computed } from "vue";
@@ -42,15 +40,6 @@ function scoreLabel(dimension: Record<string, unknown>): string {
 <template>
   <div class="table-shell">
     <NTable size="small" :bordered="false" :single-line="false">
-      <NThead>
-        <NTr>
-          <NTh>质量维度</NTh>
-          <NTh>评分</NTh>
-          <NTh>对应指标</NTh>
-          <NTh>指标值</NTh>
-          <NTh>判断</NTh>
-        </NTr>
-      </NThead>
       <NTbody>
         <NTr v-for="dimension in dimensions" :key="objectText(dimension, 'key')">
           <NTd>

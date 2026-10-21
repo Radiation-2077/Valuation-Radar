@@ -135,6 +135,8 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert report.source == "codex"
         assert session.get(Instrument, instrument.id).verdict == original_verdict  # type: ignore[union-attr]
         assert [item.id for item in list_review_reports(session)] == [report.id]
+        candidate_detail = get_valuation_detail(session, report.markets[0].id)
+        assert candidate_detail.latest_valuation_market_id == report.markets[0].id
         session.refresh(job)
         assert any(
             "Codex 子进程" in event["message"]
@@ -263,27 +265,59 @@ def _quality_presentation() -> dict:
             "assessment": "通过",
         },
     ]
-    return {
-        "schema_version": "1.0",
-        "sections": [
+    sections = [
+        {
+            "id": "quality",
+            "title": "标的质地",
+            "market": "common",
+            "blocks": [
+                {
+                    "type": "quality_scorecard",
+                    "scale_max": 10,
+                    "dimensions": dimensions,
+                },
+                {
+                    "type": "callout",
+                    "tone": "info",
+                    "title": "本章小结",
+                    "body": "质量可接受。",
+                    "summary": True,
+                },
+            ],
+        }
+    ]
+    for section_id, market, title in (
+        ("dashboard-A", "A", "A 股结论"),
+        ("dashboard-H", "H", "H 股结论"),
+        ("cycle", "common", "产业周期"),
+        ("cross_market", "common", "A/H 溢价"),
+        ("valuation-A", "A", "A 股估值"),
+        ("valuation-H", "H", "H 股估值"),
+        ("position-A", "A", "A 股仓位"),
+        ("position-H", "H", "H 股仓位"),
+        ("expected_return-A", "A", "A 股预期收益"),
+        ("expected_return-H", "H", "H 股预期收益"),
+        ("risks-A", "A", "A 股风险"),
+        ("risks-H", "H", "H 股风险"),
+        ("conclusion-A", "A", "A 股结论"),
+        ("conclusion-H", "H", "H 股结论"),
+        ("sources", "common", "数据来源"),
+        ("disclaimer", "common", "免责声明"),
+    ):
+        sections.append(
             {
-                "id": "quality",
-                "title": "标的质地",
-                "market": "common",
+                "id": section_id,
+                "title": title,
+                "market": market,
                 "blocks": [
-                    {
-                        "type": "quality_scorecard",
-                        "scale_max": 10,
-                        "dimensions": dimensions,
-                    },
                     {
                         "type": "callout",
                         "tone": "info",
                         "title": "本章小结",
-                        "body": "质量可接受。",
-                        "summary": True,
-                    },
+                        "body": title,
+                        "summary": section_id not in {"sources", "disclaimer"},
+                    }
                 ],
             }
-        ],
-    }
+        )
+    return {"schema_version": "1.0", "sections": sections}

@@ -254,6 +254,16 @@ def _prompt(
     card_name: str,
 ) -> str:
     markets = ", ".join(item["code"] for item in evidence["listings"])
+    market_names = {str(item["market"]) for item in evidence["listings"]}
+    section_contract = (
+        "A+H 必须使用 dashboard-A/H、quality/common、cycle/common、"
+        "cross_market/common、valuation-A/H、position-A/H、expected_return-A/H、"
+        "risks-A/H、conclusion-A/H、sources/common、disclaimer/common；"
+        "cross_market 只比较溢价，禁止出现单市场估值、情景、仓位或收益。"
+        if {"A", "H"}.issubset(market_names)
+        else "单市场使用 dashboard、quality、cycle、valuation、position、"
+        "expected_return、risks、conclusion、sources、disclaimer。"
+    )
     return f"""使用 value-investing skill 完成一次完整估值重估。
 
 首先完整读取该 skill 的 SKILL.md 和本次任务需要的方法参考文档，然后只在当前工作目录内操作。
@@ -273,9 +283,11 @@ def _prompt(
 2. 数据缺失时写 null 并登记 missing，禁止编造或把缺失值当 0。
 3. 只生成 schema 1.1 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
 4. 数据卡必须包含完整的 presentation.sections，质量章必须使用一个五维 quality_scorecard。
-5. 排名字段与 presentation 必须同源同值，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。
-6. 不要修改当前目录之外的文件，不要访问生产数据库。
-7. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
+5. 章节契约：{section_contract}
+6. 每个 section 的 market 必须与内容一致，禁止把 A/H 价格、仓位或收益混在同一章节。
+7. 排名字段与 presentation 必须同源同值，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。
+8. 不要修改当前目录之外的文件，不要访问生产数据库。
+9. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
 """
 
 
