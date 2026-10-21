@@ -31,6 +31,9 @@ describe("report detail helpers", () => {
     expect(cleanReportNarrative("只放 H 股数据，与上一章共用同一套假设。")).toBe(
       "与上一章共用同一套假设。",
     );
+    expect(
+      cleanReportNarrative("lv-h 高 / lv-m 中 / lv-l 低。共同风险在前，市场间风险在后。"),
+    ).toBe("风险等级：高 / 中 / 低。共同风险在前，市场间风险在后。");
   });
 
   it("merges scenario bars and their explanation into the range block", () => {

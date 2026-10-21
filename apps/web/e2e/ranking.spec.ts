@@ -212,6 +212,10 @@ test("keeps the ranking usable on a narrow screen", async ({ page }) => {
   await expect(page.locator(".n-drawer")).toBeVisible();
   await expect(page.getByRole("heading", { name: /六、操作建议与仓位管理/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /八、风险提示/ })).toBeVisible();
+  await expect(page.getByText(/lv-[hml]/)).toHaveCount(0);
+  await expect(
+    page.getByText("风险等级：高 / 中 / 低。共同风险在前，市场间风险在后。"),
+  ).toBeVisible();
   await expect(page).toHaveURL(/profile=balanced/);
 });
 
