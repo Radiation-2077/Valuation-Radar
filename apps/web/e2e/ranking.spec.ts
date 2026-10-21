@@ -161,6 +161,9 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(positionTierChart).toHaveAttribute("data-tier-count", "3");
   await expect(positionTierChart).toHaveAttribute("aria-label", /¥232\.74/);
   await expect(positionTierChart).toHaveAttribute("aria-label", /40%/);
+  const positionTierCanvasBox = await positionTierChart.locator("canvas").boundingBox();
+  expect(positionTierCanvasBox).not.toBeNull();
+  expect(positionTierCanvasBox!.height).toBeCloseTo(64, 0);
   const positionTableBox = await positionCard.locator(".table-shell").first().boundingBox();
   const positionCardBox = await positionCard.boundingBox();
   expect(positionTableBox).not.toBeNull();

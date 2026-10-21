@@ -32,7 +32,7 @@ function render() {
   chart?.setOption(
     {
       animationDuration: 500,
-      grid: { left: 16, right: 16, top: 22, bottom: 22 },
+      grid: { left: 0, right: 0, top: 8, bottom: 8 },
       xAxis: { type: "value", min: 0, max: 100, show: false },
       yAxis: { type: "category", data: [""], show: false },
       tooltip: {
@@ -48,7 +48,7 @@ function render() {
         type: "bar" as const,
         stack: "position",
         data: [tier.allocation],
-        barWidth: 58,
+        barWidth: 48,
         itemStyle: {
           color: colors[index % colors.length],
           borderColor: tier.active ? "#dce7ef" : "transparent",
