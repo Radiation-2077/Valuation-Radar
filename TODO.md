@@ -18,9 +18,9 @@
 - [x] 在任务结果中分别记录抓取数、新增数、未变化数、错误数和排名复用状态
 - [x] 失败任务保留 provider 错误与具体失败阶段，不再只显示笼统错误
 - [x] 将“执行链路”改为读取当前/最近任务状态的动态流程，或删除无功能静态面板
-- [ ] 后端接受 value-investing `schema_version: 1.1`
-- [ ] 候选数据卡导入时将 `presentation` 保存为详情 `detail_json`
-- [ ] 前端消费 schema 1.1 的 `quality_scorecard`
+- [x] 后端接受 value-investing `schema_version: 1.1`
+- [x] 候选数据卡导入时将 `presentation` 保存为详情 `detail_json`
+- [x] 前端消费 schema 1.1 的 `quality_scorecard`
 - [ ] 用真实 Codex CLI 完成至少一次隔离重估、校验、待复核和批准发布 smoke test
 
 ## P1：自动更新可靠性
@@ -49,5 +49,5 @@
 - [x] 部分标的失败时任务为 `partial`，成功行情仍入库，旧排名保持可读
 - [x] 整轮 0 条有效行情时才判失败，并展示 provider 的具体错误
 - [x] 更新中心能看懂最近任务实际执行到哪一步
-- [ ] schema 1.1 候选卡能进入待复核，批准后详情页展示新结构化章节
+- [x] schema 1.1 候选卡能进入待复核，批准后详情页展示新结构化章节
 - [ ] 真实 Codex 重估失败时，错误可定位，旧估值不受影响

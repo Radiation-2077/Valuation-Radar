@@ -13,6 +13,7 @@ from app.db.base import Base
 from app.integrations.codex import CodexResult
 from app.models import Instrument, JobRun, ValuationReport
 from app.services.importer import import_legacy_cards
+from app.services.queries import get_valuation_detail
 from app.services.revaluation import run_valuation_refresh
 from app.services.reviews import approve_review, list_review_reports
 
@@ -37,6 +38,8 @@ class FakeCodexExecutor:
         card["analysis_date"] = analysis_date.isoformat()
         card["generated_at"] = datetime.now(ZoneInfo(self.settings.timezone)).isoformat()
         card["conclusion"]["verdict"] = "观望等待"
+        card["schema_version"] = "1.1"
+        card["presentation"] = _quality_presentation()
         card_path = cwd / "data" / f"{card['name']}_{analysis_date.isoformat()}.json"
         card_path.write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
         manifest_path.write_text(
@@ -107,3 +110,74 @@ def test_codex_candidate_requires_review_before_ranking(tmp_path: Path) -> None:
         assert session.get(Instrument, instrument.id).verdict == "观望等待"  # type: ignore[union-attr]
         assert session.query(ValuationReport).filter_by(status="needs_review").count() == 0
         assert session.query(ValuationReport).filter_by(status="published").count() > 0
+        detail = get_valuation_detail(session, published.markets[0].id)
+        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "quality_scorecard"
+
+
+def _quality_presentation() -> dict:
+    dimensions = [
+        {
+            "key": "profit_cash_quality",
+            "label": "利润现金含量",
+            "score": 8.0,
+            "indicator": "经营现金流 / 净利润",
+            "value": "1.2 倍",
+            "assessment": "真实",
+        },
+        {
+            "key": "balance_sheet",
+            "label": "资产负债表",
+            "score": 8.0,
+            "indicator": "有息负债率",
+            "value": "20%",
+            "assessment": "稳健",
+        },
+        {
+            "key": "roe",
+            "label": "ROE 水平",
+            "score": 7.0,
+            "indicator": "ROE（近 3 年均值）",
+            "value": "12%",
+            "assessment": "中上",
+        },
+        {
+            "key": "moat",
+            "label": "护城河强度",
+            "score": 8.0,
+            "indicator": "护城河",
+            "value": "规模与成本",
+            "assessment": "强",
+        },
+        {
+            "key": "survival",
+            "label": "生存能力",
+            "score": 7.0,
+            "indicator": "压力年份",
+            "value": "保持盈利",
+            "assessment": "通过",
+        },
+    ]
+    return {
+        "schema_version": "1.0",
+        "sections": [
+            {
+                "id": "quality",
+                "title": "标的质地",
+                "market": "common",
+                "blocks": [
+                    {
+                        "type": "quality_scorecard",
+                        "scale_max": 10,
+                        "dimensions": dimensions,
+                    },
+                    {
+                        "type": "callout",
+                        "tone": "info",
+                        "title": "本章小结",
+                        "body": "质量可接受。",
+                        "summary": True,
+                    },
+                ],
+            }
+        ],
+    }

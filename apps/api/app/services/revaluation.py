@@ -209,7 +209,7 @@ def _build_evidence(session: Session, instrument: Instrument) -> dict[str, Any]:
         "constraints": {
             "missing_data": "缺失时写 null 并登记 missing，不得编造",
             "source": "优先使用 evidence.json 与本目录 common/ 数据",
-            "output": "数据卡与 HTML 必须同源同值",
+            "output": "只输出 schema 1.1 结构化数据卡，排名与 presentation 必须同源同值",
         },
     }
 
@@ -238,10 +238,11 @@ def _prompt(
 要求：
 1. 按 skill 的方法重新判断质地、产业周期和市场结构，并独立重估。
 2. 数据缺失时写 null 并登记 missing，禁止编造或把缺失值当 0。
-3. 只生成结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
-4. 数据卡必须通过现有 schema 口径，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。
-5. 不要修改当前目录之外的文件，不要访问生产数据库。
-6. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
+3. 只生成 schema 1.1 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
+4. 数据卡必须包含完整的 presentation.sections，质量章必须使用一个五维 quality_scorecard。
+5. 排名字段与 presentation 必须同源同值，并包含完整估值详情所需的结论、指标、风险、仓位和口径说明。
+6. 不要修改当前目录之外的文件，不要访问生产数据库。
+7. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
 """
 
 

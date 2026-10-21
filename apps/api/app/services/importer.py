@@ -21,6 +21,16 @@ from app.models import (
 from app.services.ranking import RankingService
 from app.services.report_parser import parse_report_detail
 
+SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1"}
+PRESENTATION_MARKETS = {"common", "A", "H", "US", "CN"}
+QUALITY_KEYS = {
+    "profit_cash_quality",
+    "balance_sheet",
+    "roe",
+    "moat",
+    "survival",
+}
+
 
 class CardValidationError(ValueError):
     """Raised when a legacy valuation card does not satisfy the import contract."""
@@ -64,7 +74,7 @@ def import_legacy_cards(
     skipped = 0
     for _, card in cards:
         html_path = source_reports / f"{card['name']}_估值分析_{card['analysis_date']}.html"
-        detail_json = parse_report_detail(html_path) if html_path.is_file() else {}
+        detail_json = _detail_json(card, html_path)
         if _import_card(
             session,
             card,
@@ -111,8 +121,13 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
     missing = [key for key in required if key not in card]
     if missing:
         raise CardValidationError(f"{label} 缺少字段：{', '.join(missing)}")
-    if card["schema_version"] != "1.0":
-        raise CardValidationError(f"{label} schema_version 不是 1.0")
+    schema_version = str(card["schema_version"])
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise CardValidationError(
+            f"{label} schema_version 非法：{schema_version}（支持 1.0 / 1.1）"
+        )
+    if schema_version == "1.1":
+        _validate_presentation(card, label)
     try:
         analysis_date = date.fromisoformat(str(card["analysis_date"]))
     except ValueError as exc:
@@ -144,6 +159,14 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
                 raise CardValidationError(f"{label} {market_key[0]} 安全边际与现价/中枢不一致")
     if analysis_date > date.today():
         raise CardValidationError(f"{label} analysis_date 晚于当前日期")
+
+
+def _detail_json(card: dict[str, Any], html_path: Path) -> dict[str, Any]:
+    if card["schema_version"] == "1.1":
+        return dict(card["presentation"])
+    if html_path.is_file():
+        return parse_report_detail(html_path)
+    return {}
 
 
 def _import_card(
@@ -262,13 +285,15 @@ def import_candidate_card(
 ) -> ValuationReport:
     card = json.loads(card_path.read_text(encoding="utf-8"))
     validate_card(card, card_path)
+    if card["schema_version"] != "1.1":
+        raise CardValidationError("新候选估值必须使用 schema 1.1")
     instrument = session.scalar(select(Instrument).where(Instrument.name == card["name"]))
     if instrument is None:
         raise CardValidationError(f"候选估值对应的标的不存在：{card['name']}")
     imported = _import_card(
         session,
         card,
-        {},
+        dict(card["presentation"]),
         source="codex",
         status="needs_review",
         apply_metadata=False,
@@ -304,6 +329,82 @@ def apply_instrument_metadata(instrument: Instrument, card: dict[str, Any]) -> N
     instrument.verdict = str(conclusion.get("verdict") or "")
     instrument.thesis = str(conclusion.get("thesis") or "")
     instrument.confidence = str(conclusion.get("confidence") or "中")
+
+
+def _validate_presentation(card: dict[str, Any], label: str) -> None:
+    presentation = card.get("presentation")
+    if not isinstance(presentation, dict):
+        raise CardValidationError(f"{label} schema 1.1 缺少 presentation 对象")
+    sections = presentation.get("sections")
+    if not isinstance(sections, list) or not sections:
+        raise CardValidationError(f"{label} presentation.sections 必须是非空数组")
+
+    section_ids: set[str] = set()
+    quality_cards: list[dict[str, Any]] = []
+    for section_index, section in enumerate(sections):
+        section_tag = f"presentation.sections[{section_index}]"
+        if not isinstance(section, dict):
+            raise CardValidationError(f"{label} {section_tag} 必须是对象")
+        section_id = section.get("id")
+        if not isinstance(section_id, str) or not section_id:
+            raise CardValidationError(f"{label} {section_tag}.id 缺失")
+        if section_id in section_ids:
+            raise CardValidationError(f"{label} {section_tag}.id 重复：{section_id}")
+        section_ids.add(section_id)
+        if not isinstance(section.get("title"), str) or not section["title"]:
+            raise CardValidationError(f"{label} {section_tag}.title 缺失")
+        if section.get("market") not in PRESENTATION_MARKETS:
+            raise CardValidationError(f"{label} {section_tag}.market 非法")
+        blocks = section.get("blocks")
+        if not isinstance(blocks, list) or not blocks:
+            raise CardValidationError(f"{label} {section_tag}.blocks 必须是非空数组")
+        for block_index, block in enumerate(blocks):
+            block_tag = f"{section_tag}.blocks[{block_index}]"
+            if not isinstance(block, dict):
+                raise CardValidationError(f"{label} {block_tag} 必须是对象")
+            if not isinstance(block.get("type"), str) or not block["type"]:
+                raise CardValidationError(f"{label} {block_tag}.type 缺失")
+            if block["type"] == "quality_scorecard":
+                quality_cards.append(block)
+
+    if len(quality_cards) != 1:
+        raise CardValidationError(
+            f"{label} schema 1.1 必须且只能包含一个 quality_scorecard"
+        )
+    _validate_quality_scorecard(quality_cards[0], label)
+
+
+def _validate_quality_scorecard(block: dict[str, Any], label: str) -> None:
+    dimensions = block.get("dimensions")
+    if not isinstance(dimensions, list) or len(dimensions) != 5:
+        raise CardValidationError(f"{label} quality_scorecard.dimensions 必须恰好 5 项")
+    keys = {
+        dimension.get("key")
+        for dimension in dimensions
+        if isinstance(dimension, dict)
+    }
+    if keys != QUALITY_KEYS:
+        raise CardValidationError(f"{label} quality_scorecard 五个维度不完整或重复")
+    scale_max = block.get("scale_max", 10)
+    if not isinstance(scale_max, (int, float)) or isinstance(scale_max, bool) or scale_max <= 0:
+        raise CardValidationError(f"{label} quality_scorecard.scale_max 必须为正数")
+    for dimension in dimensions:
+        if not isinstance(dimension, dict):
+            raise CardValidationError(f"{label} quality_scorecard.dimensions 含非对象项")
+        for key in ("label", "indicator", "value", "assessment"):
+            if not isinstance(dimension.get(key), str) or not dimension[key]:
+                raise CardValidationError(
+                    f"{label} quality_scorecard 维度 {dimension.get('key')} 缺少 {key}"
+                )
+        score = dimension.get("score")
+        if (
+            not isinstance(score, (int, float))
+            or isinstance(score, bool)
+            or not 0 <= score <= scale_max
+        ):
+            raise CardValidationError(
+                f"{label} quality_scorecard 维度 {dimension.get('key')} 分数越界"
+            )
 
 
 def _parse_datetime(value: object) -> datetime | None:

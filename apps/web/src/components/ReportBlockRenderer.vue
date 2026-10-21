@@ -22,6 +22,7 @@ import type { ReportDetailBlock } from "@/api/types";
 import MetricGauge from "@/components/MetricGauge.vue";
 import PositionTierChart from "@/components/PositionTierChart.vue";
 import PremiumDonutChart from "@/components/PremiumDonutChart.vue";
+import QualityScorecard from "@/components/QualityScorecard.vue";
 import RangePositionChart from "@/components/RangePositionChart.vue";
 import ReturnStackChart from "@/components/ReturnStackChart.vue";
 import ScenarioBarChart from "@/components/ScenarioBarChart.vue";
@@ -135,6 +136,11 @@ function gridDonutLabels(block: ReportDetailBlock): string[] {
         {{ cleanReportNarrative(blockText(block, "body")) }}
       </span>
     </NAlert>
+
+    <QualityScorecard
+      v-else-if="block.type === 'quality_scorecard'"
+      :block="block"
+    />
 
     <div v-else-if="block.type === 'table'" class="table-shell">
       <NTable size="small" :bordered="false" :single-line="false">
