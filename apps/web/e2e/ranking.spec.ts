@@ -68,6 +68,11 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   await page.goto("/");
 
   const analysisCard = page.locator(".analysis-card");
+  const toolbarBox = await page.locator(".toolbar").boundingBox();
+  const topThreeBox = await page.locator(".top3-card").boundingBox();
+  expect(toolbarBox).not.toBeNull();
+  expect(topThreeBox).not.toBeNull();
+  expect(topThreeBox!.y - (toolbarBox!.y + toolbarBox!.height)).toBeCloseTo(20, 0);
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();

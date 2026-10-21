@@ -37,10 +37,6 @@
   padding: var(--space-section) var(--space-page) 64px;
 }
 
-.toolbar {
-  margin-bottom: var(--space-section);
-}
-
 .section-heading {
   width: 100%;
 }
