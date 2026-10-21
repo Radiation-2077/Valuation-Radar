@@ -90,16 +90,19 @@ test("dashboard and update cards keep consistent spacing and heights", async ({ 
   const staleTag = await page.locator(".dashboard-stale-tag").boundingBox();
   const titleBox = await page.locator(".dashboard-title").boundingBox();
   const tabsBox = await page.locator(".n-tabs").boundingBox();
-  const toolbarBox = await page.locator(".toolbar").boundingBox();
+  const tabIndicatorBox = await page.locator(".n-tabs-bar").boundingBox();
   const topThreeBox = await page.locator(".top3-card").boundingBox();
   expect(staleTag).not.toBeNull();
   expect(titleBox).not.toBeNull();
   expect(tabsBox).not.toBeNull();
-  expect(toolbarBox).not.toBeNull();
+  expect(tabIndicatorBox).not.toBeNull();
   expect(topThreeBox).not.toBeNull();
   expect(titleBox!.y - (staleTag!.y + staleTag!.height)).toBeCloseTo(8, 0);
   expect(tabsBox!.y - (titleBox!.y + titleBox!.height)).toBeCloseTo(12, 0);
-  expect(topThreeBox!.y - (toolbarBox!.y + toolbarBox!.height)).toBeCloseTo(12, 0);
+  await expect(page.locator(".n-tabs-pane-wrapper")).toHaveCSS("display", "none");
+  expect(
+    topThreeBox!.y - (tabIndicatorBox!.y + tabIndicatorBox!.height),
+  ).toBeCloseTo(4, 0);
   await expect(analysisCard).toBeVisible();
   await expect(analysisCard.locator(".n-select")).toHaveCount(0);
   await expect(analysisCard.locator(".scatter-chart")).toBeVisible();
