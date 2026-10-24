@@ -6,12 +6,14 @@ import { CanvasRenderer } from "echarts/renderers";
 import { NSpace, NText } from "naive-ui";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
+import { formatPercent } from "@/lib/format";
 import { parseConicGradient } from "@/lib/report-detail";
 
 use([PieChart, TooltipComponent, LegendComponent, CanvasRenderer]);
 
 const props = defineProps<{
   value: string;
+  comparisonValue?: string;
   label: string;
   background: string;
   context?: string;
@@ -33,7 +35,8 @@ const segmentLabels = computed(() =>
 );
 const legendLabels = computed(() =>
   segments.value.map(
-    (segment, index) => `${segmentLabels.value[index]} ${segment.value}%`,
+    (segment, index) =>
+      `${segmentLabels.value[index]} ${formatPercent(segment.value)}`,
   ),
 );
 
@@ -106,12 +109,20 @@ onBeforeUnmount(() => {
   <div
     class="premium-donut-chart"
     role="img"
-    :aria-label="`${context || label}：${value}；${legendLabels.join('、')}`"
+    :aria-label="`${context || label}：名义${value}${comparisonValue ? `，实际${comparisonValue}` : ''}；${legendLabels.join('、')}`"
   >
     <div ref="element" class="premium-donut-canvas" />
     <NSpace class="premium-donut-copy" vertical align="center" :size="2">
-      <NText strong class="premium-donut-value">{{ value }}</NText>
-      <NText depth="3">{{ label }}</NText>
+      <template v-if="comparisonValue">
+        <NText depth="3">名义 vs 实际</NText>
+        <NText strong class="premium-donut-value">
+          {{ value }} vs {{ comparisonValue }}
+        </NText>
+      </template>
+      <template v-else>
+        <NText strong class="premium-donut-value">{{ value }}</NText>
+        <NText depth="3">{{ label }}</NText>
+      </template>
     </NSpace>
   </div>
 </template>

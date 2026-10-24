@@ -31,7 +31,12 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
     @keydown.enter="emit('select', item.valuation_market_id)"
   >
     <span class="top-rank">0{{ position }}</span>
-    <NTag :type="bandType(item.score.band)" size="small" :bordered="false">
+    <NTag
+      class="top-band"
+      :type="bandType(item.score.band)"
+      size="small"
+      :bordered="false"
+    >
       {{ item.score.band }} 档
     </NTag>
     <div class="top-card-heading">
@@ -49,6 +54,8 @@ const bandType = (band: string): "success" | "info" | "warning" | "error" => {
     <NEllipsis class="top-thesis" :line-clamp="4" tooltip>
       {{ item.thesis }}
     </NEllipsis>
-    <NTag size="small" :bordered="false" type="success">{{ item.verdict }}</NTag>
+    <NTag class="top-verdict" size="small" :bordered="false" type="success">
+      {{ item.verdict }}
+    </NTag>
   </NCard>
 </template>

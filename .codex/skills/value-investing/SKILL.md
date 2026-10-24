@@ -13,17 +13,18 @@ metadata:
 
 1. **只输出结构化数据卡。** 文件固定为 `data/{标的名}_{YYYY-MM-DD}.json`，不生成单标的 HTML、Markdown 或图片。默认直接保存，完成后告知文件路径。
 2. **数据卡同时服务排名和 Web 详情。** 排名所需数字放在顶层与 `markets[]`；详情页内容放在 `presentation.sections[].blocks[]`。两处必须同源同值。
-3. **使用 schema 1.1。** 完整字段按 [references/数据卡规范.md](references/数据卡规范.md)，可用控件块按 [references/报告区块规范.md](references/报告区块规范.md)。不要自造 HTML class、CSS、内联样式或前端组件名。
-4. **质量章必须复用既有两栏 `grid`。** 左栏放 `scores`（利润现金含量、资产负债表、ROE 水平、护城河强度、生存能力），右栏放三列表格（维度、结果、评价）；两侧固定五行一一对应，不要创建其他质量控件或新格式。
-5. **结论先行。** `conclusion` 给出总方向；`markets[].verdict` 给出分市场方向；`presentation` 第一个业务章节放仪表盘和关键结论。A+H 结论词使用「A/H + 结论」，但不要在前端字段里塞布局或样式。
-6. **公式与取值透明。** 复杂推导使用 `formula` 块，行内数学使用 `\(...\)`；关键数字给出 `method` 或 `calculation` 文本，例如 `g = r − p/PE = 9% − 55%/16.9 ≈ 5.7%`。
-7. **给区间，不给假精确。** 合理 PE、安全边际和结构性溢价使用区间字段；单个数字用于后续打分时必须写清口径。
-8. **免责声明必须存在。** 放在 `presentation.sections` 最后一个 `disclaimer` 章节，正文使用 `paragraph` 或 `callout` 块。
-9. **A+H 必须严格分市场。** 先算名义溢价，再拆股息税、贴现率、市场分割/筹码；只有残余计入相对贵贱。A/H 估值、仓位、预期收益、风险和结论分别写入 `market: "A"` / `"H"` 的独立 section；`cross_market` 只放溢价比较与成因，禁止混入单市场估值、仓位或收益。方法见 [references/AH与跨市场估值.md](references/AH与跨市场估值.md)。
-10. **每章必须有明确小结。** 每个业务章节末尾放一个 `callout` 块并设置 `"summary": true`；用一到两句话说明本章结论及其操作含义。
-11. **通用数据先查本地缓存。** 10 年期国债收益率、汇率、恒生 AH 溢价指数等先查 `common/` 24 小时缓存，缺失或过期再联网并回写。标的自身行情与财务数据不写入 `common/`。[references/本地数据缓存.md](references/本地数据缓存.md)
-12. **交稿前必须通过校验。** 运行 `python3 scripts/scorecard.py validate <文件>`。出现 schema、比例合计、区间顺序或演示块错误时修到通过，不要用前端补丁掩盖数据问题。
-13. **失败即终止。** 联网预检失败、必需数据缺失、来源无法访问或无法交叉核验时，立即停止并报告缺失项；不得用 null、0、历史值或主观估算继续完成估值。
+3. **使用 schema 1.2。** 完整字段、section role 与模块注册表按 [references/数据卡规范.md](references/数据卡规范.md)，可用控件块按 [references/报告区块规范.md](references/报告区块规范.md)，机器契约以 [references/card-v1.2.schema.json](references/card-v1.2.schema.json) 为准。不要自造 HTML class、CSS、内联样式或前端组件名。
+4. **质量章必须复用两栏 `grid`。** 左栏放五个 number 类型的 `scores`（利润现金含量、资产负债表、ROE 水平、护城河强度、生存能力），右栏只放“结果 / 评价”两列语义表格并固定五行一一对应；左侧评分已标出维度，右侧不得重复维度列。质量分数不再写字符串或 `width`。
+5. **产业周期章用两张独立图表达。** `cycle` 章节的第一个 block 必须是 `industry_lifecycle`，`stage` 只能是 `导入/爆发期`、`平台增长期`、`成熟期`、`衰退期`，并与顶层 `cycle_stage` 一致。`path: "cyclical"` 时第二个 block 必须是 `industry_cycle`，`position` 为 0–100 并与顶层 `cycle_position` 一致，同时写明 `phase` 和 `direction`：0–25 为 `recovery/up`（低谷回暖）、25–50 为 `upswing/up`（景气上行）、50–75 为 `pullback/down`（高位回落）、75–100 为 `downswing/down`（下行探底）。非周期行业可以省略第二张景气曲线。不得把两个周期混成一个控件，也不得只用公式或段落代替图形。
+6. **结论使用稳定 code。** `conclusion.verdict` 与 `markets[].verdict` 写成 `{"code":"accumulate","label":"分批买入"}`，`confidence` 写成 `{"code":"medium","label":"中"}`。`dashboard` section 只放一个 `gauges` block，固定四格：安全边际、估值历史分位、股息率吸引力、确定性；不得混入标题、KPI 卡片、说明或本章小结。
+7. **只解释重要估值计算。** `model_analysis` 与 `valuation` 至少各有一个 `formula`；公式只允许出现在 `model_analysis`、`cross_market`、`valuation`。质量平均分、仓位比例合计、周期原值换算、收益分项加总等简单算术不得写入公式卡。`latex` 写含符号的通用公式，`substitution` 写数字代入与结果，`explanation` 用一段自然语言说明“其中某符号指什么、数值来自哪里”，不要使用符号表和“符号含义/取值依据”式小标题。
+8. **给区间，不给假精确。** 合理 PE、安全边际和结构性溢价使用区间字段；单个数字用于后续打分时必须写清口径。
+9. **免责声明必须存在。** 放在 `presentation.sections` 最后一个 `disclaimer` 章节，正文使用 `paragraph` 或 `callout` 块。
+10. **A+H 必须严格分市场。** 用户未提供证券代码时按标的名检索；确认同时在 A/H 上市时，默认完整调研两个市场，不得只做其中一个。先算名义溢价，再拆股息税、贴现率、市场分割/筹码；只有残余计入相对贵贱。A/H 估值、仓位、预期收益、风险和结论分别写入 `market: "A"` / `"H"` 的独立 section；`cross_market` 只放溢价比较与成因，禁止混入单市场估值、仓位或收益。方法见 [references/AH与跨市场估值.md](references/AH与跨市场估值.md)。
+11. **标题只写章节功能。** section 标题统一使用「仪表盘」「估值」「仓位管理」「预期收益」「风险提示」「关键结论」「溢价分析」等，不写 A 股、H 股、A/H 或 AH；市场只由 `market` 字段和页面顶部标签表达。除 `dashboard`、`sources`、`disclaimer` 外，每个业务章节末尾放一个 `callout` 并设置 `"summary": true`。
+12. **通用数据先查本地缓存。** 10 年期国债收益率、汇率、恒生 AH 溢价指数等先查 `common/` 24 小时缓存，缺失或过期再联网并回写。过期缓存只能用于诊断，不能继续生成估值。标的自身行情与财务数据不写入 `common/`。[references/本地数据缓存.md](references/本地数据缓存.md)
+13. **交稿前必须通过校验。** 运行 `python3 scripts/scorecard.py validate <文件>`。出现 schema、比例合计、区间顺序或演示块错误时修到通过，不要用前端补丁掩盖数据问题。
+14. **失败即终止，禁止降级出卡。** 联网预检失败、任一必需数据缺失、来源不可访问、数据过期后刷新失败、来源冲突或无法交叉核验时，立即停止并在写数据卡前抛错/退出非零。不得用 `null`、`0`、“未获取”、过期缓存、历史值、上一版数据或主观估算绕过校验，也不得先生成一张待补数据的卡。
 
 > JSON 是唯一交付物；页面布局、颜色、圆角、表格省略、图表尺寸由 Web 前端决定，数据卡只表达语义和数值。
 
@@ -50,6 +51,8 @@ metadata:
 > **先后顺序：先本地、后联网。** 通用数据先按硬性规则 10 查 `common/` 缓存，命中且 24 小时内就直接用；缺失或过期才联网，抓到后回写 `common/`。标的自身的行情与财务数据直接联网取，不落缓存。
 
 用户给出名称或代码后，直接用可用的联网搜索 / 行情工具并行取数；不需要先问用户。
+
+如果用户只给名称、没有代码：先搜索并核实上市市场与证券代码。发现同一公司在 A/H 两地上市时，默认同时调研两个市场；只有确认单市场上市时才走单市场路径。
 
 - **基础行情**：当前价、市值、PE-TTM（扣非）、PB、股息率
 - **财务**：近 3–5 年营收 / 净利润 / 扣非净利润 / 净资产 / 经营现金流 / 有息负债
@@ -94,34 +97,36 @@ metadata:
 
 输出保守 / 中性 / 乐观三档情景，每档写明核心假设与对应股价。周期型要求至少两个指标同向共振才下结论。
 
-### 第五步：仓位管理
+### 第五步：建仓节奏
 
-仓位不是拍脑袋的数字，按「基础仓位 × 调整因子」算出来，并在报告中展示计算过程：
+不估计账户总仓位，也不计算基础仓位、目标仓位或单标的最大仓位。只描述计划买入内部的分批节奏：
 
-1. **总仓位上限**：默认假设权益总仓位上限 60%（沪深 300 低估值时放宽到 70–80%，高估时压到 20–30%），并在报告中标注该假设。
-2. **基础仓位**：由「质地 × 估值」矩阵查得**起步值**，表见 [references/速查卡.md](references/速查卡.md) 阶段四——优质（⭐⭐⭐）：低估 5–10% / 合理 4–8% / 高估 1–2%；有瑕疵（⭐⭐☆、⭐⭐）：低估 2–5% / 合理 2–5% / 高估 0–1%；不达标 0%。同一格内按波动率与确定性取值，并在报告里写明取的是哪一格、为什么取这个值（不要只写"矩阵查表"）。「合理」档拿到的是**回调到位后可以拿住的目标底仓**，不是现价就买满。
-3. **调整因子**：高波动 × 0.7；与已有持仓高相关 × 0.6；流动性差 × 0.5；认知深 × 1.2；有明确催化剂 × 1.3。
-4. **单标的上限**（最终仓位取「基础仓位 × 调整因子」与上限的较小值）：个股按**质地**分档——优质 ≤ 12%、有瑕疵但可接受 ≤ 5%；其中**年化波动 > 40% 的周期股一律 ≤ 5%**；ETF 行业/金融类 ≤ 15%、宽基 ≤ 25%。这是全流程唯一一套上限口径，其余文档不再另立数字。
-5. **分批节奏**：第一笔 40% → 回调 10% 再买 30% → 反转确认补 30%（周期型的逆周期建仓用同一节奏）。
+1. 第 1 笔 `valuation`：价格进入合理买入区，占计划买入的 30%。
+2. 第 2 笔 `evidence`：新财报或行业数据确认逻辑未恶化，占计划买入的 30%。
+3. 第 3 笔 `stabilization`：价格止跌或安全边际继续扩大，占计划买入的 25%。
+4. 第 4 笔 `catalyst` 或 `reserve`：基本面催化剂得到验证，占计划买入的 15%。
+5. 四档 `allocation_pct` 合计必须为 100，但它们只表示计划内比例，不表示占总资产比例。
+6. 每档必须写 `trigger_type` 与 `condition`；不能只用“下跌 X%”代替证据确认。逻辑破坏后后续批次全部取消。
+7. 周期型使用相同事件节奏，但 evidence/catalyst 必须换成对应的周期数据与反转信号。
 
-同时给出止盈规则、认错线（逻辑破坏而非股价下跌）、以及该标的在组合中的角色。
+同时给出止盈规则、认错线（逻辑破坏而非股价下跌）以及该标的在组合中的角色。仓位数量由用户自行决定，不在本 skill 输出。
 
 ### 第六步：生成 `presentation` 数据区块
 
-按 [references/报告区块规范.md](references/报告区块规范.md) 生成 `presentation.sections[]`。section 是页面章节容器，block 是稳定的语义控件；渲染器决定具体样式。
+按 [references/报告区块规范.md](references/报告区块规范.md) 生成 `presentation.sections[]`。section 使用固定 `role` 表达布局，block 是稳定的语义控件；渲染器决定具体样式。
 
-单市场 section 顺序：`dashboard`、`quality`、`cycle`、`valuation`、`position`、`expected_return`、`risks`、`conclusion`、`sources`、`disclaimer`。
+单市场固定 role 顺序：`dashboard`、`quality`、`cycle`、`model_analysis`、`valuation`、`position`、`expected_return`、`risks`、`conclusion`、`sources`、`disclaimer`。`model_analysis` 可有多个，并必须从对应 `path` 的注册模块中选择。
 
 A+H 标的使用固定 section 契约：
 
-1. `dashboard-A` / `dashboard-H`：各自结论、KPI 和仪表盘，`market` 分别为 `A` / `H`。
+1. `dashboard-a` / `dashboard-h`：各自四个仪表盘，`role: "dashboard"`，`market` 分别为 `A` / `H`。
 2. `quality` / `cycle`：公司与行业共用章节，`market: "common"`；结论需注明「A/H 共用」。
 3. `cross_market`：`market: "common"`，只允许溢价计算、税负比较、`premium_donut`、成因表和残余结论。
-4. `valuation-A` / `valuation-H`：各自估值表、情景和合理区间。
-5. `position-A` / `position-H`：各自仓位计算与 `position_tiers`。
-6. `expected_return-A` / `expected_return-H`：各自 `return_stack` 与收益明细。
-7. `risks-A` / `risks-H`：各自 `risk_cards` 与最大回撤；共同风险可在两章重复，不得用 common 混排。
-8. `conclusion-A` / `conclusion-H`：各自操作结论。
+4. `valuation-a` / `valuation-h`：`role: "valuation"`，各自估值表、情景和合理区间。
+5. `position-a` / `position-h`：`role: "position"`，各自仓位计算与 `position_tiers`。
+6. `expected-return-a` / `expected-return-h`：`role: "expected_return"`，各自 `return_stack` 与收益明细。
+7. `risks-a` / `risks-h`：`role: "risks"`，各自 `risk_cards` 与最大回撤；共同风险可在两章重复，不得用 common 混排。
+8. `conclusion-a` / `conclusion-h`：`role: "conclusion"`，各自操作结论。
 9. `sources` / `disclaimer`：`market: "common"`。
 
 除 `quality`、`cycle`、`cross_market`、`sources`、`disclaimer` 外，A+H 数据卡不得创建其他 `market: "common"` 业务 section。
@@ -129,10 +134,10 @@ A+H 标的使用固定 section 契约：
 约束：
 
 - 所有数值用 number，不在百分比字段里写 `"40%"` 字符串；百分比字段统一存数值 `40`。
-- 百分比必须写清基准：`allocation_pct` 是占目标仓位，`target_position_pct` 是占资产，`contribution_pct` 是收益年化贡献。
+- 百分比必须写清基准：`allocation_pct` 是计划买入内部比例，不是占总资产比例；`contribution_pct` 是收益年化贡献。
 - 情景价格、区间上下限、现价、仓位档位使用独立数值字段，不依赖自然语言解析。
 - 表格正文可以是字符串，但禁止 `rowspan`、颜色、tooltip、图表尺寸等表现层 HTML。
-- 每个业务 section 的最后一项都是 `{"type":"callout","summary":true,...}`。
+- 除 `dashboard`、`sources`、`disclaimer` 外，每个业务 section 的最后一项都是 `{"type":"callout","summary":true,...}`。
 - `cross_market` 禁止出现 `valuation_scenarios`、`range_position`、`position_tiers`、`return_stack`。
 - 不输出 CSS、SVG、HTML 或组件名；颜色由 Web 主题决定，只有 `premium_donut` 的系列颜色可显式提供。
 

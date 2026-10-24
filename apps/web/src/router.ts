@@ -22,6 +22,10 @@ const router = createRouter({
       name: "updates",
       component: UpdatesView,
     },
+    {
+      path: "/:pathMatch(.*)*",
+      redirect: "/",
+    },
   ],
   scrollBehavior: () => ({ top: 0 }),
 });

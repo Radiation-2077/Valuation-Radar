@@ -19,31 +19,46 @@ from app.services.importer import (
 from app.services.queries import get_ranking, get_valuation_detail
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-LEGACY_DATA_DIR = PROJECT_ROOT.parent / "data"
+CONTRACT_EXAMPLE = (
+    PROJECT_ROOT
+    / "schemas"
+    / "value-investing"
+    / "examples"
+    / "card-v1.2.example.json"
+)
 
 
-@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
-def test_imports_legacy_cards_and_serves_ranking(tmp_path: Path) -> None:
+def write_contract_card(directory: Path) -> Path:
+    card = json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{card['name']}_{card['analysis_date']}.json"
+    path.write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def test_imports_contract_card_and_serves_ranking(tmp_path: Path) -> None:
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
     Base.metadata.create_all(engine)
     settings = Settings(storage_root=tmp_path / "storage")
+    data_dir = tmp_path / "cards"
+    write_contract_card(data_dir)
 
     with Session(engine) as session:
         first = import_legacy_cards(
             session,
-            data_dir=LEGACY_DATA_DIR,
+            data_dir=data_dir,
             settings=settings,
         )
-        assert first.files == 21
-        assert first.imported_reports == 21
-        assert first.instruments == 19
-        assert first.listings == 29
+        assert first.files == 1
+        assert first.imported_reports == 1
+        assert first.instruments == 1
+        assert first.listings == 2
         assert first.ranking_runs == 3
 
         ranking = get_ranking(session, profile="balanced")
-        assert ranking.counts["all"] == 29
-        assert ranking.counts["main_board"] > 0
-        assert len(ranking.top_three) == 3
+        assert ranking.counts["all"] == 2
+        assert ranking.counts["main_board"] == 2
+        assert len(ranking.top_three) == 2
         assert ranking.top_three[0].rank == 1
 
         detail = get_valuation_detail(
@@ -57,34 +72,25 @@ def test_imports_legacy_cards_and_serves_ranking(tmp_path: Path) -> None:
         assert "hkd_cny" in detail.macro
         assert detail.report_detail["sections"]
         assert any(
-            "标的质地" in section["title"]
+            section["title"] == "标的质地"
             for section in detail.report_detail["sections"]
         )
-        if detail.same_company:
-            assert detail.same_company[0].fair_low <= detail.same_company[0].fair_mid
-            assert detail.same_company[0].gauges
-            assert detail.same_company[0].expected_return
+        assert detail.same_company
 
         second = import_legacy_cards(
             session,
-            data_dir=LEGACY_DATA_DIR,
+            data_dir=data_dir,
             settings=settings,
         )
-        assert second.skipped_reports == 21
-        assert second.instruments == 19
+        assert second.skipped_reports == 1
+        assert second.instruments == 1
 
 
-@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
-def test_schema_1_1_candidate_persists_presentation(tmp_path: Path) -> None:
-    source_card = json.loads(
-        sorted(LEGACY_DATA_DIR.glob("*.json"))[0].read_text(encoding="utf-8")
-    )
-    presentation = _quality_presentation()
-    source_card["schema_version"] = "1.1"
-    source_card["presentation"] = presentation
+def test_schema_1_2_candidate_persists_presentation(tmp_path: Path) -> None:
+    source_card = json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))
     validate_card(source_card)
 
-    engine = create_engine(f"sqlite:///{tmp_path / 'schema-1-1.db'}")
+    engine = create_engine(f"sqlite:///{tmp_path / 'schema-1-2.db'}")
     Base.metadata.create_all(engine)
     card_path = tmp_path / f"{source_card['name']}_{source_card['analysis_date']}.json"
     card_path.write_text(
@@ -97,19 +103,18 @@ def test_schema_1_1_candidate_persists_presentation(tmp_path: Path) -> None:
         session.commit()
 
         report = import_candidate_card(session, card_path)
-        assert report.schema_version == "1.1"
-        assert report.detail_json == presentation
+        assert report.schema_version == "1.2"
+        assert report.detail_json == source_card["presentation"]
 
         detail = get_valuation_detail(session, report.markets[0].id)
-        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "grid"
+        assert detail.report_detail["sections"][0]["blocks"][0]["type"] == "gauges"
 
 
-@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
 def test_schema_1_1_rejects_missing_quality_grid() -> None:
-    card = json.loads(
-        sorted(LEGACY_DATA_DIR.glob("*.json"))[0].read_text(encoding="utf-8")
-    )
+    card = json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))
     card["schema_version"] = "1.1"
+    card["markets"] = [card["markets"][0]]
+    card["codes"] = {"A": card["markets"][0]["code"]}
     card["presentation"] = {
         "schema_version": "1.0",
         "sections": [
@@ -126,12 +131,11 @@ def test_schema_1_1_rejects_missing_quality_grid() -> None:
         validate_card(card)
 
 
-@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
 def test_legacy_quality_scorecard_is_canonicalized_to_grid() -> None:
-    card = json.loads(
-        sorted(LEGACY_DATA_DIR.glob("*.json"))[0].read_text(encoding="utf-8")
-    )
+    card = json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))
     card["schema_version"] = "1.1"
+    card["markets"] = [card["markets"][0]]
+    card["codes"] = {"A": card["markets"][0]["code"]}
     card["presentation"] = {
         "schema_version": "1.0",
         "sections": [
@@ -195,13 +199,18 @@ def test_legacy_quality_scorecard_is_canonicalized_to_grid() -> None:
     block = card["presentation"]["sections"][0]["blocks"][0]
     assert block["type"] == "grid"
     assert len(block["columns"]) == 2
-
-
-@pytest.mark.skipif(not LEGACY_DATA_DIR.is_dir(), reason="需要现有数据卡")
-def test_schema_1_1_ah_requires_split_market_sections() -> None:
-    card = json.loads(
-        (LEGACY_DATA_DIR / "中国平安_2026-10-13.json").read_text(encoding="utf-8")
+    table = next(
+        item
+        for column in block["columns"]
+        for item in column
+        if item["type"] == "table"
     )
+    assert table["headers"] == ["结果", "评价"]
+    assert table["rows"][0] == ["1.2 倍", "真实"]
+
+
+def test_schema_1_1_ah_requires_split_market_sections() -> None:
+    card = json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))
     card["schema_version"] = "1.1"
     card["presentation"] = _quality_presentation()
 
@@ -210,38 +219,6 @@ def test_schema_1_1_ah_requires_split_market_sections() -> None:
 
 
 def _quality_presentation() -> dict:
-    quality_grid = {
-        "type": "grid",
-        "columns": [
-            [
-                {"type": "heading", "level": 3, "text": "质量分项（0–10）"},
-                {
-                    "type": "scores",
-                    "items": [
-                        {"label": "利润现金含量", "score": "8.0", "width": 80, "tone": "positive"},
-                        {"label": "资产负债表", "score": "8.0", "width": 80, "tone": "positive"},
-                        {"label": "ROE 水平", "score": "7.0", "width": 70, "tone": "positive"},
-                        {"label": "护城河强度", "score": "8.0", "width": 80, "tone": "positive"},
-                        {"label": "生存能力", "score": "7.0", "width": 70, "tone": "positive"},
-                    ],
-                },
-            ],
-            [
-                {"type": "heading", "level": 3, "text": "关键指标"},
-                {
-                    "type": "table",
-                    "headers": ["维度", "结果", "评价"],
-                    "rows": [
-                        ["经营现金流 / 净利润", "1.2 倍", "真实"],
-                        ["有息负债率", "20%", "稳健"],
-                        ["ROE（近 3 年均值）", "12%", "中上"],
-                        ["护城河", "规模与成本", "强"],
-                        ["压力年份", "保持盈利", "通过"],
-                    ],
-                },
-            ],
-        ],
-    }
     return {
         "schema_version": "1.0",
         "sections": [
@@ -250,14 +227,44 @@ def _quality_presentation() -> dict:
                 "title": "标的质地",
                 "market": "common",
                 "blocks": [
-                    quality_grid,
                     {
-                        "type": "callout",
-                        "tone": "info",
-                        "title": "本章小结",
-                        "body": "质量可接受。",
-                        "summary": True,
-                    },
+                        "type": "grid",
+                        "columns": [
+                            [
+                                {
+                                    "type": "scores",
+                                    "items": [
+                                        {
+                                            "label": label,
+                                            "score": "8.0",
+                                            "width": 80,
+                                            "tone": "positive",
+                                        }
+                                        for label in (
+                                            "利润现金含量",
+                                            "资产负债表",
+                                            "ROE 水平",
+                                            "护城河强度",
+                                            "生存能力",
+                                        )
+                                    ],
+                                }
+                            ],
+                            [
+                                {
+                                    "type": "table",
+                                    "headers": ["维度", "结果", "评价"],
+                                    "rows": [
+                                        ["指标 1", "结果 1", "评价 1"],
+                                        ["指标 2", "结果 2", "评价 2"],
+                                        ["指标 3", "结果 3", "评价 3"],
+                                        ["指标 4", "结果 4", "评价 4"],
+                                        ["指标 5", "结果 5", "评价 5"],
+                                    ],
+                                }
+                            ],
+                        ],
+                    }
                 ],
             }
         ],

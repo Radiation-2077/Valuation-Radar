@@ -1,13 +1,13 @@
 ---
 name: investment-ranking
-description: 把已估值过的个股与 ETF 放到同一把尺子上做风险调整后的性价比排序，输出可直接被 Web 前端消费的结构化 JSON（稳健 / 均衡 / 进取三套风险偏好）。当用户说「性价比排序 / 哪个更值得买 / 横向对比 / 这几个选哪个 / 排个序 / 在持仓里挑」，或给出一组股票、ETF 想比较谁当前更值得买时使用。依赖 value-investing skill 落在 data/ 的数据卡，不重新估值。
+description: 把已估值过的个股与 ETF 放到同一把尺子上做风险调整后的性价比排序，输出可审计、可与 Web 排名对照的结构化 JSON（稳健 / 均衡 / 进取三套风险偏好）。当用户说「性价比排序 / 哪个更值得买 / 横向对比 / 这几个选哪个 / 排个序 / 在持仓里挑」，或给出一组股票、ETF 想比较谁当前更值得买时使用。依赖 value-investing schema 1.2 数据卡，不重新估值。
 metadata:
   short-description: 投资性价比排序与结构化榜单生成
 ---
 
 # 投资性价比排序
 
-读取 `data/` 中的 value-investing schema 1.1 数据卡，过质地与数据门槛，计算四维分和三套风险偏好排名，输出 JSON。由 Web 前端负责榜单、象限图和表格渲染。
+读取 `data/` 中的 value-investing schema 1.2 数据卡，按标的保留最新卡，过质地与数据门槛，计算四维分和三套风险偏好排名，输出 JSON。Web 运行时的正式排名仍以数据库 `RankingService` 为准，本脚本用于离线复核与结果对照。
 
 **本 skill 不重新估值，也不生成 HTML。**
 
@@ -17,7 +17,7 @@ metadata:
 2. **只用脚本打分。** 运行 `python3 scripts/rank.py`；脚本是评分口径的唯一事实来源。
 3. **三套风险偏好同时输出。** 固定键为 `conservative` / `balanced` / `aggressive`，展示名称分别为稳健保守、均衡、进取。
 4. **输出结构与 value-investing 的排序单元一致。** 一条记录是「标的 × 市场」；A/H 两地分别参与排序。
-5. **门槛先于排名。** 质地不过关或关键字段缺失的记录进入 `excluded`，不进入任一主榜。
+5. **数据完整性先于排名。** 任一数据卡无法解析、schema 校验失败或必需字段缺失时立即抛错并停止，不生成榜单；只有数据完整的卡才允许因质地门槛进入 `excluded`。
 6. **无需生成视觉代码。** 不在 JSON 中输出 class、CSS、HTML、SVG 或组件名。图表所需的坐标、分项分、风险标签必须保存为数字和数组。
 7. **不使用池内归一化。** 保持绝对锚定，避免小样本把最差标的抬成 0 分、最好标的抬成 100 分。
 8. **不把估值收益算两次。** 安全边际维度负责估值修复；基础收益维度只取股息、增长和汇率。
@@ -32,11 +32,11 @@ metadata:
 python3 /home/canon/.codex/skills/value-investing/scripts/scorecard.py list --dir data
 ```
 
-确认分析日期、市场代码和缺失字段。schema 1.0 旧卡可参与基础排序，但详情 presentation 可能缺失；新卡应为 1.1。
+确认分析日期、市场代码和数据完整性；任何必需字段缺失立即终止。只使用 schema 1.2 卡；同一标的有多张卡时，`rank.py` 自动选择 `analysis_date + generated_at` 最新的一张。
 
 ### 2. 补齐估值
 
-缺卡或关键字段缺失时，用 value-investing skill 重新估值并生成 schema 1.1 数据卡。不要在排序文件中手填上游缺失值。
+缺卡或关键字段缺失时，用 value-investing skill 重新估值并生成 schema 1.2 数据卡。不要在排序文件中手填上游缺失值。
 
 ### 3. 生成排序 JSON
 
@@ -54,9 +54,9 @@ python3 scripts/rank.py --data-dir data --out 投资性价比排序_2026-10-22.j
 ### 4. 复核结论
 
 - 是否有“高分但一眼不该买”的记录，例如收益高度依赖估值回归、周期位置过高。
-- 同一公司的 A/H 是否同时靠前，需要提示仓位合并与相关性。
+- 同一公司的 A/H 是否同时靠前，需要提示经营敞口相关性；本 skill 不估计仓位大小。
 - 三套权重下名次变化是否符合稳健 / 均衡 / 进取的偏好。
-- `excluded` 是否包含所有质地不达标和关键字段缺失单元，并给出原因。
+- `excluded` 是否只包含数据完整但质地不达标的单元，并给出原因。
 
 ## 输出 JSON 契约
 
@@ -126,7 +126,6 @@ python3 scripts/rank.py --data-dir data --out 投资性价比排序_2026-10-22.j
   "expected_return_pct": 27.9,
   "base_income_pct": 12.3,
   "max_drawdown_pct": -31.3,
-  "position_pct": 6,
   "verdict": "分批买入",
   "thesis": "一句话逻辑",
   "confidence": "中",
@@ -162,7 +161,7 @@ value-investing   : 标的 -> 估值 -> data/{标的名}_{date}.json
 investment-ranking: data/*.json -> 四维打分 -> 投资性价比排序_{date}.json
 ```
 
-两个 skill 只通过 JSON schema 解耦。修改 schema 时必须同步 `scripts/rank.py` 与 value-investing 的 `scripts/scorecard.py`。
+两个 skill 通过 value-investing 的 `card-v1.2.schema.json` 解耦。修改字段、枚举或 section 契约时，必须同步 `scripts/rank.py` 与 value-investing 的 `scripts/scorecard.py`。
 
 ## 参考文档
 

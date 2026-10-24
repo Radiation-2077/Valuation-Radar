@@ -6,7 +6,12 @@ import { CanvasRenderer } from "echarts/renderers";
 import { NSpace, NText } from "naive-ui";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
-import { POSITION_TIER_COLORS } from "@/lib/chart-colors";
+import {
+  POSITION_TIER_COLORS,
+  segmentBlur,
+  segmentEmphasis,
+  segmentTooltip,
+} from "@/lib/chart-colors";
 import {
   parsePositionTiers,
   type PositionTierSource,
@@ -24,7 +29,10 @@ let observer: ResizeObserver | undefined;
 const tiers = computed(() => parsePositionTiers(props.items));
 const accessibleLabel = computed(() =>
   tiers.value
-    .map((tier) => `${tier.tier}，买入价 ${tier.price}，占目标仓位 ${tier.allocation}%`)
+    .map(
+      (tier) =>
+        `${tier.tier}，${tier.triggerType}，${tier.condition}，触发价 ${tier.price}，占计划买入 ${tier.allocation}%`,
+    )
     .join("；"),
 );
 
@@ -36,11 +44,11 @@ function render() {
       xAxis: { type: "value", min: 0, max: 100, show: false },
       yAxis: { type: "category", data: [""], show: false },
       tooltip: {
-        trigger: "item",
+        ...segmentTooltip(),
         formatter: ({ seriesIndex }: { seriesIndex: number }) => {
           const tier = tiers.value[seriesIndex];
           return tier
-            ? `${tier.tier}<br/>买入价 ${tier.price}<br/>占目标仓位 ${tier.allocation}%`
+            ? `${tier.tier}<br/>${tier.triggerType}<br/>${tier.condition}<br/>触发价 ${tier.price}<br/>占计划买入 ${tier.allocation}%`
             : "";
         },
       },
@@ -58,16 +66,8 @@ function render() {
                 ? [0, 8, 8, 0]
                 : 0,
         },
-        emphasis: {
-          focus: "series",
-          itemStyle: {
-            borderColor: "#dce7ef",
-            borderWidth: 2,
-          },
-        },
-        blur: {
-          itemStyle: { opacity: 0.55 },
-        },
+        emphasis: segmentEmphasis(),
+        blur: segmentBlur(),
         label: {
           show: true,
           position: "inside",
@@ -83,7 +83,7 @@ function render() {
           fontSize: 12,
           fontWeight: 600,
           lineHeight: 16,
-          formatter: `level${index + 1}：${tier.price}`,
+          formatter: tier.triggerType || `level${index + 1}`,
         },
       })),
     },
@@ -115,8 +115,8 @@ onBeforeUnmount(() => {
     :data-tier-count="tiers.length"
   >
     <NSpace class="position-tier-heading" align="center" justify="space-between" :size="8">
-      <NText strong>三档买入计划</NText>
-      <NText depth="3">占该标的的目标仓位</NText>
+      <NText strong>四档买入计划</NText>
+      <NText depth="3">按计划内比例分批执行</NText>
     </NSpace>
     <div ref="element" class="position-tier-canvas" />
   </div>

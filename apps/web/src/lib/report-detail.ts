@@ -104,12 +104,20 @@ export function mergeScenarioAcrossSections(
   const scenarios = blockObjects(scenarioBlock, "items").map((item) => {
     if (item.name !== undefined || item.price !== undefined) {
       return {
-        label: String(item.price ?? item.name ?? ""),
-        highlight: item.name === "中性",
+        label:
+          objectText(item, "label") ||
+          objectText(item, "name") ||
+          String(item.price ?? ""),
+        price: item.price,
+        highlight:
+          item.key === "base" ||
+          item.name === "中性" ||
+          objectBoolean(item, "highlight"),
       };
     }
     return {
       label: objectText(item, "label"),
+      price: item.price,
       highlight: objectBoolean(item, "highlight"),
     };
   });
@@ -188,9 +196,11 @@ export function visibleReportSections(
     .map((section) => {
       const visibleBlocks = filterMarketBlocks(section.title, section.blocks, market);
       const layoutBlocks = flattenPositionLayout(visibleBlocks, section.title);
+      const isDashboard =
+        section.role === "dashboard" || section.title.includes("决策仪表盘");
       return {
         ...section,
-        blocks: section.title.includes("决策仪表盘")
+        blocks: isDashboard
           ? layoutBlocks.filter((block) => block.type === "gauges")
           : layoutBlocks,
       };
@@ -267,16 +277,58 @@ export function blockNestedBlocks(block: ReportDetailBlock): ReportDetailBlock[]
     : [];
 }
 
-export function tableHeaders(block: ReportDetailBlock): string[] {
+export function tableHeaders(
+  block: ReportDetailBlock,
+  pairedQualityTable = false,
+): string[] {
   const value = block.headers;
-  return Array.isArray(value) ? value.map(String) : [];
+  const headers = Array.isArray(value)
+    ? value.map(String)
+    : blockObjects(block, "columns").map((column) => objectText(column, "label"));
+  return pairedQualityTable && headers.length > 2 ? headers.slice(-2) : headers;
 }
 
-export function tableRows(block: ReportDetailBlock): string[][] {
+export function tableRows(
+  block: ReportDetailBlock,
+  pairedQualityTable = false,
+): string[][] {
   const value = block.rows;
-  return Array.isArray(value)
-    ? value.map((row) => (Array.isArray(row) ? row.map(String) : []))
-    : [];
+  if (!Array.isArray(value)) return [];
+  const columns = blockObjects(block, "columns");
+  const rows = !columns.length
+    ? value.map((row) => (Array.isArray(row) ? row.map(tableCellText) : []))
+    : value.map((row) => {
+        if (!row || typeof row !== "object" || Array.isArray(row)) return [];
+        return columns.map((column) =>
+          tableCellText(
+            (row as Record<string, unknown>)[objectText(column, "key")],
+          ),
+        );
+      });
+  const sourceColumnCount = columns.length || tableHeaders(block).length;
+  return pairedQualityTable && sourceColumnCount > 2
+    ? rows.map((row) => row.slice(-2))
+    : rows;
+}
+
+export function tableColumnRoles(
+  block: ReportDetailBlock,
+  pairedQualityTable = false,
+): string[] {
+  const columns = blockObjects(block, "columns");
+  const roles = columns.map(
+    (column) => objectText(column, "role") || "note",
+  );
+  if (pairedQualityTable && !roles.length && Array.isArray(block.headers)) {
+    return block.headers.slice(-2).map((header) =>
+      String(header).includes("结果")
+        ? "value"
+        : /评价|说明/.test(String(header))
+          ? "assessment"
+          : "note",
+    );
+  }
+  return pairedQualityTable && roles.length > 2 ? roles.slice(-2) : roles;
 }
 
 export function objectText(item: Record<string, unknown>, key: string): string {
@@ -291,6 +343,16 @@ export function objectNumber(item: Record<string, unknown>, key: string): number
 
 export function objectBoolean(item: Record<string, unknown>, key: string): boolean {
   return item[key] === true;
+}
+
+function tableCellText(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return String(value);
+  if (typeof value !== "string") return "";
+  return value.replace(/(-?\d+(?:\.\d+)?)\s*%/g, (_, raw: string) => {
+    const number = Number(raw);
+    return Number.isFinite(number) ? `${number.toFixed(1)}%` : `${raw}%`;
+  });
 }
 
 function filterMarketBlocks(

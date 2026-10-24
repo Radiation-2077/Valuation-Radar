@@ -1,0 +1,1748 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuation-radar.local/skills/value-investing/card-v1.2.schema.json",
+  "title": "Valuation Radar value-investing card v1.2",
+  "description": "Canonical structured valuation card shared by Codex output, backend import and Web rendering.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis_date",
+    "generated_at",
+    "name",
+    "codes",
+    "asset_type",
+    "path",
+    "model_modules",
+    "industry",
+    "cycle_stage",
+    "cycle_position",
+    "quality",
+    "conclusion",
+    "macro",
+    "markets",
+    "risks",
+    "missing",
+    "notes",
+    "presentation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.2"
+    },
+    "analysis_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "codes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(A|H|US|CN)$": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "asset_type": {
+      "enum": [
+        "stock",
+        "etf"
+      ]
+    },
+    "path": {
+      "$ref": "#/$defs/valuationPath"
+    },
+    "model_modules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/modelModule"
+      }
+    },
+    "industry": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cycle_stage": {
+      "$ref": "#/$defs/lifecycleStage"
+    },
+    "cycle_position": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "quality": {
+      "$ref": "#/$defs/quality"
+    },
+    "conclusion": {
+      "$ref": "#/$defs/conclusion"
+    },
+    "macro": {
+      "$ref": "#/$defs/macro"
+    },
+    "markets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/market"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "missing": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "type": "string"
+      },
+      "description": "New v1.2 cards must be complete. Missing required data must reject the card instead of being recorded."
+    },
+    "notes": {
+      "type": "string"
+    },
+    "presentation": {
+      "$ref": "#/$defs/presentation"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "path": {
+            "const": "stable"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "then": {
+        "properties": {
+          "model_modules": {
+            "items": {
+              "enum": [
+                "gordon_reverse",
+                "peg",
+                "dividend_sustainability",
+                "dividend_yield"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "path": {
+            "const": "cyclical"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "then": {
+        "properties": {
+          "model_modules": {
+            "items": {
+              "enum": [
+                "normalized_earnings",
+                "cycle_position",
+                "pb_roe"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "path": {
+            "const": "financial"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "then": {
+        "properties": {
+          "model_modules": {
+            "items": {
+              "enum": [
+                "pb_roe",
+                "pev_sensitivity",
+                "nbv_quality",
+                "solvency"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "path": {
+            "const": "etf"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "then": {
+        "properties": {
+          "asset_type": {
+            "const": "etf"
+          },
+          "model_modules": {
+            "items": {
+              "enum": [
+                "index_percentile",
+                "tracking_quality",
+                "dividend_yield"
+              ]
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "asset_type": {
+            "const": "stock"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "valuationPath": {
+      "enum": [
+        "stable",
+        "cyclical",
+        "financial",
+        "etf"
+      ]
+    },
+    "modelModule": {
+      "enum": [
+        "gordon_reverse",
+        "peg",
+        "dividend_sustainability",
+        "normalized_earnings",
+        "cycle_position",
+        "pb_roe",
+        "pev_sensitivity",
+        "nbv_quality",
+        "solvency",
+        "index_percentile",
+        "tracking_quality",
+        "dividend_yield"
+      ]
+    },
+    "marketCode": {
+      "enum": [
+        "A",
+        "H",
+        "US",
+        "CN"
+      ]
+    },
+    "currency": {
+      "enum": [
+        "CNY",
+        "HKD",
+        "USD"
+      ]
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "buy",
+            "accumulate",
+            "watch",
+            "hold",
+            "reduce",
+            "avoid",
+            "excluded",
+            "not_applicable"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rating",
+        "label",
+        "score",
+        "moat",
+        "gate_pass",
+        "gate_reason"
+      ],
+      "properties": {
+        "rating": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "moat": {
+          "type": "string"
+        },
+        "gate_pass": {
+          "type": "boolean"
+        },
+        "gate_reason": {
+          "type": "string"
+        }
+      }
+    },
+    "conclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "thesis",
+        "confidence"
+      ],
+      "properties": {
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "thesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        }
+      }
+    },
+    "macro": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rf_cny",
+        "rf_usd",
+        "usd_cny",
+        "hkd_cny",
+        "as_of"
+      ],
+      "properties": {
+        "rf_cny": {
+          "type": "number"
+        },
+        "rf_usd": {
+          "type": "number"
+        },
+        "usd_cny": {
+          "type": "number"
+        },
+        "hkd_cny": {
+          "type": "number"
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "market": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "market",
+        "code",
+        "currency",
+        "price",
+        "price_date",
+        "fair_low",
+        "fair_mid",
+        "fair_high",
+        "valuation",
+        "safety_margin_pct",
+        "certainty",
+        "expected_return",
+        "downside",
+        "position",
+        "verdict"
+      ],
+      "properties": {
+        "market": {
+          "$ref": "#/$defs/marketCode"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "price_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "fair_low": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fair_mid": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fair_high": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "valuation": {
+          "$ref": "#/$defs/valuation"
+        },
+        "safety_margin_pct": {
+          "type": "number"
+        },
+        "certainty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "expected_return": {
+          "$ref": "#/$defs/expectedReturn"
+        },
+        "downside": {
+          "$ref": "#/$defs/downside"
+        },
+        "position": {
+          "$ref": "#/$defs/position"
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        }
+      }
+    },
+    "valuation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pe",
+        "pb",
+        "dividend_yield_after_tax",
+        "percentile"
+      ],
+      "properties": {
+        "pe": {
+          "type": "number"
+        },
+        "pb": {
+          "type": "number"
+        },
+        "dividend_yield_after_tax": {
+          "type": "number"
+        },
+        "percentile": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "expectedReturn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dividend",
+        "growth",
+        "valuation",
+        "fx",
+        "total"
+      ],
+      "properties": {
+        "dividend": {
+          "type": "number"
+        },
+        "growth": {
+          "type": "number"
+        },
+        "valuation": {
+          "type": "number"
+        },
+        "fx": {
+          "type": "number"
+        },
+        "total": {
+          "type": "number"
+        }
+      }
+    },
+    "downside": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_drawdown_pct",
+        "scenario"
+      ],
+      "properties": {
+        "max_drawdown_pct": {
+          "type": "number",
+          "maximum": 0
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tranches"
+      ],
+      "properties": {
+        "tranches": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/positionTier"
+          }
+        }
+      }
+    },
+    "positionTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "price",
+        "trigger_type",
+        "condition",
+        "allocation_pct",
+        "active"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "trigger_type": {
+          "enum": [
+            "valuation",
+            "evidence",
+            "stabilization",
+            "catalyst",
+            "reserve"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allocation_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "active": {
+          "type": "boolean"
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "sections"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.2"
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/section"
+          }
+        }
+      }
+    },
+    "sectionRole": {
+      "enum": [
+        "dashboard",
+        "quality",
+        "cycle",
+        "model_analysis",
+        "cross_market",
+        "valuation",
+        "position",
+        "expected_return",
+        "risks",
+        "conclusion",
+        "sources",
+        "disclaimer"
+      ]
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "title",
+        "market",
+        "blocks"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "role": {
+          "$ref": "#/$defs/sectionRole"
+        },
+        "module": {
+          "$ref": "#/$defs/modelModule"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "market": {
+          "enum": [
+            "common",
+            "A",
+            "H",
+            "US",
+            "CN"
+          ]
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      },
+      "not": {
+        "properties": {
+          "title": {
+            "pattern": "(A\\s*股|H\\s*股|A/H|AH)"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "model_analysis"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "required": [
+              "module"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "module"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "dashboard"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocks": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/gaugesBlock"
+                    },
+                    {
+                      "properties": {
+                        "items": {
+                          "minItems": 4,
+                          "maxItems": 4
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "cycle"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          },
+          "then": {
+            "properties": {
+              "blocks": {
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/industryLifecycleBlock"
+                  }
+                ],
+                "contains": {
+                  "$ref": "#/$defs/industryLifecycleBlock"
+                },
+                "minContains": 1,
+                "maxContains": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "block": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/headingBlock"
+        },
+        {
+          "$ref": "#/$defs/paragraphBlock"
+        },
+        {
+          "$ref": "#/$defs/calloutBlock"
+        },
+        {
+          "$ref": "#/$defs/bulletsBlock"
+        },
+        {
+          "$ref": "#/$defs/tableBlock"
+        },
+        {
+          "$ref": "#/$defs/formulaBlock"
+        },
+        {
+          "$ref": "#/$defs/industryLifecycleBlock"
+        },
+        {
+          "$ref": "#/$defs/industryCycleBlock"
+        },
+        {
+          "$ref": "#/$defs/gridBlock"
+        },
+        {
+          "$ref": "#/$defs/scoresBlock"
+        },
+        {
+          "$ref": "#/$defs/metricCardsBlock"
+        },
+        {
+          "$ref": "#/$defs/gaugesBlock"
+        },
+        {
+          "$ref": "#/$defs/valuationScenariosBlock"
+        },
+        {
+          "$ref": "#/$defs/rangePositionBlock"
+        },
+        {
+          "$ref": "#/$defs/positionTiersBlock"
+        },
+        {
+          "$ref": "#/$defs/returnStackBlock"
+        },
+        {
+          "$ref": "#/$defs/premiumDonutBlock"
+        },
+        {
+          "$ref": "#/$defs/riskCardsBlock"
+        }
+      ]
+    },
+    "blockMarket": {
+      "enum": [
+        "A",
+        "H",
+        "US",
+        "CN"
+      ]
+    },
+    "headingBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "level",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "heading"
+        },
+        "level": {
+          "enum": [
+            2,
+            3,
+            4
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "paragraphBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "paragraph"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "boolean"
+        }
+      }
+    },
+    "calloutBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "tone",
+        "title",
+        "body"
+      ],
+      "properties": {
+        "type": {
+          "const": "callout"
+        },
+        "tone": {
+          "enum": [
+            "pos",
+            "warn",
+            "neg",
+            "info"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "boolean"
+        }
+      }
+    },
+    "bulletsBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "bullets"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "tableColumnRole": {
+      "enum": [
+        "label",
+        "value",
+        "assessment",
+        "action",
+        "note",
+        "date",
+        "metric",
+        "scenario",
+        "unit",
+        "status"
+      ]
+    },
+    "tableBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "variant",
+        "columns",
+        "rows"
+      ],
+      "properties": {
+        "type": {
+          "const": "table"
+        },
+        "variant": {
+          "enum": [
+            "comparison",
+            "matrix",
+            "checklist"
+          ]
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/tableColumn"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "tableColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "role"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "$ref": "#/$defs/tableColumnRole"
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    },
+    "formulaBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "latex",
+        "substitution",
+        "explanation"
+      ],
+      "properties": {
+        "type": {
+          "const": "formula"
+        },
+        "latex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "substitution": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "lifecycleStage": {
+      "enum": [
+        "导入/爆发期",
+        "平台增长期",
+        "成熟期",
+        "衰退期"
+      ]
+    },
+    "industryLifecycleBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "stage"
+      ],
+      "properties": {
+        "type": {
+          "const": "industry_lifecycle"
+        },
+        "stage": {
+          "$ref": "#/$defs/lifecycleStage"
+        }
+      }
+    },
+    "industryCycleBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "position",
+        "phase",
+        "direction"
+      ],
+      "properties": {
+        "type": {
+          "const": "industry_cycle"
+        },
+        "position": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "phase": {
+          "enum": [
+            "recovery",
+            "upswing",
+            "pullback",
+            "downswing"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "up",
+            "down"
+          ]
+        }
+      }
+    },
+    "gridBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "columns"
+      ],
+      "properties": {
+        "type": {
+          "const": "grid"
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/block"
+            }
+          }
+        }
+      }
+    },
+    "scoresBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "scores"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/scoreItem"
+          }
+        }
+      }
+    },
+    "scoreItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "score",
+        "tone"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "tone": {
+          "enum": [
+            "positive",
+            "negative",
+            "neutral"
+          ]
+        }
+      }
+    },
+    "metricCardsBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "metric_cards"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/metricCard"
+          }
+        }
+      }
+    },
+    "metricCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "value"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "gaugeKind": {
+      "enum": [
+        "safety_margin_pct",
+        "percentile",
+        "yield_pct",
+        "score_0_100",
+        "certainty"
+      ]
+    },
+    "gaugesBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "gauges"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/gaugeItem"
+          }
+        }
+      }
+    },
+    "gaugeItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "value",
+        "display_value",
+        "kind",
+        "tone"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        },
+        "display_value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "$ref": "#/$defs/gaugeKind"
+        },
+        "tone": {
+          "enum": [
+            "pos",
+            "warn",
+            "neg",
+            "info",
+            "acc"
+          ]
+        }
+      }
+    },
+    "scenarioKey": {
+      "enum": [
+        "conservative",
+        "base",
+        "optimistic"
+      ]
+    },
+    "valuationScenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "price"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/scenarioKey"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "multiple": {
+          "$ref": "#/$defs/scenarioMultiple"
+        },
+        "assumption": {
+          "type": "string"
+        }
+      }
+    },
+    "scenarioMultiple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        }
+      }
+    },
+    "valuationScenariosBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "market",
+        "currency",
+        "current_price",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "valuation_scenarios"
+        },
+        "market": {
+          "$ref": "#/$defs/blockMarket"
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "current_price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "items": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/valuationScenario"
+          }
+        }
+      }
+    },
+    "rangeScenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "price"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/scenarioKey"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "rangePositionBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "market",
+        "currency",
+        "min",
+        "fair_low",
+        "fair_mid",
+        "fair_high",
+        "max",
+        "current_price",
+        "scenarios"
+      ],
+      "properties": {
+        "type": {
+          "const": "range_position"
+        },
+        "market": {
+          "$ref": "#/$defs/blockMarket"
+        },
+        "currency": {
+          "$ref": "#/$defs/currency"
+        },
+        "min": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fair_low": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fair_mid": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fair_high": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "current_price": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "scenarios": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/rangeScenario"
+          }
+        }
+      }
+    },
+    "positionTiersBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "market",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "position_tiers"
+        },
+        "market": {
+          "$ref": "#/$defs/blockMarket"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/positionTier"
+          }
+        }
+      }
+    },
+    "returnSource": {
+      "enum": [
+        "dividend",
+        "growth",
+        "valuation",
+        "fx"
+      ]
+    },
+    "returnStackBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "market",
+        "items",
+        "total_pct"
+      ],
+      "properties": {
+        "type": {
+          "const": "return_stack"
+        },
+        "market": {
+          "$ref": "#/$defs/blockMarket"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/returnItem"
+          }
+        },
+        "total_pct": {
+          "type": "number"
+        }
+      }
+    },
+    "returnItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "label",
+        "value_pct"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/returnSource"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value_pct": {
+          "type": "number"
+        }
+      }
+    },
+    "premiumDonutBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "market_pair",
+        "total_premium_pct",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "premium_donut"
+        },
+        "market_pair": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/blockMarket"
+            },
+            {
+              "$ref": "#/$defs/blockMarket"
+            }
+          ],
+          "items": false
+        },
+        "total_premium_pct": {
+          "type": "number"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/premiumItem"
+          }
+        }
+      }
+    },
+    "premiumItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "contribution_pct",
+        "share_pct",
+        "tone"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contribution_pct": {
+          "type": "number"
+        },
+        "share_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "tone": {
+          "enum": [
+            "blue",
+            "gold",
+            "green",
+            "red"
+          ]
+        }
+      }
+    },
+    "riskCardsBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items"
+      ],
+      "properties": {
+        "type": {
+          "const": "risk_cards"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/riskCard"
+          }
+        }
+      }
+    },
+    "riskCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "market",
+        "title",
+        "severity",
+        "body",
+        "mitigation"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "common",
+            "market"
+          ]
+        },
+        "market": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "A",
+            "H",
+            "US",
+            "CN",
+            null
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mitigation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "common"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          },
+          "then": {
+            "properties": {
+              "market": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "market": {
+                "enum": [
+                  "A",
+                  "H",
+                  "US",
+                  "CN"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

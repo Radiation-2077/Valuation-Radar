@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from app.domain.card_fields import confidence_label, display_label
+
 ALGORITHM_VERSION = "1.0"
 
 ANCHOR_MARGIN = [
@@ -282,6 +284,10 @@ def context_from_card(
     conclusion = card.get("conclusion") or {}
     macro = card.get("macro") or {}
     gauges = market.get("gauges") or {}
+    gauges = market.get("gauges") or {}
+    certainty = _number(gauges.get("certainty"))
+    if certainty is None:
+        certainty = _number(market.get("certainty"))
     return SecurityContext(
         name=str(card["name"]),
         market=str(market.get("market") or "—"),
@@ -301,10 +307,10 @@ def context_from_card(
         safety_margin_pct=_number(market.get("safety_margin_pct")),
         expected_return=dict(market.get("expected_return") or {}),
         max_drawdown_pct=_number((market.get("downside") or {}).get("max_drawdown_pct")),
-        certainty=_number(gauges.get("certainty")),
-        verdict=str(market.get("verdict") or conclusion.get("verdict") or ""),
+        certainty=certainty,
+        verdict=display_label(market.get("verdict") or conclusion.get("verdict")),
         thesis=str(conclusion.get("thesis") or ""),
-        confidence=str(conclusion.get("confidence") or "中"),
+        confidence=confidence_label(conclusion.get("confidence")),
         risks=[str(item) for item in card.get("risks") or []],
         missing=[str(item) for item in card.get("missing") or []],
         rf_cny=_number(macro.get("rf_cny")),

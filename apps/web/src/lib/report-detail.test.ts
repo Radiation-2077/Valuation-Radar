@@ -8,6 +8,9 @@ import {
   mergeScenarioAcrossSections,
   normalizeDashboardSections,
   parseConicGradient,
+  tableColumnRoles,
+  tableHeaders,
+  tableRows,
   visibleReportSections,
 } from "./report-detail";
 
@@ -98,7 +101,7 @@ describe("report detail helpers", () => {
       {
         type: "grid",
         columns: [
-          [{ type: "table", headers: ["步骤"], rows: [["① 基础仓位"]] }],
+          [{ type: "table", headers: ["步骤"], rows: [["① 计划买入"]] }],
           [
             { type: "donut", percentage: 7, value: "7%" },
             {
@@ -146,6 +149,131 @@ describe("report detail helpers", () => {
     expect(visibleReportSections(sections, "H").map((section) => section.id)).toEqual([
       "quality",
       "position-H",
+    ]);
+  });
+
+  it("renders v1.2 object rows through semantic table columns", () => {
+    const block: ReportDetailBlock = {
+      type: "table",
+      variant: "comparison",
+      columns: [
+        { key: "metric", label: "维度", role: "label" },
+        { key: "value", label: "结果", role: "value" },
+        { key: "note", label: "说明", role: "note" },
+      ],
+      rows: [
+        {
+          metric: "ROE",
+          value: 13.4,
+          note: "长期均值为正",
+        },
+      ],
+    };
+
+    expect(tableHeaders(block)).toEqual(["维度", "结果", "说明"]);
+    expect(tableRows(block)).toEqual([["ROE", "13.4", "长期均值为正"]]);
+    expect(tableColumnRoles(block)).toEqual(["label", "value", "note"]);
+  });
+
+  it("limits displayed percentages to one decimal place", () => {
+    const block: ReportDetailBlock = {
+      type: "table",
+      headers: ["说明"],
+      rows: [["贴现率差 12.399999999999999%，股息税差 34.44%"]],
+    };
+
+    expect(tableRows(block)).toEqual([["贴现率差 12.4%，股息税差 34.4%"]]);
+  });
+
+  it("preserves scenario names and prices when merging valuation charts", () => {
+    const sections = [
+      {
+        id: "valuation",
+        title: "估值",
+        market: "A",
+        blocks: [
+          {
+            type: "valuation_scenarios",
+            market: "A",
+            items: [
+              { key: "conservative", label: "保守", price: 45.2 },
+              { key: "base", label: "中性", price: 47.2 },
+            ],
+          },
+          {
+            type: "range_position",
+            market: "A",
+            min: 37,
+            fair_low: 45.2,
+            fair_high: 51,
+            max: 55,
+          },
+        ],
+      },
+    ];
+
+    const merged = mergeScenarioAcrossSections(sections, "A");
+    expect(merged[0].blocks[0]).toMatchObject({
+      type: "range_position",
+      scenarios: [
+        { label: "保守", price: 45.2, highlight: false },
+        { label: "中性", price: 47.2, highlight: true },
+      ],
+    });
+  });
+
+  it("hides a legacy quality dimension column beside the score bars", () => {
+    const block: ReportDetailBlock = {
+      type: "table",
+      variant: "comparison",
+      columns: [
+        { key: "metric", label: "维度", role: "label" },
+        { key: "value", label: "结果", role: "value" },
+        { key: "assessment", label: "评价", role: "assessment" },
+      ],
+      rows: [
+        {
+          metric: "经营现金流 / 净利润",
+          value: "长期高于 1",
+          assessment: "利润含金量可接受",
+        },
+      ],
+    };
+
+    expect(tableHeaders(block, true)).toEqual(["结果", "评价"]);
+    expect(tableRows(block, true)).toEqual([["长期高于 1", "利润含金量可接受"]]);
+    expect(tableColumnRoles(block, true)).toEqual(["value", "assessment"]);
+  });
+
+  it("keeps only gauges in a v1.2 dashboard section", () => {
+    const sections = [
+      {
+        id: "dashboard-a",
+        role: "dashboard",
+        title: "决策仪表盘",
+        market: "A",
+        blocks: [
+          { type: "paragraph", text: "不应展示的说明" },
+          {
+            type: "gauges",
+            items: [
+              {
+                key: "safety_margin",
+                label: "安全边际",
+                value: 10,
+                display_value: "10%",
+                kind: "safety_margin_pct",
+                tone: "pos",
+              },
+            ],
+          },
+          { type: "callout", title: "不应展示的小结", body: "不应展示" },
+        ],
+      },
+    ];
+
+    expect(visibleReportSections(sections, "A")[0].blocks.map((block) => block.type)).toEqual([
+      "gauges",
     ]);
   });
 

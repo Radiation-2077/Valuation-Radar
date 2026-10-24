@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import importlib.util
+import itertools
 import json
 import sys
 from pathlib import Path
@@ -38,6 +40,21 @@ ANCHOR_DD = [
     (10, 97), (16, 90), (22, 80), (26, 72), (31, 62),
     (36, 52), (42, 42), (50, 30), (60, 18),
 ]
+VALUE_SCORECARD = (
+    Path(__file__).resolve().parents[2]
+    / "value-investing"
+    / "scripts"
+    / "scorecard.py"
+)
+
+
+def load_card_validator():
+    spec = importlib.util.spec_from_file_location("value_scorecard", VALUE_SCORECARD)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"无法加载 value-investing scorecard：{VALUE_SCORECARD}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.validate_file
 
 
 def lerp_anchor(value: float, anchors: list[tuple[float, float]]) -> float:
@@ -45,7 +62,7 @@ def lerp_anchor(value: float, anchors: list[tuple[float, float]]) -> float:
         return float(anchors[0][1])
     if value >= anchors[-1][0]:
         return float(anchors[-1][1])
-    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
+    for (x0, y0), (x1, y1) in itertools.pairwise(anchors):
         if x0 <= value <= x1:
             return y0 + (y1 - y0) * (value - x0) / (x1 - x0)
     return float(anchors[-1][1])
@@ -53,6 +70,20 @@ def lerp_anchor(value: float, anchors: list[tuple[float, float]]) -> float:
 
 def num(value, default=None):
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) else default
+
+
+def label_of(value, default=""):
+    if isinstance(value, str):
+        return value or default
+    if isinstance(value, dict):
+        return str(value.get("label") or value.get("code") or default)
+    return default
+
+
+def confidence_code(value):
+    if isinstance(value, dict):
+        return str(value.get("code") or "")
+    return "low" if value == "低" else ""
 
 
 def band_of(score: float) -> str:
@@ -96,8 +127,6 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
             expected = market.get("expected_return") or {}
             downside = market.get("downside") or {}
             valuation = market.get("valuation") or {}
-            gauges = market.get("gauges") or {}
-            position = market.get("position") or {}
             safety_margin = num(market.get("safety_margin_pct"))
             total_return = num(expected.get("total"))
             dividend = num(expected.get("dividend"), 0)
@@ -106,7 +135,7 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
             valuation_return = num(expected.get("valuation"), 0)
             drawdown = num(downside.get("max_drawdown_pct"))
             risk_free = rf_for(card, market)
-            certainty = num(gauges.get("certainty"), quality_score)
+            certainty = num(market.get("certainty"), quality_score)
 
             base_income = dividend + growth + fx
             score_margin = lerp_anchor(safety_margin, ANCHOR_MARGIN) if safety_margin is not None else None
@@ -121,7 +150,7 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
                 score_stability -= 4
             if rating <= 1:
                 score_stability *= 0.5
-            if conclusion.get("confidence") == "低":
+            if confidence_code(conclusion.get("confidence")) == "low":
                 score_stability -= 5
             score_stability = max(0.0, min(100.0, score_stability))
 
@@ -130,14 +159,6 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
                 reasons.append(str(quality.get("gate_reason") or "未通过质地门槛"))
             if rating < 2:
                 reasons.append(f"质地 {rating}★ 不达标")
-            for label, value in (
-                ("安全边际", safety_margin),
-                ("预期年化", total_return),
-                ("最大回撤", drawdown),
-            ):
-                if value is None:
-                    reasons.append(f"{label}缺失")
-
             entry = {
                 "name": str(card.get("name") or "?"),
                 "market": str(market.get("market") or "—"),
@@ -157,10 +178,9 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
                 "expected_return_pct": total_return,
                 "base_income_pct": base_income,
                 "max_drawdown_pct": drawdown,
-                "position_pct": num(position.get("target_pct")),
-                "verdict": str(market.get("verdict") or conclusion.get("verdict") or ""),
+                "verdict": label_of(market.get("verdict") or conclusion.get("verdict")),
                 "thesis": str(conclusion.get("thesis") or ""),
-                "confidence": str(conclusion.get("confidence") or "中"),
+                "confidence": label_of(conclusion.get("confidence"), "中"),
                 "pe": num(valuation.get("pe")),
                 "pb": num(valuation.get("pb")),
                 "percentile": num(valuation.get("percentile")),
@@ -188,7 +208,7 @@ def build_entries(cards: list[dict], today: dt.date) -> list[dict]:
                 flags.append("质地带瑕疵")
             if (cycle_position or 0) >= 70:
                 flags.append("周期高位")
-            if conclusion.get("confidence") == "低":
+            if confidence_code(conclusion.get("confidence")) == "low":
                 flags.append("置信度低")
             entry["risk_flags"] = flags
 
@@ -226,7 +246,7 @@ def serialize_entry(entry: dict, profile_code: str, rank: int | None = None) -> 
     }
     for key in (
         "safety_margin_pct", "expected_return_pct", "base_income_pct",
-        "max_drawdown_pct", "position_pct", "risk_free_rate_pct",
+        "max_drawdown_pct", "risk_free_rate_pct",
         "risk_adjusted_ratio", "valuation_reliance",
     ):
         payload[key] = rounded(payload.get(key), 2)
@@ -306,20 +326,41 @@ def main() -> int:
         print(f"找不到数据卡目录 {data_dir}/", file=sys.stderr)
         return 1
     cards = []
+    validate_file = load_card_validator()
     for path in sorted(data_dir.glob("*.json")):
         try:
             card = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001
-            print(f"跳过 {path.name}: {exc}", file=sys.stderr)
+        except Exception as exc:
+            raise RuntimeError(f"数据卡 JSON 无法解析：{path.name}: {exc}") from exc
+        if not isinstance(card, dict) or not isinstance(card.get("markets"), list):
             continue
-        if isinstance(card, dict) and isinstance(card.get("markets"), list):
-            cards.append(card)
+        if card.get("schema_version") != "1.2":
+            raise RuntimeError(
+                f"数据卡 schema 版本不是 1.2：{path.name} "
+                f"({card.get('schema_version')!r})"
+            )
+        errors, _warnings = validate_file(path)
+        if errors:
+            raise RuntimeError(
+                f"数据卡校验失败：{path.name}：" + "；".join(errors)
+            )
+        cards.append(card)
     if not cards:
-        print(f"{data_dir}/ 下没有可用数据卡。", file=sys.stderr)
+        print(f"{data_dir}/ 下没有 schema 1.2 数据卡。", file=sys.stderr)
         return 1
 
     today = dt.date.today()
-    output = build_output(build_entries(cards, today), data_dir, today)
+    latest = {}
+    for card in cards:
+        candidate_key = (
+            str(card.get("analysis_date") or ""),
+            str(card.get("generated_at") or ""),
+        )
+        current = latest.get(card["name"])
+        if current is None or candidate_key > current[0]:
+            latest[card["name"]] = (candidate_key, card)
+    latest_cards = [item[1] for item in latest.values()]
+    output = build_output(build_entries(latest_cards, today), data_dir, today)
     rendered = json.dumps(output, ensure_ascii=False, indent=2)
     if args.json:
         print(rendered)

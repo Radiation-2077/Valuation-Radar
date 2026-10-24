@@ -101,6 +101,8 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   const qualityScorecard = qualityCard.locator(".table-shell").first();
   await expect(qualityScorecard.locator("thead")).toHaveCount(0);
   await expect(qualityScorecard.locator("tbody tr")).toHaveCount(5);
+  await expect(qualityScorecard.locator("tbody tr").first().locator("td")).toHaveCount(2);
+  await expect(qualityScorecard.getByText("经营现金流 / 净利润")).toHaveCount(0);
   await expect(qualityCard.locator(".score-row")).toHaveCount(5);
   await expect(
     qualityScorecard.locator("tbody .n-ellipsis").first(),

@@ -11,7 +11,13 @@ import pytest
 from app.domain.scoring import PROFILES, context_from_card, score_context
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-LEGACY_DATA_DIR = PROJECT_ROOT.parent / "data"
+CONTRACT_EXAMPLE = (
+    PROJECT_ROOT
+    / "schemas"
+    / "value-investing"
+    / "examples"
+    / "card-v1.2.example.json"
+)
 SKILL_RANK = (
     Path(os.getenv("CODEX_HOME", Path.home() / ".codex"))
     / "skills"
@@ -22,8 +28,8 @@ SKILL_RANK = (
 
 
 @pytest.mark.skipif(
-    not LEGACY_DATA_DIR.is_dir() or not SKILL_RANK.is_file(),
-    reason="需要现有数据卡和 investment-ranking skill",
+    not SKILL_RANK.is_file(),
+    reason="需要 investment-ranking skill",
 )
 def test_scores_match_investment_ranking_skill() -> None:
     spec = importlib.util.spec_from_file_location("skill_rank", SKILL_RANK)
@@ -31,17 +37,10 @@ def test_scores_match_investment_ranking_skill() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    cards: list[dict] = [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(LEGACY_DATA_DIR.glob("*.json"))
-    ]
-    latest: dict[str, tuple[tuple[str, str], dict]] = {}
-    for card in cards:
-        candidate_key = (card["analysis_date"], card.get("generated_at") or "")
-        current = latest.get(card["name"])
-        if current is None or candidate_key > current[0]:
-            latest[card["name"]] = (candidate_key, card)
-    latest_cards = [item[1] for item in latest.values()]
+    latest_cards = [json.loads(CONTRACT_EXAMPLE.read_text(encoding="utf-8"))]
+    for card in latest_cards:
+        for market in card["markets"]:
+            market["gauges"] = {"certainty": market["certainty"]}
     expected = {
         (entry["name"], entry["market"]): entry
         for entry in module.build_entries(latest_cards, date.today())

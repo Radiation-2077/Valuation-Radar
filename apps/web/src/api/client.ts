@@ -3,6 +3,8 @@ import type {
   Job,
   JobDebug,
   JobList,
+  InstrumentCreatePayload,
+  InstrumentCreateResult,
   RankingFilters,
   RankingResponse,
   ReviewDecision,
@@ -34,9 +36,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     let message = `请求失败（${response.status}）`;
     try {
-      const payload = (await response.json()) as { detail?: { message?: string } | string };
+      const payload = (await response.json()) as {
+        detail?:
+          | string
+          | { message?: string }
+          | Array<{ msg?: string; loc?: unknown[] }>;
+      };
       if (typeof payload.detail === "string") {
         message = payload.detail;
+      } else if (Array.isArray(payload.detail)) {
+        message = payload.detail
+          .map((item) => item.msg ?? "")
+          .filter(Boolean)
+          .join("；") || message;
       } else if (payload.detail?.message) {
         message = payload.detail.message;
       }
@@ -91,12 +103,19 @@ export async function clearJobs(): Promise<ClearJobsResult> {
   });
 }
 
+function idempotencyKey(prefix: string): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return `${prefix}-${globalThis.crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export async function createRefreshJob(): Promise<Job> {
   return request<Job>("/api/v1/jobs", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Idempotency-Key": `manual-${crypto.randomUUID()}`,
+      "Idempotency-Key": idempotencyKey("manual"),
     },
     body: JSON.stringify({ job_type: "market_refresh", scope: "all" }),
   });
@@ -105,7 +124,17 @@ export async function createRefreshJob(): Promise<Job> {
 export async function requestRevaluation(instrumentId: number): Promise<Job> {
   return request<Job>(`/api/v1/instruments/${instrumentId}/revaluations`, {
     method: "POST",
-    headers: { "Idempotency-Key": `revaluation-${crypto.randomUUID()}` },
+    headers: { "Idempotency-Key": idempotencyKey("revaluation") },
+  });
+}
+
+export async function createInstrument(
+  payload: InstrumentCreatePayload,
+): Promise<InstrumentCreateResult> {
+  return request<InstrumentCreateResult>("/api/v1/instruments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
 

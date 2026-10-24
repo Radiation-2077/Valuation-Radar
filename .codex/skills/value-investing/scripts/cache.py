@@ -10,7 +10,7 @@
   python3 scripts/cache.py list [--dir common]
 
 get 的退出码：0 = 命中且未过期；3 = 过期；4 = 本地没有这个文件。
-无论命中与否都会打印 JSON，「data」字段带回文件内容（过期时也能拿来兜底）。
+无论命中与否都会打印 JSON；过期文件的内容仅用于诊断，不能用于估值兜底。
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
@@ -28,7 +28,7 @@ DEFAULT_TTL = 24.0
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc).astimezone()
+    return datetime.now(UTC).astimezone()
 
 
 def parse_ts(text: object) -> datetime | None:
@@ -142,7 +142,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     if root.is_dir():
         for path in sorted(root.glob("*.json")):
             body = load(path) or {}
-            age, ttl, fresh = freshness(body, args.ttl)
+            age, _ttl, fresh = freshness(body, args.ttl)
             rows.append(
                 {
                     "key": body.get("key", path.stem),

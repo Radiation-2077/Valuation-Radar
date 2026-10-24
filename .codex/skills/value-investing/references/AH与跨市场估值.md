@@ -23,9 +23,9 @@ $$A/H 比价 = \frac{A 股价}{H 股价 \times HKD/CNY} \qquad A/H 溢价 = 比�
 - 若不先扣除，会系统性放大 H 股的「便宜程度」，同时低估 A 股的相对偏贵；
 - 报告的估值章节必须**显式引用**本校验的结论（例如「上述低估/合理判定已在上章完成跨市场校验后进行」）。
 
-**报告章节顺序**：一、标的质地 → 二、产业周期定位 → **三、跨市场校正** → 四、A 股估值 → 五、H 股估值 → 六、操作建议与仓位管理 → 七、预期收益率 → 八、风险提示 → 九、关键结论。
+**报告角色顺序**：`dashboard` → `quality` → `cycle` → `cross_market` → `valuation`（A/H 各一）→ `position`（A/H 各一）→ `expected_return`（A/H 各一）→ `risks`（A/H 各一）→ `conclusion`（A/H 各一）→ `sources` → `disclaimer`。
 
-> 这是 A+H 标的专用的 section 顺序。写入 `presentation.sections[]` 时使用稳定 `id`：`dashboard`、`quality`、`cycle`、`cross_market`、`valuation-A`、`valuation-H`、`position`、`expected_return`、`risks`、`conclusion`、`sources`。
+> A/H 卡片使用稳定 id：`dashboard-a` / `dashboard-h`、`quality`、`cycle`、`cross_market`、`valuation-a` / `valuation-h`、`position-a` / `position-h`、`expected-return-a` / `expected-return-h`、`risks-a` / `risks-h`、`conclusion-a` / `conclusion-h`、`sources`、`disclaimer`。标题只写功能名，两个估值章节都叫“估值”。
 
 ---
 
@@ -63,7 +63,7 @@ $$\frac{D}{P_A}(1-t_A) + g = \frac{D}{P_H}(1-t_H) + g \;\Longrightarrow\; \frac{
 H 股以港元/美元定价，边际投资者（国际资金）用**美元无风险利率**贴现；A 股投资者用**人民币利率**。当美元利率显著高于人民币利率时，同一现金流在 H 股被要求更高回报 → H 股估值系统性更低 → A 溢价扩大。
 
 - 传导量级：贴现率每高 2–3pct，对长久期资产估值影响约 15–25%。
-- 取值：美国 10 年期国债（FRED `DGS10`）vs 中国 10 年期国债（中债估值；取不到时用中金所国债期货 T 主力隐含收益率推算）。
+- 取值：美国 10 年期国债（FRED `DGS10`）vs 中国 10 年期国债（中债估值）。任一腿无法取得或无法核验时立即终止，不得用期货价格或经验值估算。
 
 ### ③ 市场分割与筹码稀缺
 
@@ -119,9 +119,9 @@ H 股以港元/美元定价，边际投资者（国际资金）用**美元无风
 | HKD/CNY 或 USD/CNY | 新浪 `fx_shkdcny`、`fx_susdcny`；历史用 FRED `DEXCHUS` |
 | 历史 A/H 比价 | 腾讯月 K 线 `web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh600938,month,,,320,qfq`（返回键 `qfqmonth`，港股返回 `month`）+ 对应月份汇率 |
 | 分红方案（每股、除权日） | 东方财富 `RPT_SHAREBONUS_DET` |
-| 中美 10 年期国债 | 美债用 FRED `DGS10`（`https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10`）；中债优先取可引用来源。**不要拿国债期货 T 主力报价直接当收益率**（`nf_T0` 是价格，换算需要 CTD 转换因子，硬算会错一个量级）；确实取不到就把中国腿标注为「估算」并给出合理区间（近年约 1.5%–3%），且说明该腿只用于定性比较 |
+| 中美 10 年期国债 | 美债用 FRED `DGS10`（`https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10`）；中债取可引用来源。**不要拿国债期货 T 主力报价直接当收益率**；任一腿无法取得时立即终止 |
 | A 股自由流通盘 / 总股本 | 东方财富资产负债表 + 腾讯快照字段（总股本、流通股本） |
-| 恒生 AH 股溢价指数 | 新浪 `hq.sinajs.cn/list=hkHSAHP`（需 Referer，2026-10-12 实测可用）；腾讯不返回该指数。取不到就跳过，用个股自身历史溢价替代 |
+| 恒生 AH 股溢价指数 | 新浪 `hq.sinajs.cn/list=hkHSAHP`（需 Referer，2026-10-12 实测可用）；腾讯不返回该指数。无法取得时立即终止，不得用替代数据填充 |
 
 > 取数环境与命令细节见 [联网取数.md](联网取数.md)。
 
@@ -167,19 +167,19 @@ H 股以港元/美元定价，边际投资者（国际资金）用**美元无风
 
 只要标的有 H 股，估值部分就**必须拆成两章、分市场各做一遍**，不要在同一张表里混排两地数据：
 
-- 「四、A 股估值」：只放 A 股的指标、情景、合理区间；
-- 「五、H 股估值」：只放 H 股的指标、情景、合理区间；
-- 跨市场的并列数据**只出现在「三、跨市场校正」一章**（那是它的主题），其余章节一律分章或分行，不混排。
+- A 市场 `valuation`：只放 A 股的指标、情景、合理区间；
+- H 市场 `valuation`：只放 H 股的指标、情景、合理区间；
+- 跨市场的并列数据**只出现在 `cross_market` /“溢价分析”**，其余章节一律分章或分行，不混排。
 
 对应的 `presentation` section 固定为：
 
-- `dashboard-A` / `dashboard-H`
+- `dashboard-a` / `dashboard-h`（各自只含四个仪表盘）
 - `quality` / `cycle` / `cross_market`（`common`）
-- `valuation-A` / `valuation-H`
-- `position-A` / `position-H`
-- `expected_return-A` / `expected_return-H`
-- `risks-A` / `risks-H`
-- `conclusion-A` / `conclusion-H`
+- `valuation-a` / `valuation-h`
+- `position-a` / `position-h`
+- `expected-return-a` / `expected-return-h`
+- `risks-a` / `risks-h`
+- `conclusion-a` / `conclusion-h`
 
 `cross_market` 只做溢价比较，不允许出现 `valuation_scenarios`、`range_position`、`position_tiers` 或 `return_stack`。
 
@@ -195,23 +195,23 @@ H 股以港元/美元定价，边际投资者（国际资金）用**美元无风
 - H 股股价（港币）= 正常化 EPS（人民币）× H 股合理 PE ÷ HKD/CNY；
 - 涨跌幅分别相对**各自现价**计算（不要用 A 股现价当基准）；
 - 必须写清：**H 股使用的倍数低于 A 股，反映的是结构性折价，不应再当作额外安全边际**；
-- 同时持有 A+H 时，在仓位章说明「属于同一风险敞口，仓位合并计算」。
+- 同时持有 A+H 时，在仓位章提示两者属于同一经营敞口；不输出仓位规模或合并上限。
 
 > 若两个市场合理区间的中枢差异过大（例如 H 股中枢比 A 股低 40% 以上），先回到溢价分解章检查结构性因素是否已解释，否则说明倍数假设不一致。
 
-**首屏结论按两地分开存储**：`markets[A].verdict` 与 `markets[H].verdict` 只写方向；更长的判断放在 `presentation` 的 `dashboard` / `conclusion` 章节。市场标识写进结论词（如 `A 分批买入`、`H 观望`），不要在 verdict 字符串里塞价格、PE、布局或多个句子。
+**首屏结论按两地分开存储**：`markets[A].verdict` 与 `markets[H].verdict` 使用 `{"code":"accumulate","label":"分批买入"}` 这类稳定的 code + label 结构；更长的判断放在 `conclusion` 章节。verdict label 可以表达方向，但不能塞价格、PE、布局或多个句子。
 
 ---
 
 ## 九、每章小结的写法
 
-每个章节结尾都要加一个 `type: "callout"` 且 `summary: true` 的块，一到两句说清：**这章得出什么结论 + 对操作意味着什么**。不要把结论埋在普通段落里。
+除 `dashboard`、`sources`、`disclaimer` 外，每个章节结尾都要加一个 `type: "callout"` 且 `summary: true` 的块，一到两句说清：**这章得出什么结论 + 对操作意味着什么**。不要把结论埋在普通段落里。
 
 | 章节类型 | 小结要写清什么 |
 |:---|:---|
 | 公司层面（质地、产业周期） | 结论 + 注明「A 股与 H 股共用，差异只在估值倍数」 |
 | 跨市场校正 | 结构性溢价与残余各占多少 + 「本章是后续估值结论的前置条件」 |
 | A 股估值 / H 股估值 | 该市场的贵贱判断 + 合理区间与中枢 + 是否已扣除结构性折价 + 买点 |
-| 操作与仓位 | 两地各自的目标仓位与分批节点 + 合并上限 |
+| 操作与仓位 | 两地各自的建仓触发价与分批节点 |
 | 预期收益率 | 两地各自年化 + 差额来源（是股息与估值起点，而不是溢价收敛） |
 | 风险提示 | 区分「共同风险」与「市场间风险」，并给两地各自的最大回撤 |

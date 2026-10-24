@@ -16,7 +16,7 @@ const sections = computed(() => visibleReportSections(props.sections, props.mark
 
 <template>
   <NSpace class="report-section-stack" vertical :size="20">
-    <NCard v-for="section in sections" :key="section.title">
+    <NCard v-for="section in sections" :key="section.id || section.title">
       <NSpace class="report-section-body" vertical :size="20">
         <NH2>{{ section.title }}</NH2>
         <ReportBlockRenderer :blocks="section.blocks" />

@@ -49,12 +49,18 @@ describe("rich report text", () => {
     const block: ReportDetailBlock = {
       type: "formula",
       latex: AH_FORMULA,
+      substitution: "\\frac{1}{50}(1-0)+3\\%=\\frac{1}{40}(1-20\\%)+3\\%",
       caption: "同一现金流下，A/H 税后股息率应相等",
+      explanation:
+        "其中 \\(D\\) 指每股现金分红，\\(P_A\\) 指A股价格；分红取2025年度数据，价格取2026-10-23收盘价。",
     };
     const wrapper = mount(FormulaBlock, { props: { block } });
 
     expect(wrapper.find(".math-formula--display").exists()).toBe(true);
     expect(wrapper.text()).toContain("同一现金流下");
+    expect(wrapper.text()).toContain("代入数据");
+    expect(wrapper.text()).toContain("指每股现金分红");
+    expect(wrapper.text()).toContain("指A股价格");
   });
 
   it("renders structured bullet content", () => {

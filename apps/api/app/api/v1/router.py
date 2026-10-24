@@ -10,11 +10,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.domain.card_fields import confidence_label
 from app.domain.scoring import ALGORITHM_VERSION, DEFAULT_PROFILE, PROFILES
 from app.models import AiRun, Instrument, JobRun, ScheduleSetting, ValuationReport
 from app.schemas.api import (
     AiRunDebugOut,
     ClearJobsOut,
+    CodexMilestoneOut,
+    InstrumentCreate,
+    InstrumentCreateOut,
     InstrumentListOut,
     JobCreate,
     JobDebugOut,
@@ -30,7 +34,13 @@ from app.schemas.api import (
     ReviewOut,
     ScheduleOut,
     SchedulePatch,
+    TokenUsageOut,
     ValuationDetailOut,
+)
+from app.services.codex_activity import build_codex_activity, extract_codex_usage
+from app.services.instruments import (
+    InstrumentConflictError,
+    create_instrument_and_queue,
 )
 from app.services.queries import (
     get_ranking,
@@ -123,6 +133,33 @@ def instruments(session: SessionDep) -> InstrumentListOut:
     return list_instruments(session)
 
 
+@router.post("/instruments", response_model=InstrumentCreateOut, status_code=202)
+def create_instrument(
+    payload: InstrumentCreate,
+    session: SessionDep,
+) -> InstrumentCreateOut:
+    try:
+        instrument, listing, job = create_instrument_and_queue(
+            session,
+            name=payload.name,
+            code=payload.code,
+            asset_type=payload.asset_type,
+        )
+    except InstrumentConflictError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"message": str(exc)}) from exc
+    session.commit()
+    return InstrumentCreateOut(
+        instrument_id=instrument.id,
+        job_id=job.id,
+        name=instrument.name,
+        market=listing.market if listing else None,
+        code=listing.code if listing else None,
+        currency=listing.currency if listing else None,
+        asset_type=instrument.asset_type,
+        status=job.status,
+    )
 @router.get("/schedule", response_model=ScheduleOut)
 def get_schedule(session: SessionDep) -> ScheduleOut:
     schedule = get_or_create_schedule(session)
@@ -219,13 +256,20 @@ def get_job_debug(job_id: int, session: SessionDep) -> JobDebugOut:
     metadata = dict(latest.metadata_json or {}) if latest else {}
     storage_root = get_settings().storage_root
     stdout = _read_log_tail(metadata.get("stdout_path"), storage_root)
-    stderr_log = _read_log_tail(metadata.get("stderr_path"), storage_root)
+    current_action, codex_event_data = build_codex_activity(
+        stdout,
+        running=job.status in {"queued", "running"},
+    )
+    if latest is None:
+        current_action = _job_current_action(job)
     return JobDebugOut(
         job=_job_out(job),
         events=events,
-        ai_runs=[_ai_run_debug_out(run) for run in ai_runs],
-        stdout=stdout,
-        stderr=stderr_log or (latest.stderr if latest else ""),
+        ai_runs=[_ai_run_debug_out(run, storage_root) for run in ai_runs],
+        current_action=current_action,
+        codex_events=[
+            CodexMilestoneOut(**event) for event in codex_event_data
+        ],
     )
 
 
@@ -253,7 +297,8 @@ def request_revaluation(
     session: SessionDep,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> JobOut:
-    if session.get(Instrument, instrument_id) is None:
+    instrument = session.get(Instrument, instrument_id)
+    if instrument is None:
         raise HTTPException(status_code=404, detail={"message": "标的不存在"})
     job, _ = queue_job(
         session,
@@ -263,6 +308,7 @@ def request_revaluation(
         scheduled_for=datetime.now(UTC).replace(tzinfo=None),
         idempotency_key=idempotency_key,
     )
+    job.details = {**(job.details or {}), "instrument": instrument.name}
     session.commit()
     session.refresh(job)
     return _job_out(job)
@@ -324,7 +370,11 @@ def _job_out(job: JobRun) -> JobOut:
     )
 
 
-def _ai_run_debug_out(run: AiRun) -> AiRunDebugOut:
+def _ai_run_debug_out(run: AiRun, storage_root: Path) -> AiRunDebugOut:
+    metadata = dict(run.metadata_json or {})
+    usage = extract_codex_usage(
+        _read_log_tail(metadata.get("stdout_path"), storage_root)
+    )
     return AiRunDebugOut(
         id=run.id,
         status=run.status,
@@ -334,9 +384,10 @@ def _ai_run_debug_out(run: AiRun) -> AiRunDebugOut:
         prompt_path=run.prompt_path,
         output_path=run.output_path,
         stderr=run.stderr,
-        metadata=dict(run.metadata_json or {}),
+        metadata=metadata,
         started_at=run.started_at,
         finished_at=run.finished_at,
+        token_usage=TokenUsageOut(**usage) if usage else None,
     )
 
 
@@ -352,8 +403,23 @@ def _read_log_tail(value: object, storage_root: Path) -> str:
     with path.open("rb") as file:
         file.seek(0, 2)
         size = file.tell()
-        file.seek(max(0, size - 120_000))
+        file.seek(max(0, size - 2_000_000))
         return file.read().decode("utf-8", errors="replace")
+
+
+def _job_current_action(job: JobRun) -> str:
+    actions = {
+        "queued": "任务正在排队",
+        "fetching": "正在抓取最新行情",
+        "saving_quotes": "正在写入行情快照",
+        "loading_macro": "正在更新宏观缓存",
+        "rebuilding_ranking": "正在重算排名",
+        "finalizing": "正在整理任务结果",
+        "completed": "任务已完成",
+        "failed": "任务失败",
+        "cancelled": "任务已取消",
+    }
+    return actions.get(job.phase, f"当前阶段：{job.phase}")
 
 
 def _review_out(report: ValuationReport) -> ReviewOut:
@@ -365,7 +431,7 @@ def _review_out(report: ValuationReport) -> ReviewOut:
         analysis_date=report.analysis_date,
         generated_at=report.generated_at,
         thesis=str(conclusion.get("thesis") or ""),
-        confidence=str(conclusion.get("confidence") or ""),
+        confidence=confidence_label(conclusion.get("confidence"), ""),
         markets=[
             ReviewMarketOut(
                 valuation_market_id=market.id,

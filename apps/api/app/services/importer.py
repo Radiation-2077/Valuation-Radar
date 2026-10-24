@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.domain.card_fields import confidence_label, display_label
 from app.models import (
     Instrument,
     Listing,
@@ -18,10 +19,11 @@ from app.models import (
     ValuationMarket,
     ValuationReport,
 )
+from app.services.card_contract import CardContractError, validate_v1_2_card
 from app.services.ranking import RankingService
 from app.services.report_parser import parse_report_detail
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.0", "1.1", "1.2"}
 PRESENTATION_MARKETS = {"common", "A", "H", "US", "CN"}
 QUALITY_LABELS = (
     "利润现金含量",
@@ -124,11 +126,13 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
     schema_version = str(card["schema_version"])
     if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise CardValidationError(
-            f"{label} schema_version 非法：{schema_version}（支持 1.0 / 1.1）"
+            f"{label} schema_version 非法：{schema_version}（支持 1.0 / 1.1 / 1.2）"
         )
     if schema_version == "1.1":
         canonicalize_presentation_quality(card)
         _validate_presentation(card, label)
+    elif schema_version == "1.2":
+        _validate_v1_2_card(card, label)
     try:
         analysis_date = date.fromisoformat(str(card["analysis_date"]))
     except ValueError as exc:
@@ -163,7 +167,7 @@ def validate_card(card: dict[str, Any], source_path: Path | None = None) -> None
 
 
 def _detail_json(card: dict[str, Any], html_path: Path) -> dict[str, Any]:
-    if card["schema_version"] == "1.1":
+    if card["schema_version"] in {"1.1", "1.2"}:
         return dict(card["presentation"])
     if html_path.is_file():
         return parse_report_detail(html_path)
@@ -270,11 +274,17 @@ def _import_card(
                 pb=_optional_float(valuation.get("pb")),
                 dividend_yield_after_tax=_optional_float(valuation.get("dividend_yield_after_tax")),
                 percentile=_optional_float(valuation.get("percentile")),
-                gauges=dict(market.get("gauges") or {}),
+                gauges=(
+                    dict(market.get("gauges") or {})
+                    if "gauges" in market
+                    else {"certainty": market.get("certainty")}
+                ),
                 expected_return=dict(market["expected_return"]),
                 downside=dict(market.get("downside") or {}),
                 position=dict(market.get("position") or {}),
-                verdict=str(market.get("verdict") or conclusion.get("verdict") or ""),
+                verdict=display_label(
+                    market.get("verdict") or conclusion.get("verdict"),
+                ),
             )
         )
     return True
@@ -286,8 +296,8 @@ def import_candidate_card(
 ) -> ValuationReport:
     card = json.loads(card_path.read_text(encoding="utf-8"))
     validate_card(card, card_path)
-    if card["schema_version"] != "1.1":
-        raise CardValidationError("新候选估值必须使用 schema 1.1")
+    if card["schema_version"] != "1.2":
+        raise CardValidationError("新候选估值必须使用 schema 1.2")
     instrument = session.scalar(select(Instrument).where(Instrument.name == card["name"]))
     if instrument is None:
         raise CardValidationError(f"候选估值对应的标的不存在：{card['name']}")
@@ -327,9 +337,16 @@ def apply_instrument_metadata(instrument: Instrument, card: dict[str, Any]) -> N
     instrument.moat = str(quality.get("moat") or "")
     instrument.gate_pass = bool(quality.get("gate_pass", False))
     instrument.gate_reason = str(quality.get("gate_reason") or "")
-    instrument.verdict = str(conclusion.get("verdict") or "")
+    instrument.verdict = display_label(conclusion.get("verdict"))
     instrument.thesis = str(conclusion.get("thesis") or "")
-    instrument.confidence = str(conclusion.get("confidence") or "中")
+    instrument.confidence = confidence_label(conclusion.get("confidence"))
+
+
+def _validate_v1_2_card(card: dict[str, Any], label: str) -> None:
+    try:
+        validate_v1_2_card(card)
+    except CardContractError as exc:
+        raise CardValidationError(f"{label} schema 1.2 校验失败：{exc}") from exc
 
 
 def _validate_presentation(card: dict[str, Any], label: str) -> None:
@@ -400,8 +417,8 @@ def _validate_quality_grid(block: dict[str, Any], label: str) -> None:
     rows = table.get("rows")
     if not isinstance(rows, list) or len(rows) != 5:
         raise CardValidationError(f"{label} 质量 grid.table.rows 必须恰好 5 行")
-    if any(not isinstance(row, list) or len(row) != 3 for row in rows):
-        raise CardValidationError(f"{label} 质量 grid.table 每行必须为 3 列")
+    if any(not isinstance(row, list) or len(row) not in {2, 3} for row in rows):
+        raise CardValidationError(f"{label} 质量 grid.table 每行必须为 2 列（历史卡兼容 3 列）")
 
 
 def _quality_grid_parts(
@@ -470,7 +487,6 @@ def _quality_scorecard_to_grid(block: dict[str, Any]) -> dict[str, Any]:
         )
         rows.append(
             [
-                str(dimension.get("indicator") or ""),
                 str(dimension.get("value") or ""),
                 str(dimension.get("assessment") or ""),
             ]
@@ -486,7 +502,7 @@ def _quality_scorecard_to_grid(block: dict[str, Any]) -> dict[str, Any]:
                 {"type": "heading", "level": 3, "text": "关键指标"},
                 {
                     "type": "table",
-                    "headers": ["维度", "结果", "评价"],
+                    "headers": ["结果", "评价"],
                     "rows": rows,
                 },
             ],

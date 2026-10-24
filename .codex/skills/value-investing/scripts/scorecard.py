@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
-"""价值投资数据卡（data/*.json）的校验与盘点工具。
+"""Validate and inventory value-investing schema 1.2 cards."""
 
-用法：
-    scorecard.py validate <file.json> [<file.json> ...]
-    scorecard.py list [--dir data]
-
-validate 检查字段完整性、类型、数值范围与内部一致性（安全边际、合计年化）。
-只做"能不能用"的结构校验，不判断投资结论对错。
-"""
 from __future__ import annotations
 
 import argparse
@@ -15,395 +8,437 @@ import json
 import sys
 from pathlib import Path
 
-REQUIRED_TOP = [
-    "schema_version", "analysis_date", "name", "asset_type", "path",
-    "quality", "markets",
-]
-VALID_PATHS = {"stable", "cyclical", "financial", "etf"}
-VALID_ASSET = {"stock", "etf"}
-REQUIRED_MARKET = [
-    "market", "price", "fair_mid", "safety_margin_pct",
-    "expected_return", "downside",
-]
-REQUIRED_ER = ["dividend", "growth", "valuation", "total"]
-VALID_SCHEMA = {"1.0", "1.1"}
-VALID_BLOCKS = {
-    "heading", "paragraph", "callout", "table", "formula", "bullets",
-    "scores",
-    "gauges", "valuation_scenarios", "range_position", "premium_donut",
-    "position_tiers", "return_stack", "risk_cards", "grid", "metric_cards",
-    "scenario_bars", "donut", "steps", "scale",
-}
+from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema.exceptions import best_match
+
+SKILL_ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_PATH = SKILL_ROOT / "references" / "card-v1.2.schema.json"
+SCHEMA = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FormatChecker())
+
 QUALITY_LABELS = [
-    "利润现金含量", "资产负债表", "ROE 水平", "护城河强度", "生存能力",
+    "利润现金含量",
+    "资产负债表",
+    "ROE 水平",
+    "护城河强度",
+    "生存能力",
 ]
+DASHBOARD_KEYS = ["safety_margin", "percentile", "dividend", "certainty"]
+DASHBOARD_KINDS = {
+    "safety_margin": "safety_margin_pct",
+    "percentile": "percentile",
+    "dividend": "score_0_100",
+    "certainty": "certainty",
+}
+PER_MARKET_ROLES = {
+    "dashboard",
+    "valuation",
+    "position",
+    "expected_return",
+    "risks",
+    "conclusion",
+}
+COMMON_ROLES = {"quality", "cycle", "sources", "disclaimer"}
+FORMULA_REQUIRED_ROLES = {
+    "model_analysis",
+    "valuation",
+}
+FORMULA_ALLOWED_ROLES = {
+    "model_analysis",
+    "cross_market",
+    "valuation",
+}
+ROLE_ORDER = {
+    "dashboard": 0,
+    "quality": 1,
+    "cycle": 2,
+    "model_analysis": 3,
+    "cross_market": 4,
+    "valuation": 5,
+    "position": 6,
+    "expected_return": 7,
+    "risks": 8,
+    "conclusion": 9,
+    "sources": 10,
+    "disclaimer": 11,
+}
+TRIGGER_ORDER = ["valuation", "evidence", "stabilization"]
 
 
-def _is_num(x) -> bool:
-    return isinstance(x, (int, float)) and not isinstance(x, bool)
+def walk_blocks(blocks: list[dict]) -> list[dict]:
+    output: list[dict] = []
+    for block in blocks:
+        output.append(block)
+        if block["type"] == "grid":
+            for column in block["columns"]:
+                output.extend(walk_blocks(column))
+    return output
 
 
-def _validate_presentation(card: dict) -> tuple[list[str], list[str]]:
-    errs: list[str] = []
-    warn: list[str] = []
-    presentation = card.get("presentation")
-    if not isinstance(presentation, dict):
-        return ["schema 1.1 缺 presentation 对象"], warn
-    sections = presentation.get("sections")
-    if not isinstance(sections, list) or not sections:
-        return ["presentation.sections 必须是非空数组"], warn
-
-    quality_grids: list[dict] = []
-    section_ids: set[str] = set()
-    for s_idx, section in enumerate(sections):
-        tag = f"presentation.sections[{s_idx}]"
-        if not isinstance(section, dict):
-            errs.append(f"{tag} 不是对象")
-            continue
-        section_id = section.get("id")
-        if not isinstance(section_id, str) or not section_id:
-            errs.append(f"{tag}.id 缺失")
-        elif section_id in section_ids:
-            errs.append(f"{tag}.id 重复：{section_id}")
-        else:
-            section_ids.add(section_id)
-        if not isinstance(section.get("title"), str) or not section.get("title"):
-            errs.append(f"{tag}.title 缺失")
-        market = section.get("market")
-        if market not in {"common", "A", "H", "US", "CN"}:
-            errs.append(f"{tag}.market 非法：{market!r}")
-        blocks = section.get("blocks")
-        if not isinstance(blocks, list) or not blocks:
-            errs.append(f"{tag}.blocks 必须是非空数组")
-            continue
-        for b_idx, block in enumerate(blocks):
-            btag = f"{tag}.blocks[{b_idx}]"
-            if not isinstance(block, dict):
-                errs.append(f"{btag} 不是对象")
-                continue
-            block_type = block.get("type")
-            if block_type not in VALID_BLOCKS:
-                errs.append(f"{btag}.type 非法：{block_type!r}")
-                continue
-            if block_type == "grid" and _quality_grid_parts(block) is not None:
-                quality_grids.append(block)
-            elif block_type == "position_tiers":
-                items = block.get("items")
-                if not isinstance(items, list) or len(items) != 3:
-                    errs.append(f"{btag}.items 必须是 3 档")
-                else:
-                    allocations = [i.get("allocation_pct") for i in items if isinstance(i, dict)]
-                    if not all(_is_num(v) for v in allocations):
-                        errs.append(f"{btag}.allocation_pct 必须为数值")
-                    elif abs(sum(allocation for allocation in allocations if _is_num(allocation)) - 100) > 0.1:
-                        errs.append(f"{btag} 三档 allocation_pct 必须合计 100")
-                    if [i.get("level") for i in items] != [1, 2, 3]:
-                        errs.append(f"{btag}.level 必须依次为 1/2/3")
-            elif block_type == "valuation_scenarios":
-                items = block.get("items")
-                if not isinstance(items, list) or len(items) != 3:
-                    errs.append(f"{btag}.items 必须是保守/中性/乐观 3 档")
-            elif block_type == "range_position":
-                order = ["min", "fair_low", "fair_mid", "fair_high", "max"]
-                values = [block.get(key) for key in order]
-                if not all(_is_num(v) for v in values) or values != sorted(values):
-                    errs.append(f"{btag} 必须满足 min ≤ fair_low ≤ fair_mid ≤ fair_high ≤ max")
-            elif block_type == "return_stack":
-                items = block.get("items")
-                if not isinstance(items, list) or not items:
-                    errs.append(f"{btag}.items 不能为空")
-                else:
-                    values = [i.get("value_pct") for i in items if isinstance(i, dict)]
-                    if not all(_is_num(v) for v in values):
-                        errs.append(f"{btag}.items.value_pct 必须为数值")
-                    elif _is_num(block.get("total_pct")) and abs(sum(values) - block["total_pct"]) > 0.6:
-                        errs.append(f"{btag} 收益分项合计与 total_pct 不一致")
-            elif block_type == "premium_donut":
-                items = block.get("items")
-                if not isinstance(items, list) or not items:
-                    errs.append(f"{btag}.items 不能为空")
-                else:
-                    shares = [i.get("share_pct") for i in items if isinstance(i, dict)]
-                    if not all(_is_num(v) for v in shares):
-                        errs.append(f"{btag}.items.share_pct 必须为数值")
-                    elif abs(sum(shares) - 100) > 0.2:
-                        errs.append(f"{btag}.items.share_pct 必须合计 100")
-
-        is_exempt = section_id in {"sources", "disclaimer"}
-        has_summary = any(
-            isinstance(block, dict)
-            and block.get("type") == "callout"
-            and block.get("summary") is True
-            for block in blocks
-        )
-        if not is_exempt and not has_summary:
-            errs.append(f"{tag} 缺少 summary=true 的本章小结")
-
-    if len(quality_grids) != 1:
-        errs.append(
-            f"presentation 必须且只能包含 1 个质量 grid（scores + table），实际 {len(quality_grids)}"
-        )
-    else:
-        errs.extend(_validate_quality_grid(quality_grids[0]))
-    _validate_ah_sections(card, sections, errs)
-    return errs, warn
-
-
-def _quality_grid_parts(block: dict) -> tuple[dict, dict] | None:
-    columns = block.get("columns")
-    if not isinstance(columns, list):
-        return None
-    blocks = [
-        item
-        for column in columns
-        if isinstance(column, list)
-        for item in column
-        if isinstance(item, dict)
-    ]
-    scores = next((item for item in blocks if item.get("type") == "scores"), None)
-    table = next((item for item in blocks if item.get("type") == "table"), None)
-    if scores is None or table is None:
-        return None
-    return scores, table
-
-
-def _validate_quality_grid(block: dict) -> list[str]:
-    parts = _quality_grid_parts(block)
-    if parts is None:
-        return ["质量 grid 必须包含 scores 与 table"]
-    scores, table = parts
-    items = scores.get("items")
-    if not isinstance(items, list) or len(items) != 5:
-        return ["质量 grid.scores.items 必须恰好 5 项"]
-    labels = [item.get("label") for item in items if isinstance(item, dict)]
-    if labels != QUALITY_LABELS:
-        return ["质量 grid 五个维度顺序或名称不正确"]
-    errs = []
-    for item in items:
-        if not isinstance(item, dict):
-            errs.append("质量 grid.scores 含非对象项")
-            continue
-        try:
-            score = float(item.get("score"))
-            width = float(item.get("width"))
-        except (TypeError, ValueError):
-            errs.append("质量 grid score/width 必须为数值")
-            continue
-        if not 0 <= score <= 10 or not 0 <= width <= 100:
-            errs.append("质量 grid score/width 越界")
-    rows = table.get("rows")
-    if not isinstance(rows, list) or len(rows) != 5:
-        errs.append("质量 grid.table.rows 必须恰好 5 行")
-    elif any(not isinstance(row, list) or len(row) != 3 for row in rows):
-        errs.append("质量 grid.table 每行必须为 3 列")
-    return errs
-
-
-def _validate_ah_sections(card: dict, sections: list, errs: list[str]) -> None:
-    market_names = {
-        market.get("market")
-        for market in card.get("markets") or []
-        if isinstance(market, dict)
-    }
-    if not {"A", "H"}.issubset(market_names):
-        return
-    expected_markets = {
-        "dashboard-A": "A",
-        "dashboard-H": "H",
-        "quality": "common",
-        "cycle": "common",
-        "cross_market": "common",
-        "valuation-A": "A",
-        "valuation-H": "H",
-        "position-A": "A",
-        "position-H": "H",
-        "expected_return-A": "A",
-        "expected_return-H": "H",
-        "risks-A": "A",
-        "risks-H": "H",
-        "conclusion-A": "A",
-        "conclusion-H": "H",
-        "sources": "common",
-        "disclaimer": "common",
-    }
-    sections_by_id = {
-        section.get("id"): section
+def one_block(
+    sections: list[dict],
+    role: str,
+    block_type: str,
+) -> dict | None:
+    matches = [
+        block
         for section in sections
-        if isinstance(section, dict)
+        if section["role"] == role
+        for block in walk_blocks(section["blocks"])
+        if block["type"] == block_type
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def quality_parts(block: dict) -> tuple[dict, dict] | None:
+    nested = [
+        item
+        for column in block["columns"]
+        for item in column
+    ]
+    scores = next((item for item in nested if item["type"] == "scores"), None)
+    table = next((item for item in nested if item["type"] == "table"), None)
+    return (scores, table) if scores and table else None
+
+
+def semantic_errors(card: dict) -> list[str]:
+    errors: list[str] = []
+    markets = card["markets"]
+    market_names = [market["market"] for market in markets]
+    offered = set(market_names)
+    sections = card["presentation"]["sections"]
+
+    if len(market_names) != len(set(market_names)):
+        errors.append("markets[].market 必须唯一")
+    if set(card["codes"]) != offered:
+        errors.append("codes 市场必须与 markets[] 完全一致")
+    for market in markets:
+        if card["codes"].get(market["market"]) != market["code"]:
+            errors.append(f"codes.{market['market']} 与 markets[].code 不一致")
+
+    ids: set[str] = set()
+    last_order = -1
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for index, section in enumerate(sections):
+        tag = f"presentation.sections[{index}]"
+        if section["id"] in ids:
+            errors.append(f"{tag}.id 重复：{section['id']}")
+        ids.add(section["id"])
+        grouped.setdefault((section["role"], section["market"]), []).append(section)
+        order = ROLE_ORDER[section["role"]]
+        if order < last_order:
+            errors.append(f"{tag}.role 顺序错误")
+        last_order = max(last_order, order)
+        if section["role"] in COMMON_ROLES and section["market"] != "common":
+            errors.append(f"{tag}.market 必须为 common")
+        if section["role"] == "cross_market" and section["market"] != "common":
+            errors.append(f"{tag}.market 必须为 common")
+        for block in walk_blocks(section["blocks"]):
+            if (
+                section["market"] in {"A", "H", "US", "CN"}
+                and block.get("market") not in {None, section["market"]}
+            ):
+                errors.append(f"{tag} 混入其他市场 block")
+            if block["type"] == "table" and block["columns"]:
+                keys = {column["key"] for column in block["columns"]}
+                for row_index, row in enumerate(block["rows"]):
+                    if set(row) != keys:
+                        errors.append(
+                            f"{tag}.table.rows[{row_index}] 与 columns 键不一致"
+                        )
+
+    for market in offered:
+        for role in PER_MARKET_ROLES:
+            if len(grouped.get((role, market), [])) != 1:
+                errors.append(f"{market} 市场 role={role} 必须恰好一个")
+        for role in ("quality", "cycle"):
+            if len(grouped.get((role, "common"), [])) != 1:
+                errors.append(f"必须恰好一个 common role={role}")
+    for role in ("sources", "disclaimer"):
+        if len(grouped.get((role, "common"), [])) != 1:
+            errors.append(f"必须恰好一个 common role={role}")
+
+    if {"A", "H"}.issubset(offered):
+        cross = grouped.get(("cross_market", "common"), [])
+        if len(cross) != 1:
+            errors.append("A/H 卡必须恰好一个 cross_market")
+        else:
+            errors.extend(cross_errors(cross[0]))
+    elif grouped.get(("cross_market", "common")):
+        errors.append("单市场卡不得包含 cross_market")
+
+    modules = {
+        section["module"]
+        for section in sections
+        if section["role"] == "model_analysis"
     }
-    missing = sorted(set(expected_markets) - set(sections_by_id))
-    if missing:
-        errs.append(f"A+H presentation 缺少 section：{', '.join(missing)}")
-    for section_id, expected_market in expected_markets.items():
-        section = sections_by_id.get(section_id)
-        if not isinstance(section, dict):
-            continue
-        if section.get("market") != expected_market:
-            errs.append(f"{section_id}.market 必须为 {expected_market}")
-        if expected_market == "common":
-            continue
-        for block in section.get("blocks") or []:
-            block_market = block.get("market") if isinstance(block, dict) else None
-            if block_market not in {None, expected_market}:
-                errs.append(f"{section_id} 混入 {block_market} 市场区块")
-    allowed_common = {
-        "quality", "cycle", "cross_market", "sources", "disclaimer",
-    }
+    if modules != set(card["model_modules"]):
+        errors.append("model_modules 与 model_analysis sections 不一致")
+
+    grids = [
+        block
+        for section in sections
+        for block in walk_blocks(section["blocks"])
+        if block["type"] == "grid" and quality_parts(block)
+    ]
+    if len(grids) != 1:
+        errors.append("必须恰好一个质量 grid")
+    else:
+        scores, table = quality_parts(grids[0]) or ({}, {})
+        if [item["label"] for item in scores["items"]] != QUALITY_LABELS:
+            errors.append("质量 grid 五个维度顺序或名称错误")
+        columns = [
+            (column.get("key"), column.get("label"), column.get("role"))
+            for column in table.get("columns", [])
+        ]
+        if columns != [
+            ("value", "结果", "value"),
+            ("assessment", "评价", "assessment"),
+        ]:
+            errors.append("质量 grid table 必须依次为结果、评价两列")
+        if len(table["rows"]) != 5:
+            errors.append("质量 grid 表格必须五行")
+
+    cycle_sections = [
+        section for section in sections if section["role"] == "cycle"
+    ]
+    cycle_blocks = [
+        block
+        for cycle_section in cycle_sections
+        for block in walk_blocks(cycle_section["blocks"])
+    ]
+    lifecycle_blocks = [
+        block for block in cycle_blocks if block["type"] == "industry_lifecycle"
+    ]
+    if len(lifecycle_blocks) != 1:
+        errors.append("产业周期章节必须恰好包含一个 industry_lifecycle")
+    elif lifecycle_blocks[0]["stage"] != card["cycle_stage"]:
+        errors.append("industry_lifecycle.stage 必须与顶层 cycle_stage 一致")
+    if cycle_sections and cycle_sections[0]["blocks"][0]["type"] != "industry_lifecycle":
+        errors.append("industry_lifecycle 必须是产业周期章节的第一个 block")
+
+    industry_cycle_blocks = [
+        block for block in cycle_blocks if block["type"] == "industry_cycle"
+    ]
+    if card["path"] == "cyclical" and len(industry_cycle_blocks) != 1:
+        errors.append("周期型标的必须恰好包含一个 industry_cycle")
+    if len(industry_cycle_blocks) > 1:
+        errors.append("industry_cycle 最多只能有一个")
+    if industry_cycle_blocks:
+        cycle_block = industry_cycle_blocks[0]
+        if cycle_block["position"] != card["cycle_position"]:
+            errors.append("industry_cycle.position 必须与顶层 cycle_position 一致")
+        expected_phase, expected_direction = expected_cycle_phase(
+            cycle_block["position"]
+        )
+        if cycle_block["phase"] != expected_phase:
+            errors.append(
+                f"industry_cycle.phase 与位置不匹配，应为 {expected_phase}"
+            )
+        if cycle_block["direction"] != expected_direction:
+            errors.append(
+                f"industry_cycle.direction 与位置不匹配，应为 {expected_direction}"
+            )
+
     for section in sections:
-        if not isinstance(section, dict):
+        has_formula = any(
+            block["type"] == "formula"
+            for block in walk_blocks(section["blocks"])
+        )
+        if has_formula and section["role"] not in FORMULA_ALLOWED_ROLES:
+            errors.append(
+                f"{section['id']} 不应展示公式；简单算术不进入报告公式卡"
+            )
+        if section["role"] in FORMULA_REQUIRED_ROLES and not has_formula:
+            errors.append(
+                f"{section['id']} 是计算章节，必须包含带符号与取值依据的 formula"
+            )
+        if section["role"] in {"dashboard", "sources", "disclaimer"}:
             continue
-        section_id = section.get("id")
-        if section.get("market") == "common" and section_id not in allowed_common:
-            errs.append(f"A+H 不允许 common 业务 section：{section_id}")
-    cross_market = sections_by_id.get("cross_market")
-    if isinstance(cross_market, dict):
-        forbidden = {
-            "valuation_scenarios", "range_position", "position_tiers", "return_stack",
-        }
-        for block in cross_market.get("blocks") or []:
-            if isinstance(block, dict) and block.get("type") in forbidden:
-                errs.append(
-                    f"cross_market 不得包含 {block.get('type')}，该章只比较溢价"
-                )
+        last = section["blocks"][-1]
+        if not (last["type"] == "callout" and last.get("summary") is True):
+            errors.append(f"{section['id']} 最后一项必须是 summary callout")
+        if section["role"] == "dashboard":
+            pass
+    for section in sections:
+        if section["role"] == "dashboard":
+            errors.extend(dashboard_errors(section))
+
+    for market in markets:
+        errors.extend(market_errors(market, sections))
+    return errors
 
 
-def validate_file(path: Path) -> list[str]:
-    errs: list[str] = []
-    warn: list[str] = []
+def expected_cycle_phase(position: float) -> tuple[str, str]:
+    if position < 25:
+        return "recovery", "up"
+    if position < 50:
+        return "upswing", "up"
+    if position < 75:
+        return "pullback", "down"
+    return "downswing", "down"
+
+
+def dashboard_errors(section: dict) -> list[str]:
+    items = section["blocks"][0]["items"]
+    errors: list[str] = []
+    if [item["key"] for item in items] != DASHBOARD_KEYS:
+        errors.append(f"{section['id']} 必须固定四项仪表盘")
+    for item in items:
+        expected = DASHBOARD_KINDS.get(item["key"])
+        if expected and item["kind"] != expected:
+            errors.append(f"{section['id']}.{item['key']}.kind 必须为 {expected}")
+    return errors
+
+
+def cross_errors(section: dict) -> list[str]:
+    blocks = walk_blocks(section["blocks"])
+    errors: list[str] = []
+    forbidden = {
+        "valuation_scenarios",
+        "range_position",
+        "position_tiers",
+        "return_stack",
+    }
+    errors.extend(
+        f"cross_market 不得包含 {block['type']}"
+        for block in blocks
+        if block["type"] in forbidden
+    )
+    donuts = [block for block in blocks if block["type"] == "premium_donut"]
+    if len(donuts) != 1:
+        errors.append("cross_market 必须恰好一个 premium_donut")
+        return errors
+    donut = donuts[0]
+    if set(donut["market_pair"]) != {"A", "H"}:
+        errors.append("premium_donut.market_pair 必须为 A/H")
+    if abs(sum(item["share_pct"] for item in donut["items"]) - 100) > 0.2:
+        errors.append("premium_donut.share_pct 必须合计 100")
+    if (
+        abs(
+            sum(item["contribution_pct"] for item in donut["items"])
+            - donut["total_premium_pct"]
+        )
+        > 0.3
+    ):
+        errors.append("premium_donut 分项贡献必须与 total 闭合")
+    return errors
+
+
+def market_errors(market: dict, sections: list[dict]) -> list[str]:
+    name = market["market"]
+    sections = [section for section in sections if section["market"] == name]
+    errors: list[str] = []
+    expected = market["expected_return"]
+    if (
+        abs(
+            expected["dividend"]
+            + expected["growth"]
+            + expected["valuation"]
+            + expected["fx"]
+            - expected["total"]
+        )
+        > 0.2
+    ):
+        errors.append(f"{name} expected_return 分项与 total 不一致")
+    margin = (
+        (market["fair_mid"] - market["price"]) / market["fair_mid"] * 100
+    )
+    if abs(margin - market["safety_margin_pct"]) > 0.2:
+        errors.append(f"{name} safety_margin_pct 不一致")
+    tranches = market["position"]["tranches"]
+    if [item["level"] for item in tranches] != [1, 2, 3, 4]:
+        errors.append(f"{name} position tranches level 必须为 1/2/3/4")
+    if abs(sum(item["allocation_pct"] for item in tranches) - 100) > 0.2:
+        errors.append(f"{name} position tranches 必须合计 100")
+    trigger_types = [item["trigger_type"] for item in tranches]
+    if trigger_types[:3] != TRIGGER_ORDER:
+        errors.append(
+            f"{name} 前三档必须依次为 valuation/evidence/stabilization"
+        )
+    if len(trigger_types) == 4 and trigger_types[3] not in {"catalyst", "reserve"}:
+        errors.append(f"{name} 第四档必须为 catalyst/reserve")
+
+    scenarios = one_block(sections, "valuation", "valuation_scenarios")
+    range_position = one_block(sections, "valuation", "range_position")
+    position = one_block(sections, "position", "position_tiers")
+    returns = one_block(sections, "expected_return", "return_stack")
+    dashboard = next(
+        (section for section in sections if section["role"] == "dashboard"),
+        None,
+    )
+    if scenarios is None:
+        errors.append(f"{name} 缺少 valuation_scenarios")
+    else:
+        if abs(scenarios["current_price"] - market["price"]) > 0.01:
+            errors.append(f"{name} valuation_scenarios 现价不一致")
+    if range_position is None:
+        errors.append(f"{name} 缺少 range_position")
+    else:
+        for key in ("fair_low", "fair_mid", "fair_high"):
+            if abs(range_position[key] - market[key]) > 0.01:
+                errors.append(f"{name} range_position.{key} 不一致")
+    if position is None:
+        errors.append(f"{name} 缺少 position_tiers")
+    else:
+        if position["items"] != tranches:
+            errors.append(f"{name} position tiers 不一致")
+    if returns is None:
+        errors.append(f"{name} 缺少 return_stack")
+    else:
+        if abs(returns["total_pct"] - expected["total"]) > 0.2:
+            errors.append(f"{name} return total 不一致")
+        values = {item["source"]: item["value_pct"] for item in returns["items"]}
+        for source in ("dividend", "growth", "valuation", "fx"):
+            if abs(values.get(source, 999) - expected[source]) > 0.1:
+                errors.append(f"{name} return_stack.{source} 不一致")
+    if dashboard is None:
+        errors.append(f"{name} 缺少 dashboard")
+    else:
+        gauges = {item["key"]: item for item in dashboard["blocks"][0]["items"]}
+        if gauges.get("safety_margin", {}).get("value") != market["safety_margin_pct"]:
+            errors.append(f"{name} 仪表盘安全边际不一致")
+        if gauges.get("percentile", {}).get("value") != market["valuation"]["percentile"]:
+            errors.append(f"{name} 仪表盘估值分位不一致")
+        if gauges.get("certainty", {}).get("value") != market["certainty"]:
+            errors.append(f"{name} 仪表盘确定性不一致")
+    return errors
+
+
+def validate_file(path: Path) -> tuple[list[str], list[str]]:
+    warnings: list[str] = []
     try:
         card = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
-        return [f"无法解析 JSON: {exc}"], []
-
+        return [f"无法解析 JSON: {exc}"], warnings
     if not isinstance(card, dict):
-        return ["顶层不是对象"], []
-
-    for k in REQUIRED_TOP:
-        if k not in card:
-            errs.append(f"缺顶层字段 {k}")
-
-    schema_version = card.get("schema_version")
-    if schema_version not in VALID_SCHEMA:
-        errs.append(f"schema_version 非法: {schema_version!r}（应为 1.0 或 1.1）")
-    if schema_version == "1.0":
-        warn.append("schema 1.0 是历史兼容格式，缺少 presentation；新卡必须使用 1.1")
-    elif schema_version == "1.1":
-        presentation_errs, presentation_warn = _validate_presentation(card)
-        errs.extend(presentation_errs)
-        warn.extend(presentation_warn)
-    if card.get("asset_type") not in VALID_ASSET:
-        errs.append(f"asset_type 非法: {card.get('asset_type')!r}")
-    if card.get("path") not in VALID_PATHS:
-        errs.append(f"path 非法: {card.get('path')!r}（应为 stable/cyclical/financial/etf）")
-
-    q = card.get("quality") or {}
-    if not isinstance(q, dict):
-        errs.append("quality 不是对象")
-    else:
-        r = q.get("rating")
-        if r is None:
-            errs.append("quality.rating 缺失")
-        elif not _is_num(r) or not (0 <= r <= 3):
-            errs.append(f"quality.rating 应为 0–3，实际 {r!r}")
-        if "gate_pass" not in q:
-            warn.append("quality.gate_pass 缺失，排序时按 True 处理")
-        sc = q.get("score")
-        if sc is not None and (not _is_num(sc) or not (0 <= sc <= 100)):
-            errs.append(f"quality.score 应为 0–100，实际 {sc!r}")
-
-    codes = card.get("codes") or {}
-    if not isinstance(codes, dict) or not codes:
-        errs.append("codes 缺失或为空（至少给一个市场代码）")
-
-    name = card.get("name")
-    date = card.get("analysis_date")
-    if name and date:
-        expected = f"{name}_{date}.json"
-        if path.name != expected:
-            warn.append(f"文件名 {path.name!r} 与 {expected!r} 不一致（规范要求 标的名_日期.json）")
-
-    markets = card.get("markets")
-    if not isinstance(markets, list) or not markets:
-        errs.append("markets 缺失或为空")
-        return errs, warn
-
-    for i, m in enumerate(markets):
-        tag = f"markets[{i}]({m.get('market') if isinstance(m, dict) else '?'})"
-        if not isinstance(m, dict):
-            errs.append(f"{tag} 不是对象")
-            continue
-        for k in REQUIRED_MARKET:
-            if k not in m:
-                errs.append(f"{tag} 缺字段 {k}")
-
-        price, mid = m.get("price"), m.get("fair_mid")
-        sm = m.get("safety_margin_pct")
-        if _is_num(price) and _is_num(mid) and mid:
-            calc = (mid - price) / mid * 100
-            if _is_num(sm) and abs(calc - sm) > 1.0:
-                warn.append(
-                    f"{tag} safety_margin_pct={sm} 与 (中枢−现价)/中枢={calc:.1f} 差超过 1pct，"
-                    f"确认中枢口径是否用了正文中性值"
-                )
-        elif not _is_num(sm):
-            errs.append(f"{tag} safety_margin_pct 非数值")
-
-        lo, hi = m.get("fair_low"), m.get("fair_high")
-        if _is_num(lo) and _is_num(hi) and lo > hi:
-            errs.append(f"{tag} fair_low {lo} > fair_high {hi}")
-        if _is_num(lo) and _is_num(mid) and not (lo - 1e-6 <= mid <= hi + 1e-6 if _is_num(hi) else True):
-            warn.append(f"{tag} fair_mid={mid} 落在 [fair_low, fair_high] 之外")
-
-        er = m.get("expected_return")
-        if not isinstance(er, dict):
-            errs.append(f"{tag} expected_return 不是对象")
-        else:
-            for k in REQUIRED_ER:
-                if k not in er:
-                    errs.append(f"{tag}.expected_return 缺 {k}")
-                elif not _is_num(er.get(k)):
-                    errs.append(f"{tag}.expected_return.{k} 非数值")
-            parts = [er.get(k) for k in ("dividend", "growth", "valuation")]
-            if all(_is_num(p) for p in parts) and _is_num(er.get("total")):
-                s = sum(parts) + (er.get("fx") or 0)
-                if abs(s - er["total"]) > 0.6:
-                    warn.append(
-                        f"{tag} 分项合计 {s:.2f} 与 total {er['total']} 差超过 0.6pct，"
-                        f"请在 notes 说明闭合关系"
-                    )
-
-        dd = (m.get("downside") or {}).get("max_drawdown_pct")
-        if dd is not None and _is_num(dd) and dd > 0:
-            warn.append(f"{tag} max_drawdown_pct={dd} 为正，规范要求回撤用负数")
-
-        v = m.get("valuation") or {}
-        if isinstance(v, dict):
-            pc = v.get("percentile")
-            if pc is not None and (not _is_num(pc) or not (0 <= pc <= 100)):
-                errs.append(f"{tag} valuation.percentile 应为 0–100 或 null，实际 {pc!r}")
-
-    if not card.get("risks"):
-        warn.append("risks 为空，建议至少写 3 条传导路径")
-
-    return errs, warn
+        return ["顶层不是对象"], warnings
+    schema_error = best_match(VALIDATOR.iter_errors(card))
+    if schema_error is not None:
+        location = ".".join(str(item) for item in schema_error.absolute_path)
+        prefix = f"{location}: " if location else ""
+        return [f"schema 1.2 校验失败：{prefix}{schema_error.message}"], warnings
+    expected_name = f"{card['name']}_{card['analysis_date']}.json"
+    if path.name != expected_name:
+        warnings.append(f"文件名应为 {expected_name}")
+    return semantic_errors(card), warnings
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
     rc = 0
-    for p in args.files:
-        path = Path(p)
+    for value in args.files:
+        path = Path(value)
         if not path.exists():
-            print(f"[MISS] {p}: 文件不存在")
+            print(f"[MISS] {path}: 文件不存在")
             rc = 2
             continue
-        errs, warn = validate_file(path)
-        status = "OK" if not errs else "FAIL"
-        print(f"[{status}] {p}" + (f"  ({len(warn)} 项提示)" if warn else ""))
-        for e in errs:
-            print(f"   ✗ {e}")
-        for w in warn:
-            print(f"   ! {w}")
-        if errs:
+        errors, warnings = validate_file(path)
+        print(f"[{'OK' if not errors else 'FAIL'}] {path}")
+        for error in errors:
+            print(f"   ✗ {error}")
+        for warning in warnings:
+            print(f"   ! {warning}")
+        if errors:
             rc = 1
     return rc
 
@@ -415,33 +450,34 @@ def cmd_list(args: argparse.Namespace) -> int:
         print(f"{root}/ 下没有数据卡")
         return 1
     print(f"{root}/ 共 {len(files)} 张数据卡：")
-    for f in files:
+    for path in files:
         try:
-            card = json.loads(f.read_text(encoding="utf-8"))
+            card = json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:  # noqa: BLE001
-            print(f"  {f.name}  解析失败: {exc}")
+            print(f"  {path.name}  解析失败: {exc}")
             continue
-        mk = "/".join(m.get("market", "?") for m in card.get("markets", []))
-        q = (card.get("quality") or {}).get("rating")
-        miss = card.get("missing") or []
-        extra = f"  缺:{','.join(miss)}" if miss else ""
-        print(f"  {f.name}  [{card.get('asset_type')}/{card.get('path')}] 市场:{mk} 质地:{q}★{extra}")
+        markets = "/".join(
+            str(market.get("market", "?")) for market in card.get("markets", [])
+        )
+        quality = (card.get("quality") or {}).get("rating")
+        print(
+            f"  {path.name}  "
+            f"[schema {card.get('schema_version')}/{card.get('asset_type')}/"
+            f"{card.get('path')}] 市场:{markets} 质地:{quality}★"
+        )
     return 0
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="价值投资数据卡校验工具")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-
-    v = sub.add_parser("validate", help="校验数据卡")
-    v.add_argument("files", nargs="+")
-    v.set_defaults(func=cmd_validate)
-
-    l = sub.add_parser("list", help="盘点数据卡")
-    l.add_argument("--dir", default="data")
-    l.set_defaults(func=cmd_list)
-
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser(description="Validate value-investing schema 1.2 cards")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    validate = subparsers.add_parser("validate")
+    validate.add_argument("files", nargs="+")
+    validate.set_defaults(func=cmd_validate)
+    listing = subparsers.add_parser("list")
+    listing.add_argument("--dir", default="data")
+    listing.set_defaults(func=cmd_list)
+    args = parser.parse_args()
     return args.func(args)
 
 

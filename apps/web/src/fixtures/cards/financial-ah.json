@@ -1,0 +1,1056 @@
+{
+  "schema_version": "1.2",
+  "analysis_date": "2026-10-24",
+  "generated_at": "2026-10-24T18:30:00+08:00",
+  "name": "示例金融集团",
+  "codes": {
+    "A": "600000.SH",
+    "H": "00000.HK"
+  },
+  "asset_type": "stock",
+  "path": "financial",
+  "model_modules": [
+    "pev_sensitivity"
+  ],
+  "industry": "保险",
+  "cycle_stage": "成熟期",
+  "cycle_position": 50,
+  "quality": {
+    "rating": 2,
+    "label": "有瑕疵但可接受",
+    "score": 79,
+    "moat": "中强",
+    "gate_pass": true,
+    "gate_reason": ""
+  },
+  "conclusion": {
+    "verdict": {
+      "code": "accumulate",
+      "label": "分批买入"
+    },
+    "thesis": "示例公司估值低于自身合理中枢，但经营证据仍需持续验证。",
+    "confidence": {
+      "code": "medium",
+      "label": "中"
+    }
+  },
+  "macro": {
+    "rf_cny": 1.65,
+    "rf_usd": 5.09,
+    "usd_cny": 6.68,
+    "hkd_cny": 0.85,
+    "as_of": "2026-10-24"
+  },
+  "markets": [
+    {
+      "market": "A",
+      "code": "600000.SH",
+      "currency": "CNY",
+      "price": 50,
+      "price_date": "2026-10-24",
+      "fair_low": 55,
+      "fair_mid": 60,
+      "fair_high": 65,
+      "valuation": {
+        "pe": 6,
+        "pb": 0.9,
+        "dividend_yield_after_tax": 4.5,
+        "percentile": 30
+      },
+      "safety_margin_pct": 16.7,
+      "certainty": 75,
+      "expected_return": {
+        "dividend": 4.5,
+        "growth": 4,
+        "valuation": 5,
+        "fx": 0,
+        "total": 13.5
+      },
+      "downside": {
+        "max_drawdown_pct": -22,
+        "scenario": "价值中枢下修且倍数同步压缩"
+      },
+      "position": {
+        "tranches": [
+          {
+            "level": 1,
+            "price": 50,
+            "trigger_type": "valuation",
+            "condition": "现价位于合理区间下沿，安全边际成立",
+            "allocation_pct": 30,
+            "active": true
+          },
+          {
+            "level": 2,
+            "price": 46,
+            "trigger_type": "evidence",
+            "condition": "后续财报确认盈利与资产质量未恶化",
+            "allocation_pct": 30,
+            "active": false
+          },
+          {
+            "level": 3,
+            "price": 43,
+            "trigger_type": "stabilization",
+            "condition": "价格止跌且合理中枢未下修",
+            "allocation_pct": 25,
+            "active": false
+          },
+          {
+            "level": 4,
+            "price": 40,
+            "trigger_type": "catalyst",
+            "condition": "盈利或资产质量出现明确改善证据",
+            "allocation_pct": 15,
+            "active": false
+          }
+        ]
+      },
+      "verdict": {
+        "code": "accumulate",
+        "label": "分批买入"
+      }
+    },
+    {
+      "market": "H",
+      "code": "00000.HK",
+      "currency": "HKD",
+      "price": 45,
+      "price_date": "2026-10-24",
+      "fair_low": 50,
+      "fair_mid": 55,
+      "fair_high": 60,
+      "valuation": {
+        "pe": 5.5,
+        "pb": 0.75,
+        "dividend_yield_after_tax": 4.2,
+        "percentile": 45
+      },
+      "safety_margin_pct": 18.2,
+      "certainty": 70,
+      "expected_return": {
+        "dividend": 4.2,
+        "growth": 4,
+        "valuation": 4,
+        "fx": 0,
+        "total": 12.2
+      },
+      "downside": {
+        "max_drawdown_pct": -25,
+        "scenario": "流动性折价扩大且价值中枢下修"
+      },
+      "position": {
+        "tranches": [
+          {
+            "level": 1,
+            "price": 45,
+            "trigger_type": "valuation",
+            "condition": "H 股进入自身合理区间下沿",
+            "allocation_pct": 30,
+            "active": true
+          },
+          {
+            "level": 2,
+            "price": 41.4,
+            "trigger_type": "evidence",
+            "condition": "财报确认经营与资产质量未恶化",
+            "allocation_pct": 30,
+            "active": false
+          },
+          {
+            "level": 3,
+            "price": 39,
+            "trigger_type": "stabilization",
+            "condition": "价格止跌且汇率冲击未改变价值判断",
+            "allocation_pct": 25,
+            "active": false
+          },
+          {
+            "level": 4,
+            "price": 37,
+            "trigger_type": "catalyst",
+            "condition": "盈利改善或结构性折价证据发生变化",
+            "allocation_pct": 15,
+            "active": false
+          }
+        ]
+      },
+      "verdict": {
+        "code": "watch",
+        "label": "小仓观察"
+      }
+    }
+  ],
+  "risks": [
+    "低利率环境压缩长期投资回报。",
+    "资本市场波动影响净资产与利润。",
+    "A/H 结构性折价可能长期存在。"
+  ],
+  "missing": [],
+  "notes": "本文件仅用于校验展示契约，数值均为结构示例，不构成投资建议。",
+  "presentation": {
+    "schema_version": "1.2",
+    "sections": [
+      {
+        "id": "dashboard-a",
+        "role": "dashboard",
+        "title": "仪表盘",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "gauges",
+            "items": [
+              {
+                "key": "safety_margin",
+                "label": "安全边际",
+                "value": 16.7,
+                "display_value": "16.7%",
+                "kind": "safety_margin_pct",
+                "tone": "pos"
+              },
+              {
+                "key": "percentile",
+                "label": "估值历史分位",
+                "value": 30,
+                "display_value": "30%",
+                "kind": "percentile",
+                "tone": "info"
+              },
+              {
+                "key": "dividend",
+                "label": "股息率吸引力",
+                "value": 65,
+                "display_value": "4.5%",
+                "kind": "score_0_100",
+                "tone": "acc"
+              },
+              {
+                "key": "certainty",
+                "label": "估值确定性",
+                "value": 75,
+                "display_value": "75%",
+                "kind": "certainty",
+                "tone": "info"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dashboard-h",
+        "role": "dashboard",
+        "title": "仪表盘",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "gauges",
+            "items": [
+              {
+                "key": "safety_margin",
+                "label": "安全边际",
+                "value": 18.2,
+                "display_value": "18.2%",
+                "kind": "safety_margin_pct",
+                "tone": "pos"
+              },
+              {
+                "key": "percentile",
+                "label": "估值历史分位",
+                "value": 45,
+                "display_value": "45%",
+                "kind": "percentile",
+                "tone": "info"
+              },
+              {
+                "key": "dividend",
+                "label": "股息率吸引力",
+                "value": 58,
+                "display_value": "4.2%",
+                "kind": "score_0_100",
+                "tone": "warn"
+              },
+              {
+                "key": "certainty",
+                "label": "估值确定性",
+                "value": 70,
+                "display_value": "70%",
+                "kind": "certainty",
+                "tone": "info"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "quality",
+        "role": "quality",
+        "title": "标的质地",
+        "market": "common",
+        "blocks": [
+          {
+            "type": "grid",
+            "columns": [
+              [
+                {
+                  "type": "heading",
+                  "level": 3,
+                  "text": "质量分项（0–10）"
+                },
+                {
+                  "type": "scores",
+                  "items": [
+                    {
+                      "label": "利润现金含量",
+                      "score": 7.5,
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "资产负债表",
+                      "score": 8,
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "ROE 水平",
+                      "score": 7.5,
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "护城河强度",
+                      "score": 8,
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "生存能力",
+                      "score": 8.5,
+                      "tone": "positive"
+                    }
+                  ]
+                }
+              ],
+              [
+                {
+                  "type": "heading",
+                  "level": 3,
+                  "text": "关键指标"
+                },
+                {
+                  "type": "table",
+                  "variant": "comparison",
+                  "columns": [
+                    {
+                      "key": "value",
+                      "label": "结果",
+                      "role": "value"
+                    },
+                    {
+                      "key": "assessment",
+                      "label": "评价",
+                      "role": "assessment"
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "value": "长期高于 1",
+                      "assessment": "利润含金量可接受，但仍需核对保单现金流口径"
+                    },
+                    {
+                      "value": "高于监管线",
+                      "assessment": "资本缓冲充足"
+                    },
+                    {
+                      "value": "中上",
+                      "assessment": "需结合利率周期判断可持续性"
+                    },
+                    {
+                      "value": "牌照、客户与渠道",
+                      "assessment": "中强"
+                    },
+                    {
+                      "value": "仍保持盈利",
+                      "assessment": "通过"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "warn",
+            "title": "本章小结",
+            "body": "质地达到可接受门槛，但投资端波动限制仓位上限。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "cycle",
+        "role": "cycle",
+        "title": "产业周期与市场结构",
+        "market": "common",
+        "blocks": [
+          {
+            "type": "industry_lifecycle",
+            "stage": "成熟期"
+          },
+          {
+            "type": "paragraph",
+            "text": "行业处于成熟期，竞争焦点由规模扩张转向存量客户价值与资本效率。"
+          },
+          {
+            "type": "bullets",
+            "items": [
+              "关注新业务价值率，而不只看保费增速。",
+              "把利率变化与产业阶段分开判断。"
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "本章小结",
+            "body": "产业位置不支持高成长估值，但支持基于价值修复的低吸判断。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "model-pev-a",
+        "role": "model_analysis",
+        "module": "pev_sensitivity",
+        "title": "P/EV 敏感性",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "formula",
+            "latex": "\\text{合理股价}=\\text{每股 EV}\\times\\text{合理 P/EV}",
+            "substitution": "合理股价=85.7\\times0.70\\approx60.0",
+            "caption": "不同模型可以通过注册模块扩展，但继续使用统一 section 和 block。",
+            "explanation": "其中 \\(EV_{ps}\\) 指每股内含价值，\\(M_{fair}\\) 指合理P/EV倍数；前者取最近一期内含价值除以总股本，后者取基准情景倍数。"
+          },
+          {
+            "type": "table",
+            "variant": "matrix",
+            "columns": [
+              {
+                "key": "scenario",
+                "label": "情景",
+                "role": "scenario"
+              },
+              {
+                "key": "pev",
+                "label": "P/EV",
+                "role": "metric"
+              },
+              {
+                "key": "price",
+                "label": "对应价格",
+                "role": "value"
+              },
+              {
+                "key": "note",
+                "label": "说明",
+                "role": "note"
+              }
+            ],
+            "rows": [
+              {
+                "scenario": "保守",
+                "pev": "0.55x",
+                "price": "CNY 47.60",
+                "note": "价值假设下修且市场要求回报提高，文本较长时由 note 列负责换行和折叠"
+              },
+              {
+                "scenario": "中性",
+                "pev": "0.70x",
+                "price": "CNY 60.00",
+                "note": "基准假设"
+              },
+              {
+                "scenario": "乐观",
+                "pev": "0.80x",
+                "price": "CNY 68.60",
+                "note": "价值修复且风险溢价下降"
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "warn",
+            "title": "本章小结",
+            "body": "P/EV 对价值假设敏感，不能把倍数修复当成经营增长。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "cross-market",
+        "role": "cross_market",
+        "title": "溢价分析",
+        "market": "common",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "名义溢价需要先扣除税负、贴现率和市场结构因素。"
+          },
+          {
+            "type": "formula",
+            "latex": "\\text{A/H 比价}=\\frac{P_A}{P_H\\times HKD/CNY}",
+            "substitution": "\\text{A/H 比价}=\\frac{50}{45\\times0.85}\\approx1.307",
+            "caption": "结构化字段用于计算，说明文字只解释口径。",
+            "explanation": "其中 \\(P_A\\) 和 \\(P_H\\) 分别指A股和H股价格，\\(HKD/CNY\\) 指港元兑人民币汇率；三者取同一交易日或最近可用同一时间窗口的数据。"
+          },
+          {
+            "type": "premium_donut",
+            "market_pair": [
+              "A",
+              "H"
+            ],
+            "total_premium_pct": 20,
+            "items": [
+              {
+                "label": "股息税差",
+                "contribution_pct": 10,
+                "share_pct": 50,
+                "tone": "green"
+              },
+              {
+                "label": "贴现率差",
+                "contribution_pct": 6,
+                "share_pct": 30,
+                "tone": "blue"
+              },
+              {
+                "label": "市场分割",
+                "contribution_pct": 3,
+                "share_pct": 15,
+                "tone": "gold"
+              },
+              {
+                "label": "残余相对贵贱",
+                "contribution_pct": 1,
+                "share_pct": 5,
+                "tone": "red"
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "本章小结",
+            "body": "结构性因素解释了大部分 A/H 价差，不把溢价收敛计入收益。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "valuation-a",
+        "role": "valuation",
+        "title": "估值",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "现价低于合理区间，安全边际来自估值折价而非乐观增长假设。"
+          },
+          {
+            "type": "formula",
+            "latex": "P_A^{fair}=E_A\\times PE_A",
+            "substitution": "P_A^{fair}=8.57\\times7.0=60.0",
+            "explanation": "其中 \\(P_A^{fair}\\) 指A股合理价格，\\(E_A\\) 指正常化每股收益，\\(PE_A\\) 指基准合理市盈率；收益取8.57元，市盈率取7.0倍，现价取50元。"
+          },
+          {
+            "type": "valuation_scenarios",
+            "market": "A",
+            "currency": "CNY",
+            "current_price": 50,
+            "items": [
+              {
+                "key": "conservative",
+                "label": "保守",
+                "price": 55,
+                "multiple": {
+                  "name": "PE",
+                  "value": 6.5
+                },
+                "assumption": "价值不增长"
+              },
+              {
+                "key": "base",
+                "label": "中性",
+                "price": 60,
+                "multiple": {
+                  "name": "PE",
+                  "value": 7
+                },
+                "assumption": "价值温和增长"
+              },
+              {
+                "key": "optimistic",
+                "label": "乐观",
+                "price": 65,
+                "multiple": {
+                  "name": "PE",
+                  "value": 7.5
+                },
+                "assumption": "价值修复兑现"
+              }
+            ]
+          },
+          {
+            "type": "range_position",
+            "market": "A",
+            "currency": "CNY",
+            "min": 47,
+            "fair_low": 55,
+            "fair_mid": 60,
+            "fair_high": 65,
+            "max": 68,
+            "current_price": 50,
+            "scenarios": [
+              {
+                "key": "conservative",
+                "label": "保守",
+                "price": 55
+              },
+              {
+                "key": "base",
+                "label": "中性",
+                "price": 60
+              },
+              {
+                "key": "optimistic",
+                "label": "乐观",
+                "price": 65
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "pos",
+            "title": "本章小结",
+            "body": "合理区间为 CNY 55–65，安全边际约 16.7%。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "valuation-h",
+        "role": "valuation",
+        "title": "估值",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "H 股按自身税负和流动性条件估值，不与 A 股共用同一个合理价格。"
+          },
+          {
+            "type": "formula",
+            "latex": "P_H^{fair,HKD}=\\frac{E_H\\times PE_H}{FX_{HKD/CNY}}",
+            "substitution": "P_H^{fair,HKD}=\\frac{8.57\\times5.46}{0.85}=55.0",
+            "explanation": "其中 \\(P_H^{fair,HKD}\\) 指H股合理港元价格，\\(E_H\\) 指H股口径收益，\\(PE_H\\) 指H股合理市盈率，\\(FX_{HKD/CNY}\\) 指港元兑人民币汇率；收益按公司基本面复核，倍数和汇率取估值日校正值。"
+          },
+          {
+            "type": "valuation_scenarios",
+            "market": "H",
+            "currency": "HKD",
+            "current_price": 45,
+            "items": [
+              {
+                "key": "conservative",
+                "label": "保守",
+                "price": 50
+              },
+              {
+                "key": "base",
+                "label": "中性",
+                "price": 55
+              },
+              {
+                "key": "optimistic",
+                "label": "乐观",
+                "price": 60
+              }
+            ]
+          },
+          {
+            "type": "range_position",
+            "market": "H",
+            "currency": "HKD",
+            "min": 42,
+            "fair_low": 50,
+            "fair_mid": 55,
+            "fair_high": 60,
+            "max": 63,
+            "current_price": 45,
+            "scenarios": [
+              {
+                "key": "conservative",
+                "label": "保守",
+                "price": 50
+              },
+              {
+                "key": "base",
+                "label": "中性",
+                "price": 55
+              },
+              {
+                "key": "optimistic",
+                "label": "乐观",
+                "price": 60
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "warn",
+            "title": "本章小结",
+            "body": "H 股折价包含结构性因素，只适合小仓观察。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "position-a",
+        "role": "position",
+        "title": "仓位管理",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "position_tiers",
+            "market": "A",
+            "items": [
+              {
+                "level": 1,
+                "price": 50,
+                "trigger_type": "valuation",
+                "condition": "现价位于合理区间下沿，安全边际成立",
+                "allocation_pct": 30,
+                "active": true
+              },
+              {
+                "level": 2,
+                "price": 46,
+                "trigger_type": "evidence",
+                "condition": "后续财报确认盈利与资产质量未恶化",
+                "allocation_pct": 30,
+                "active": false
+              },
+              {
+                "level": 3,
+                "price": 43,
+                "trigger_type": "stabilization",
+                "condition": "价格止跌且合理中枢未下修",
+                "allocation_pct": 25,
+                "active": false
+              },
+              {
+                "level": 4,
+                "price": 40,
+                "trigger_type": "catalyst",
+                "condition": "盈利或资产质量出现明确改善证据",
+                "allocation_pct": 15,
+                "active": false
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "本章小结",
+            "body": "首笔按计划买入的 30% 执行，后续只在新增证据或止跌确认后加仓。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "position-h",
+        "role": "position",
+        "title": "仓位管理",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "position_tiers",
+            "market": "H",
+            "items": [
+              {
+                "level": 1,
+                "price": 45,
+                "trigger_type": "valuation",
+                "condition": "H 股进入自身合理区间下沿",
+                "allocation_pct": 30,
+                "active": true
+              },
+              {
+                "level": 2,
+                "price": 41.4,
+                "trigger_type": "evidence",
+                "condition": "财报确认经营与资产质量未恶化",
+                "allocation_pct": 30,
+                "active": false
+              },
+              {
+                "level": 3,
+                "price": 39,
+                "trigger_type": "stabilization",
+                "condition": "价格止跌且汇率冲击未改变价值判断",
+                "allocation_pct": 25,
+                "active": false
+              },
+              {
+                "level": 4,
+                "price": 37,
+                "trigger_type": "catalyst",
+                "condition": "盈利改善或结构性折价证据发生变化",
+                "allocation_pct": 15,
+                "active": false
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "warn",
+            "title": "本章小结",
+            "body": "H 股只按计划节奏观察和执行，不输出仓位规模。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "expected-return-a",
+        "role": "expected_return",
+        "title": "预期收益",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "return_stack",
+            "market": "A",
+            "items": [
+              {
+                "source": "dividend",
+                "label": "股息",
+                "value_pct": 4.5
+              },
+              {
+                "source": "growth",
+                "label": "增长",
+                "value_pct": 4
+              },
+              {
+                "source": "valuation",
+                "label": "估值修复",
+                "value_pct": 5
+              },
+              {
+                "source": "fx",
+                "label": "汇率",
+                "value_pct": 0
+              }
+            ],
+            "total_pct": 13.5
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "本章小结",
+            "body": "收益拆解与顶部分项一致，估值修复只计算一次。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "expected-return-h",
+        "role": "expected_return",
+        "title": "预期收益",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "return_stack",
+            "market": "H",
+            "items": [
+              {
+                "source": "dividend",
+                "label": "税后股息",
+                "value_pct": 4.2
+              },
+              {
+                "source": "growth",
+                "label": "增长",
+                "value_pct": 4
+              },
+              {
+                "source": "valuation",
+                "label": "估值修复",
+                "value_pct": 4
+              },
+              {
+                "source": "fx",
+                "label": "汇率",
+                "value_pct": 0
+              }
+            ],
+            "total_pct": 12.2
+          },
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "本章小结",
+            "body": "H 股收益按自身税后现金流计算。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "risks-a",
+        "role": "risks",
+        "title": "风险提示",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "risk_cards",
+            "items": [
+              {
+                "scope": "common",
+                "market": null,
+                "title": "低利率再投资风险",
+                "severity": "high",
+                "body": "长期资产回报率下降会压低价值中枢。",
+                "mitigation": "跟踪投资收益率和敏感性披露。"
+              },
+              {
+                "scope": "market",
+                "market": "A",
+                "title": "风格拥挤",
+                "severity": "medium",
+                "body": "金融风格逆转可能扩大短期折价。",
+                "mitigation": "分批建仓，不追高。"
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "neg",
+            "title": "本章小结",
+            "body": "主要风险是长期价值假设恶化，而不是短期价格波动。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "risks-h",
+        "role": "risks",
+        "title": "风险提示",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "risk_cards",
+            "items": [
+              {
+                "scope": "market",
+                "market": "H",
+                "title": "汇率与流动性风险",
+                "severity": "high",
+                "body": "港元汇率、外资流出和流动性折价可能同时扩大。",
+                "mitigation": "按人民币目标评估回报，限制仓位。"
+              }
+            ]
+          },
+          {
+            "type": "callout",
+            "tone": "neg",
+            "title": "本章小结",
+            "body": "不把 A/H 溢价收敛作为收益来源。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "conclusion-a",
+        "role": "conclusion",
+        "title": "关键结论",
+        "market": "A",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "估值有折价，但只适合分批建立小仓位。"
+          },
+          {
+            "type": "callout",
+            "tone": "pos",
+            "title": "本章小结",
+            "body": "首笔按计划买入的 30% 执行，后续等待证据确认。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "conclusion-h",
+        "role": "conclusion",
+        "title": "关键结论",
+        "market": "H",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "折价具有结构性，账户不适配时不参与。"
+          },
+          {
+            "type": "callout",
+            "tone": "warn",
+            "title": "本章小结",
+            "body": "只在触发条件成立时按计划节奏执行。",
+            "summary": true
+          }
+        ]
+      },
+      {
+        "id": "sources",
+        "role": "sources",
+        "title": "数据来源与口径",
+        "market": "common",
+        "blocks": [
+          {
+            "type": "table",
+            "variant": "comparison",
+            "columns": [
+              {
+                "key": "item",
+                "label": "数据",
+                "role": "label"
+              },
+              {
+                "key": "source",
+                "label": "来源",
+                "role": "note"
+              },
+              {
+                "key": "as_of",
+                "label": "时点",
+                "role": "date"
+              }
+            ],
+            "rows": [
+              {
+                "item": "行情",
+                "source": "示例行情源",
+                "as_of": "2026-10-24"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "disclaimer",
+        "role": "disclaimer",
+        "title": "免责声明",
+        "market": "common",
+        "blocks": [
+          {
+            "type": "callout",
+            "tone": "info",
+            "title": "免责声明",
+            "body": "本示例仅用于结构校验，不构成任何投资建议。"
+          }
+        ]
+      }
+    ]
+  }
+}

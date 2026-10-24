@@ -14,20 +14,21 @@
 
 ## P0：阻断错误数据进入页面
 
-- [ ] 建立唯一、版本化的数据卡 JSON Schema，覆盖顶层、`markets[]`、`presentation.sections[]` 和所有 block；manifest schema 不能代替数据卡 schema。
-- [ ] Codex 输出文件、后端导入和前端 fixture 共用该 Schema，并生成或校验 TypeScript 类型，消除 Python、Markdown、Vue 三套手写契约。
-- [ ] 将 `scorecard.py` 或等价的严格校验设为后端强制门槛；校验失败不得写入 `needs_review`，不得只依赖模型在 prompt 中自觉执行。
-- [ ] 补齐 canonical block 渲染：`valuation_scenarios`、`range_position`、`position_tiers`、`premium_donut`，并将 `return_stack` 改为读取 `source/value_pct/total_pct`。
-- [ ] 将 `risk_cards.severity` 映射为高/中/低及正确颜色；移除对旧版 `level/probability` 的依赖，或提供明确兼容转换。
-- [ ] 未知 section、未知 block 和缺失必填字段必须返回可诊断错误；禁止静默跳过、渲染空白图或把缺失数值降级为 0。
-- [ ] 校验重复市场、货币、市场代码、block 枚举、百分数字段、有限数值、负回撤、合理区间顺序、仓位分配合计和收益分项闭合。
-- [ ] 校验顶层与 `presentation` 同源同值，包括 `fair_mid`、现价、预期收益、最大回撤、目标仓位、仓位档位和市场 verdict，并定义允许的舍入误差。
+- [x] 完成 schema 1.2 草案，覆盖固定 section role、注册式模型模块、canonical block、语义表格列和 A/H 示例；样例与反例已接入 JSON Schema 测试。
+- [x] 将 schema 1.2 接入后端导入、前端渲染和两个 Codex skill；新候选拒绝 1.0/1.1。
+- [ ] 生成或校验 TypeScript 类型，消除 Python、Markdown、Vue 三套手写契约。
+- [x] 将等价于 `scorecard.py` 的严格校验设为后端强制门槛，校验失败不写入 `needs_review`。
+- [x] 完成 schema 1.2 demo 的 canonical block 映射，覆盖 `valuation_scenarios`、`range_position`、`position_tiers`、`premium_donut` 和新版 `return_stack`。
+- [x] 将 `risk_cards.severity` 映射为高/中/低及正确颜色，同时保留旧格式兼容。
+- [x] 未知 section、未知 block 和缺失必填字段返回可诊断错误，不进入数据库。
+- [x] 校验市场代码、block 枚举、合理区间顺序、仓位分配合计、收益分项和溢价分项闭合。
+- [x] 校验顶层与 `presentation` 的区间、现价、预期收益、仓位档位和仪表盘核心值一致。
 - [ ] 对现有 Codex 报告执行一次严格重审：隔离 `missing` 非空的已发布记录，重新生成或人工复核后再进入排名。
 
 ## P0：统一排名事实源
 
 - [ ] 明确唯一生产排名来源。建议 Web 继续使用数据库排名，并将 `investment-ranking` 定位为离线预览或导出器，避免两份榜单都被称为“前端可直接消费”。
-- [ ] 让 `rank.py` 按“标的 × 市场”只选择最新有效数据卡，排除重复日期和旧卡；排名门槛、ETF 分组、是否发布必须与后端一致。
+- [x] 让 `rank.py` 只读取 schema 1.2，并按标的保留最新有效数据卡。
 - [ ] 对齐 skill 输出与 `RankingResponse`：字段名、profile 结构、ETF/排除项、计数、`top_three`、`stale_days` 和算法版本必须可机器比对。
 - [ ] 增加同一数据快照下的 skill/Web 排名一致性测试，覆盖重复数据卡、A/H 双市场、ETF、排除项和空榜单。
 
@@ -52,11 +53,10 @@
 
 ## P1：回归测试与可观测性
 
-- [ ] 以真实 schema 1.1 A+H 数据卡建立前端 fixture，逐项断言仪表盘、质量 grid、情景/区间、仓位档位、收益拆解、溢价环图、风险等级、来源和免责声明均可见。
 - [ ] 增加反向 E2E：未知 block、错误字段名、空收益、冲突中枢和非法枚举必须明确报错，不能静默消失。
 - [ ] 增加顶层字段与展示层字段一致性测试，以及排名阈值、最新卡去重、行情/宏观快照一致性测试。
 - [ ] 在任务中心和 Debug 面板保存并展示 schema 版本、校验器版本、卡片哈希、使用的行情/宏观快照及拒绝原因。
-- [ ] 修正当前依赖 `../data` 的测试路径探测，确保真实数据存在时 import、排名和 skill parity 测试不会无提示跳过。
+- [x] 测试改用仓库内 schema 1.2 canonical fixture 和临时合成数据，不再读取外部数据目录。
 
 ## 验收标准
 
@@ -65,4 +65,4 @@
 - [ ] 同一份数据快照下，skill 排名与 Web 排名的主榜、ETF、排除项、顺序和分数一致。
 - [ ] 当前价格刷新后，页面不会把新现价与旧收益、旧情景或旧仓位无提示地混在一起。
 - [ ] 当前数据库中不存在带 `missing` 且仍参与主榜的 Codex 发布记录。
-- [ ] 真实 schema 1.1 数据卡的详情页 E2E 与严格拒绝用例均通过。
+- [ ] 真实 schema 1.2 数据卡的详情页 E2E 与严格拒绝用例均通过。

@@ -115,10 +115,12 @@ export interface ValuationDetail {
     scenario?: string;
   };
   position: {
-    base_pct?: number;
-    target_pct?: number;
-    cap_pct?: number;
-    buy_points?: string;
+    tranches?: Array<{
+      level: number;
+      price: number;
+      allocation_pct: number;
+      active: boolean;
+    }>;
   };
   verdict: string;
   score: Score;
@@ -148,12 +150,13 @@ export interface ValuationDetail {
       max_drawdown_pct?: number | null;
       scenario?: string;
     };
-    target_pct: number | null;
     position: {
-      base_pct?: number;
-      target_pct?: number;
-      cap_pct?: number;
-      buy_points?: string;
+      tranches?: Array<{
+        level: number;
+        price: number;
+        allocation_pct: number;
+        active: boolean;
+      }>;
     };
     gauges: Record<string, number>;
     verdict: string;
@@ -172,6 +175,8 @@ export interface ReportDetailBlock {
 
 export interface ReportDetailSection {
   id?: string;
+  role?: string;
+  module?: string;
   title: string;
   market?: string;
   blocks: ReportDetailBlock[];
@@ -182,6 +187,23 @@ export interface RankingFilters {
   market?: string;
   path?: string;
   industry?: string;
+}
+
+export interface InstrumentCreatePayload {
+  name: string;
+  code?: string;
+  asset_type: "stock" | "etf";
+}
+
+export interface InstrumentCreateResult {
+  instrument_id: number;
+  job_id: number;
+  name: string;
+  market: string | null;
+  code: string | null;
+  currency: string | null;
+  asset_type: string;
+  status: string;
 }
 
 export interface Schedule {
@@ -233,6 +255,13 @@ export interface JobDebugEvent {
   message: string;
 }
 
+export interface TokenUsage {
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  reasoning_output_tokens: number;
+}
+
 export interface AiRunDebug {
   id: number;
   status: string;
@@ -245,14 +274,21 @@ export interface AiRunDebug {
   metadata: Record<string, unknown>;
   started_at: string;
   finished_at: string | null;
+  token_usage: TokenUsage | null;
+}
+
+export interface CodexMilestone {
+  sequence: number;
+  kind: string;
+  message: string;
 }
 
 export interface JobDebug {
   job: Job;
   events: JobDebugEvent[];
   ai_runs: AiRunDebug[];
-  stdout: string;
-  stderr: string;
+  current_action: string;
+  codex_events: CodexMilestone[];
 }
 
 export interface ClearJobsResult {

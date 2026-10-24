@@ -8,6 +8,23 @@
   --ui-accent: #57d6b1;
   --ui-warm: #e8b86d;
   --ui-red: #ee8c78;
+  --ui-overlay: #0a1824;
+  --ui-on-overlay: #f3f8fb;
+  --ui-text-strong: #e0eef6;
+  --ui-chart-muted: #a9bac6;
+  --ui-chart-label-bg: rgba(7, 19, 31, 0.92);
+  --ui-chart-label-text: #dce7ef;
+  --ui-gauge-track: rgba(158, 190, 210, 0.14);
+  --ui-chart-track: rgba(158, 190, 210, 0.14);
+  --cycle-peak: #ee8c78;
+  --cycle-trough: #57d6b1;
+  --cycle-peak-text: #ee8c78;
+  --cycle-trough-text: #57d6b1;
+  --cycle-point: #57d6b1;
+  --cycle-guide: rgba(220, 238, 255, 0.5);
+  --ui-table-surface: rgba(255, 255, 255, 0.012);
+  --ui-glow-a: rgba(87, 214, 177, 0.09);
+  --ui-glow-b: rgba(128, 199, 255, 0.05);
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -18,6 +35,35 @@
   --space-page: 24px;
   --space-section: 20px;
   --grid-gap: 20px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ui-bg: #eef4f7;
+  --ui-surface: rgba(255, 255, 255, 0.88);
+  --ui-line: rgba(38, 73, 91, 0.16);
+  --ui-muted: #728692;
+  --ui-accent: #0e9f7d;
+  --ui-warm: #b77a1f;
+  --ui-red: #c45645;
+  --ui-overlay: #ffffff;
+  --ui-on-overlay: #172833;
+  --ui-text-strong: #20343f;
+  --ui-chart-muted: #3f5966;
+  --ui-chart-label-bg: rgba(255, 255, 255, 0.96);
+  --ui-chart-label-text: #172833;
+  --ui-gauge-track: rgba(38, 73, 91, 0.12);
+  --ui-chart-track: rgba(38, 73, 91, 0.12);
+  --cycle-peak: #ed9a8b;
+  --cycle-trough: #79d1ad;
+  --cycle-peak-text: #bf5b49;
+  --cycle-trough-text: #168264;
+  --cycle-point: #0e9f7d;
+  --cycle-guide: rgba(38, 73, 91, 0.34);
+  --ui-table-surface: rgba(255, 255, 255, 0.62);
+  --ui-glow-a: rgba(14, 159, 125, 0.1);
+  --ui-glow-b: rgba(52, 120, 200, 0.08);
+  --shadow-card: 0 18px 48px rgba(44, 76, 92, 0.1);
 }
 
 html,
@@ -31,8 +77,8 @@ body {
   min-width: 320px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 82% 4%, rgba(87, 214, 177, 0.09), transparent 28rem),
-    radial-gradient(circle at 4% 46%, rgba(128, 199, 255, 0.05), transparent 32rem),
+    radial-gradient(circle at 82% 4%, var(--ui-glow-a), transparent 28rem),
+    radial-gradient(circle at 4% 46%, var(--ui-glow-b), transparent 32rem),
     var(--ui-bg);
 }
 

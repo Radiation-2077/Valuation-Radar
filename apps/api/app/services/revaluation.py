@@ -73,7 +73,13 @@ def run_valuation_refresh(
     schema_path.write_text(json.dumps(_manifest_schema(), ensure_ascii=False), encoding="utf-8")
     analysis_date = datetime.now(ZoneInfo(settings.timezone)).date()
     card_name = f"{instrument.name}_{analysis_date.isoformat()}.json"
-    prompt = _prompt(instrument, evidence, analysis_date, card_name)
+    prompt = _prompt(
+        instrument,
+        evidence,
+        analysis_date,
+        card_name,
+        has_previous_card=bool(previous_card),
+    )
     prompt_path = staging / "prompt.md"
     prompt_path.write_text(prompt, encoding="utf-8")
 
@@ -134,10 +140,10 @@ def run_valuation_refresh(
         if not card_path.is_file():
             raise ValueError(f"缺少候选数据卡：{card_name}")
         card = json.loads(card_path.read_text(encoding="utf-8"))
-        validate_card(card, card_path)
         missing = [str(item) for item in card.get("missing") or []]
         if missing:
             raise RuntimeError(f"候选估值存在缺失数据，终止估值：{'；'.join(missing)}")
+        validate_card(card, card_path)
         if card["name"] != instrument.name:
             raise ValueError("候选数据卡标的名与原标的不一致")
         if card["analysis_date"] != analysis_date.isoformat():
@@ -259,7 +265,7 @@ def _build_evidence(session: Session, instrument: Instrument) -> dict[str, Any]:
         "constraints": {
             "missing_data": "任何估值必需数据缺失或联网失败时立即终止，不生成候选估值",
             "source": "优先使用 evidence.json 与本目录 common/ 数据",
-            "output": "只输出 schema 1.1 结构化数据卡，排名与 presentation 必须同源同值",
+            "output": "只输出 schema 1.2 结构化数据卡，排名与 presentation 必须同源同值",
         },
     }
 
@@ -269,26 +275,53 @@ def _prompt(
     evidence: dict[str, Any],
     analysis_date: date,
     card_name: str,
+    *,
+    has_previous_card: bool,
 ) -> str:
     markets = ", ".join(item["code"] for item in evidence["listings"])
     market_names = {str(item["market"]) for item in evidence["listings"]}
-    section_contract = (
-        "A+H 必须使用 dashboard-A/H、quality/common、cycle/common、"
-        "cross_market/common、valuation-A/H、position-A/H、expected_return-A/H、"
-        "risks-A/H、conclusion-A/H、sources/common、disclaimer/common；"
-        "cross_market 只比较溢价，禁止出现单市场估值、情景、仓位或收益。"
-        if {"A", "H"}.issubset(market_names)
-        else "单市场使用 dashboard、quality、cycle、valuation、position、"
-        "expected_return、risks、conclusion、sources、disclaimer。"
+    if not market_names:
+        markets = "未提供，请按标的名检索上市代码"
+        section_contract = (
+            "先确认标的上市市场；若 A/H 两地上市，默认完整调研两个市场，"
+            "必须使用 dashboard-a/h、quality/common、cycle/common、"
+            "cross_market/common、valuation-a/h、position-a/h、"
+            "expected-return-a/h、risks-a/h、conclusion-a/h、"
+            "sources/common、disclaimer/common；单市场才使用单市场章节契约。"
+        )
+    elif {"A", "H"}.issubset(market_names):
+        section_contract = (
+            "A+H 必须使用 dashboard-a/h、quality/common、cycle/common、"
+            "cross_market/common、valuation-a/h、position-a/h、"
+            "expected-return-a/h、risks-a/h、conclusion-a/h、"
+            "sources/common、disclaimer/common；"
+            "cross_market 只比较溢价，禁止出现单市场估值、情景、仓位或收益。"
+        )
+    elif market_names & {"A", "H"}:
+        section_contract = (
+            "已给出 A 或 H 单边代码，但仍须核实是否存在另一地上市；"
+            "若为 A/H 两地上市，默认完整调研两个市场并使用 A/H 分市场契约；"
+            "仅确认单市场时才使用 dashboard、quality、cycle、valuation、"
+            "position、expected_return、risks、conclusion、sources、disclaimer。"
+        )
+    else:
+        section_contract = (
+            "单市场使用 dashboard、quality、cycle、valuation、position、"
+            "expected_return、risks、conclusion、sources、disclaimer。"
+        )
+    path_hint = (
+        f"上一版估值路径：{instrument.path}\n"
+        if has_previous_card
+        else "这是首次估值，请独立判断 stable/cyclical/financial/etf 路径。\n"
     )
-    return f"""使用 value-investing skill 完成一次完整估值重估。
+    return f"""使用 value-investing skill 完成一次完整估值。
 
 首先完整读取该 skill 的 SKILL.md 和本次任务需要的方法参考文档，然后只在当前工作目录内操作。
 
 标的：{instrument.name}
 市场代码：{markets}
 分析日期：{analysis_date.isoformat()}
-估值路径提示：{instrument.path}
+{path_hint}
 
 证据文件：
 - evidence.json：最新行情、宏观数据和任务约束
@@ -298,14 +331,23 @@ def _prompt(
 要求：
 1. 按 skill 的方法重新判断质地、产业周期和市场结构，并独立重估。
 2. 任何估值必需数据缺失、来源不可访问或无法交叉核验时立即终止，不得生成估算卡。
-3. 只生成 schema 1.1 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
+3. 只生成 schema 1.2 结构化数据卡 data/{card_name}，不要生成单标的 HTML 文件。
 4. 数据卡必须包含完整的 presentation.sections；质量章只使用既有两栏 grid：
-   左侧五个 scores，右侧三列表格。
-5. 章节契约：{section_contract}
-6. 每个 section 的 market 必须与内容一致，禁止把 A/H 价格、仓位或收益混在同一章节。
-7. 成功时 manifest.warnings 必须为空；排名字段与 presentation 同源同值并包含完整详情。
-8. 不要修改当前目录之外的文件，不要访问生产数据库。
-9. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
+   左侧五个 scores，右侧只放结果、评价两列表格；不要再重复维度名。
+5. 产业周期章开头必须是 industry_lifecycle，stage 只能是导入/爆发期、
+   平台增长期、成熟期、衰退期，并同步顶层 cycle_stage。path 为 cyclical 时，
+   第二个 block 必须是 industry_cycle，position/phase/direction 同步顶层
+   cycle_position 和固定阶段映射；
+   非周期行业可以省略第二张图。
+6. model_analysis 与 valuation 至少各有一个核心 formula，cross_market 可选；
+   质量、产业周期、仓位、预期收益不得出现公式。latex 只写符号公式，
+   substitution 单独写数字代入与结果，explanation 用一段自然语言说明符号
+   含义和取值依据。
+7. 章节契约：{section_contract}
+8. 每个 section 的 market 必须与内容一致，禁止把 A/H 价格、仓位或收益混在同一章节。
+9. 成功时 manifest.warnings 必须为空；排名字段与 presentation 同源同值并包含完整详情。
+10. 不要修改当前目录之外的文件，不要访问生产数据库。
+11. 最终 manifest 只报告状态、数据卡路径、核心摘要和警告。
 """
 
 

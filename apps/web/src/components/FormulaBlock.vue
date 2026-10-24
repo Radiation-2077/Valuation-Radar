@@ -13,11 +13,18 @@ defineProps<{
 
 <template>
   <NCard size="small" :bordered="false">
-    <NSpace vertical align="center" :size="8">
+    <NSpace vertical :size="10">
       <MathFormula display-mode :latex="blockText(block, 'latex')" />
+      <div v-if="blockText(block, 'substitution')" class="formula-substitution">
+        <strong>代入数据</strong>
+        <MathFormula display-mode :latex="blockText(block, 'substitution')" />
+      </div>
       <NText v-if="blockText(block, 'caption')" depth="3">
         <RichText :text="blockText(block, 'caption')" />
       </NText>
+      <div v-if="blockText(block, 'explanation')" class="formula-explanation">
+        <RichText :text="blockText(block, 'explanation')" />
+      </div>
     </NSpace>
   </NCard>
 </template>

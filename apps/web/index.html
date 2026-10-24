@@ -8,6 +8,17 @@
       name="description"
       content="估值雷达：以风险调整后的投资性价比为核心的本机估值分析工作台"
     />
+    <script>
+      (() => {
+        const saved = localStorage.getItem("valuation-radar-theme");
+        const dark =
+          saved === "dark" ||
+          (saved !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
+      })();
+    </script>
     <title>估值雷达</title>
   </head>
   <body>

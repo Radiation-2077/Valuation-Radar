@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.domain.card_fields import display_label
 from app.domain.scoring import (
     DEFAULT_PROFILE,
     PROFILES,
@@ -247,11 +248,6 @@ def get_valuation_detail(
                 else None
             ),
             downside=other.downside,
-            target_pct=(
-                (other.position or {}).get("target_pct")
-                if isinstance((other.position or {}).get("target_pct"), (int, float))
-                else None
-            ),
             position=other.position,
             gauges=other.gauges,
             verdict=other.verdict,
@@ -305,9 +301,9 @@ def get_valuation_detail(
         ),
         cycle=CycleOut(stage=instrument.cycle_stage, position=instrument.cycle_position),
         conclusion={
-            "verdict": str(conclusion.get("verdict") or ""),
+            "verdict": display_label(conclusion.get("verdict")),
             "thesis": str(conclusion.get("thesis") or ""),
-            "confidence": str(conclusion.get("confidence") or ""),
+            "confidence": display_label(conclusion.get("confidence")),
         },
         price=current_price,
         baseline_price=market.price,

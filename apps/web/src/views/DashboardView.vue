@@ -22,12 +22,13 @@ import {
   NText,
   type DataTableColumns,
 } from "naive-ui";
-import { FunnelOutline } from "@vicons/ionicons5";
+import { AddOutline, FunnelOutline } from "@vicons/ionicons5";
 import { computed, h, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { fetchRanking } from "@/api/client";
 import type { ProfileCode, RankingItem, RankingResponse } from "@/api/types";
+import AddInstrumentModal from "@/components/AddInstrumentModal.vue";
 import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
 import RankingScatter from "@/components/RankingScatter.vue";
 import TopPickCard from "@/components/TopPickCard.vue";
@@ -55,6 +56,7 @@ const market = ref<string | null>(null);
 const path = ref<string | null>(null);
 const industry = ref<string | null>(null);
 const filtersOpen = ref(false);
+const addInstrumentOpen = ref(false);
 const selectedValuationId = ref<number | null>(null);
 const detailOpen = ref(false);
 const slideDirection = ref<"left" | "right">("left");
@@ -316,6 +318,13 @@ async function selectProfile(value: ProfileCode) {
   }
 }
 
+async function handleInstrumentCreated() {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["ranking"] }),
+    queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+  ]);
+}
+
 function openValuation(id: number) {
   selectedValuationId.value = id;
   detailOpen.value = true;
@@ -356,63 +365,71 @@ function rowProps(row: RankingItem) {
 
     <NSpace class="toolbar" align="center" justify="space-between" :wrap="true" :size="8">
       <ProfileSwitcher :model-value="profile" @update:model-value="selectProfile" />
-      <NPopover
-        v-model:show="filtersOpen"
-        trigger="click"
-        placement="bottom-end"
-        :width="420"
-      >
-        <template #trigger>
-          <NButton
-            size="medium"
-            secondary
-            :aria-expanded="filtersOpen"
-          >
-            <template #icon>
-              <NIcon :component="FunnelOutline" />
-            </template>
-            筛选
-            <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
-              {{ activeFilterCount }}
-            </NTag>
-          </NButton>
-        </template>
-        <NSpace class="filter-popover" vertical :size="12">
-          <NFormItem label="市场" :show-feedback="false">
-            <NSelect
-              v-model:value="market"
-              :options="marketOptions"
-              clearable
-              placeholder="全部市场"
-            />
-          </NFormItem>
-          <NFormItem label="估值路径" :show-feedback="false">
-            <NSelect
-              v-model:value="path"
-              :options="pathOptions"
-              clearable
-              placeholder="全部路径"
-            />
-          </NFormItem>
-          <NFormItem label="行业" :show-feedback="false">
-            <NSelect
-              v-model:value="industry"
-              :options="industryOptions"
-              clearable
-              filterable
-              placeholder="全部行业"
-            />
-          </NFormItem>
-          <NButton
-            v-if="activeFilterCount"
-            block
-            tertiary
-            @click="clearFilters"
-          >
-            清除筛选
-          </NButton>
-        </NSpace>
-      </NPopover>
+      <NSpace :size="8">
+        <NButton size="medium" secondary @click="addInstrumentOpen = true">
+          <template #icon>
+            <NIcon :component="AddOutline" />
+          </template>
+          添加标的
+        </NButton>
+        <NPopover
+          v-model:show="filtersOpen"
+          trigger="click"
+          placement="bottom-end"
+          :width="420"
+        >
+          <template #trigger>
+            <NButton
+              size="medium"
+              secondary
+              :aria-expanded="filtersOpen"
+            >
+              <template #icon>
+                <NIcon :component="FunnelOutline" />
+              </template>
+              筛选
+              <NTag v-if="activeFilterCount" size="tiny" :bordered="false">
+                {{ activeFilterCount }}
+              </NTag>
+            </NButton>
+          </template>
+          <NSpace class="filter-popover" vertical :size="12">
+            <NFormItem label="市场" :show-feedback="false">
+              <NSelect
+                v-model:value="market"
+                :options="marketOptions"
+                clearable
+                placeholder="全部市场"
+              />
+            </NFormItem>
+            <NFormItem label="估值路径" :show-feedback="false">
+              <NSelect
+                v-model:value="path"
+                :options="pathOptions"
+                clearable
+                placeholder="全部路径"
+              />
+            </NFormItem>
+            <NFormItem label="行业" :show-feedback="false">
+              <NSelect
+                v-model:value="industry"
+                :options="industryOptions"
+                clearable
+                filterable
+                placeholder="全部行业"
+              />
+            </NFormItem>
+            <NButton
+              v-if="activeFilterCount"
+              block
+              tertiary
+              @click="clearFilters"
+            >
+              清除筛选
+            </NButton>
+          </NSpace>
+        </NPopover>
+      </NSpace>
     </NSpace>
 
     <NSpin v-if="query.isPending.value" size="large" />
@@ -553,10 +570,15 @@ function rowProps(row: RankingItem) {
       v-model:show="detailOpen"
       class="detail-drawer"
       placement="right"
+      :z-index="1000"
       :trap-focus="true"
       @after-leave="selectedValuationId = null"
     >
-      <NDrawerContent :native-scrollbar="false" closable>
+      <NDrawerContent
+        :native-scrollbar="false"
+        :closable="false"
+        :header-style="{ display: 'none' }"
+      >
         <ValuationDetailPanel
           v-if="selectedValuationId"
           :valuation-market-id="selectedValuationId"
@@ -565,5 +587,10 @@ function rowProps(row: RankingItem) {
         />
       </NDrawerContent>
     </NDrawer>
+
+    <AddInstrumentModal
+      v-model:show="addInstrumentOpen"
+      @created="handleInstrumentCreated"
+    />
   </NSpace>
 </template>

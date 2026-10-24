@@ -12,6 +12,7 @@ import {
   scenarioMarkerColor,
   type PricePosition,
 } from "@/lib/range-position";
+import { chartThemeColors, observeChartTheme } from "@/lib/chart-theme";
 
 const props = defineProps<{
   fillLeft: number;
@@ -27,6 +28,8 @@ use([BarChart, GridComponent, MarkLineComponent, CanvasRenderer]);
 const element = ref<HTMLDivElement>();
 let chart: ECharts | undefined;
 let observer: ResizeObserver | undefined;
+let stopThemeObserver: (() => void) | undefined;
+const theme = ref(chartThemeColors());
 
 const position = computed<PricePosition>(() =>
   classifyPricePosition(props.pinLeft, props.fillLeft, props.fillWidth),
@@ -82,15 +85,21 @@ const scenarioMarkers = computed(() =>
       const value = Number.parseFloat(scenario.label.replace(/[^\d.-]/g, ""));
       if (!Number.isFinite(value)) return null;
       const color = scenarioMarkerColor(index);
+      const name =
+        scenario.label
+          .replace(/\s*(?:HK\$|¥|\$)?\s*-?\d[\d,]*(?:\.\d+)?\s*$/, "")
+          .trim() || scenarioLabels[index] || `情景${index + 1}`;
       return {
         xAxis: value,
         symbol: ["none", "none"],
         label: {
           show: true,
-          formatter: `${scenarioLabels[index] ?? `情景${index + 1}`} ${scenario.label}`,
-          color,
+          position: "end",
+          rotate: 0,
+          formatter: `${name} ${formatPrice(value)}`,
+          color: theme.value.labelText,
           fontWeight: scenario.highlight ? 600 : 400,
-          backgroundColor: "rgba(7,19,31,.92)",
+          backgroundColor: theme.value.labelBackground,
           borderColor: color,
           borderWidth: 1,
           borderRadius: 4,
@@ -114,12 +123,12 @@ function render() {
       min: axisBounds.value.min,
       max: axisBounds.value.max,
       axisLabel: {
-        color: "#a9bac6",
+        color: theme.value.muted,
         formatter: (value: number) => formatPrice(value),
       },
       axisTick: { show: false },
       splitLine: { show: false },
-      axisLine: { lineStyle: { color: "rgba(158,190,210,.22)" } },
+      axisLine: { lineStyle: { color: theme.value.border } },
     },
     yAxis: { type: "category", data: [""], show: false },
     series: [
@@ -137,7 +146,7 @@ function render() {
         silent: true,
         data: [axisBounds.value.max - axisBounds.value.min],
         itemStyle: {
-          color: "rgba(158,190,210,.14)",
+          color: theme.value.track,
           borderRadius: 9,
         },
         barWidth: 18,
@@ -148,7 +157,7 @@ function render() {
         silent: true,
         data: [axisBounds.value.low],
         itemStyle: { color: "transparent" },
-        barWidth: 14,
+        barWidth: 18,
         barGap: "-100%",
       },
       {
@@ -158,16 +167,18 @@ function render() {
         data: [axisBounds.value.high - axisBounds.value.low],
         itemStyle: {
           color: positionColor.value,
-          borderRadius: 7,
+          borderRadius: 9,
         },
         markLine: {
           symbol: ["none", "circle"],
           symbolSize: 10,
           label: {
             show: true,
+            position: "end",
+            rotate: 0,
             formatter: props.pinLabel,
-            color: positionColor.value,
-            backgroundColor: "rgba(7,19,31,.92)",
+            color: theme.value.labelText,
+            backgroundColor: theme.value.labelBackground,
             borderColor: positionColor.value,
             borderWidth: 1,
             borderRadius: 4,
@@ -183,7 +194,7 @@ function render() {
             { xAxis: axisBounds.value.current },
           ],
         },
-        barWidth: 14,
+        barWidth: 18,
       },
     ],
   }, true);
@@ -194,11 +205,16 @@ onMounted(() => {
   chart = init(element.value);
   observer = new ResizeObserver(() => chart?.resize());
   observer.observe(element.value);
+  stopThemeObserver = observeChartTheme(() => {
+    theme.value = chartThemeColors();
+    render();
+  });
   render();
 });
 watch(() => props, render, { deep: true });
 onBeforeUnmount(() => {
   observer?.disconnect();
+  stopThemeObserver?.();
   chart?.dispose();
 });
 </script>

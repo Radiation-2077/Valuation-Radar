@@ -2,6 +2,7 @@
 import {
   NConfigProvider,
   NDialogProvider,
+  NButton,
   NIcon,
   NLayout,
   NLayoutContent,
@@ -10,21 +11,55 @@ import {
   NMessageProvider,
   NScrollbar,
   NSpace,
-  NTag,
+  NTooltip,
   darkTheme,
   dateZhCN,
+  lightTheme,
   zhCN,
   type ScrollbarInst,
 } from "naive-ui";
-import { PulseOutline, SyncOutline, TrophyOutline } from "@vicons/ionicons5";
-import { computed, h, nextTick, ref, watch } from "vue";
+import {
+  LinkOutline,
+  MoonOutline,
+  SunnyOutline,
+  SyncOutline,
+  TrophyOutline,
+} from "@vicons/ionicons5";
+import {
+  computed,
+  h,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  watchEffect,
+} from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
-import { themeOverrides } from "@/theme";
+import { darkThemeOverrides, lightThemeOverrides } from "@/theme";
 
 const route = useRoute();
 const router = useRouter();
 const scrollbarRef = ref<ScrollbarInst | null>(null);
+type ThemePreference = "system" | "light" | "dark";
+const themeStorageKey = "valuation-radar-theme";
+const savedTheme = localStorage.getItem(themeStorageKey);
+const themePreference = ref<ThemePreference>(
+  savedTheme === "light" || savedTheme === "dark" ? savedTheme : "system",
+);
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+const systemDark = ref(prefersDark.matches);
+const isDark = computed(() =>
+  themePreference.value === "system"
+    ? systemDark.value
+    : themePreference.value === "dark",
+);
+const activeTheme = computed(() => (isDark.value ? darkTheme : lightTheme));
+const activeThemeOverrides = computed(() =>
+  isDark.value ? darkThemeOverrides : lightThemeOverrides,
+);
+const connectionTooltipVisible = ref(false);
 const menuOptions = [
   {
     label: "性价比排名",
@@ -37,7 +72,9 @@ const menuOptions = [
     icon: () => h(NIcon, null, { default: () => h(SyncOutline) }),
   },
 ];
-const activeMenu = computed(() => (route.path === "/updates" ? "/updates" : "/"));
+const activeMenu = computed(() => {
+  return route.path === "/updates" ? "/updates" : "/";
+});
 
 watch(
   () => route.fullPath,
@@ -46,12 +83,34 @@ watch(
     scrollbarRef.value?.scrollTo({ top: 0 });
   },
 );
+
+onMounted(() => {
+  prefersDark.addEventListener("change", handleSystemThemeChange);
+});
+
+onBeforeUnmount(() => {
+  prefersDark.removeEventListener("change", handleSystemThemeChange);
+});
+
+watchEffect(() => {
+  document.documentElement.dataset.theme = isDark.value ? "dark" : "light";
+  document.documentElement.style.colorScheme = isDark.value ? "dark" : "light";
+});
+
+function handleSystemThemeChange(event: MediaQueryListEvent) {
+  systemDark.value = event.matches;
+}
+
+function toggleTheme() {
+  themePreference.value = isDark.value ? "light" : "dark";
+  localStorage.setItem(themeStorageKey, themePreference.value);
+}
 </script>
 
 <template>
   <NConfigProvider
-    :theme="darkTheme"
-    :theme-overrides="themeOverrides"
+    :theme="activeTheme"
+    :theme-overrides="activeThemeOverrides"
     :locale="zhCN"
     :date-locale="dateZhCN"
   >
@@ -77,10 +136,41 @@ watch(
                   @update:value="(key: string) => router.push(key)"
                 />
               </div>
-              <NTag type="success" :bordered="false" class="header-status">
-                <NIcon :component="PulseOutline" />
-                LOCAL DATA
-              </NTag>
+              <div class="header-actions">
+                <NTooltip
+                  :show="connectionTooltipVisible"
+                  trigger="manual"
+                  placement="bottom"
+                >
+                  <template #trigger>
+                    <span
+                      class="header-status"
+                      role="img"
+                      tabindex="0"
+                      aria-label="服务已连接"
+                      @mouseenter="connectionTooltipVisible = true"
+                      @mouseleave="connectionTooltipVisible = false"
+                      @focus="connectionTooltipVisible = true"
+                      @blur="connectionTooltipVisible = false"
+                    >
+                      <NIcon :component="LinkOutline" :size="20" aria-hidden="true" />
+                    </span>
+                  </template>
+                  <span role="tooltip">服务已连接</span>
+                </NTooltip>
+                <NButton
+                  quaternary
+                  circle
+                  class="theme-toggle"
+                  :aria-label="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+                  :title="isDark ? '切换到亮色模式' : '切换到暗色模式'"
+                  @click="toggleTheme"
+                >
+                  <template #icon>
+                    <NIcon :component="isDark ? SunnyOutline : MoonOutline" :size="20" />
+                  </template>
+                </NButton>
+              </div>
             </div>
           </NLayoutHeader>
           <NLayoutContent>

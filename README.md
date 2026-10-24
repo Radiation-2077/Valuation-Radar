@@ -23,6 +23,7 @@
 - SQLite 数据层：历史估值版本、市场快照、行情、宏观数据、排名快照、任务和 AI 运行记录。
 - 收盘后自动更新：交易日历、可配置开关/频率/时间、行情抓取、任务幂等和排名重算。
 - Codex 估值闭环：隔离暂存目录调用 `value-investing` skill，Python 校验后进入人工复核队列。
+- 手动添加标的：主页可按名称创建估值任务，证券代码可选；未提供代码时由 Codex 检索市场，A/H 两地上市默认同时调研。
 
 ## 技术栈
 
@@ -32,7 +33,9 @@
 - 调度：独立 scheduler + 单实例 worker + 数据库任务表
 - 模型：Codex CLI `exec`，工作目录沙箱，不直接写生产数据库
 
-架构细节见 [docs/architecture.md](docs/architecture.md)，完整阶段计划见 [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)。
+架构细节见 [docs/architecture.md](docs/architecture.md)，展示与数据卡契约见
+[docs/PRESENTATION_CONTRACT.md](docs/PRESENTATION_CONTRACT.md)，完整阶段计划见
+[docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)。
 
 视觉样式统一由 `apps/web/src/theme.ts` 和 `apps/web/src/styles/` 管理：主题 token、页面布局和少量品牌组件样式分别集中，不在页面组件中散落自定义视觉规则。
 
@@ -89,5 +92,5 @@ SQLite 历史估值版本
 - Web 开发服务器监听 `0.0.0.0`，允许同一局域网内访问；API 仍仅监听 `127.0.0.1`，浏览器请求通过 Vite 的 `/api` 代理转发。
 - 数据库、日志、归档和暂存目录均被 Git 忽略。
 - 模型在 `storage/staging/` 隔离目录执行，使用 `workspace-write` 沙箱。
-- 缺失数据必须写 `null` 并登记 `missing`，不得编造。
+- 新估值的必需数据缺失时立即终止，不生成或发布候选卡；历史卡只做只读兼容。
 - 所有分析结果仅用于研究，不构成投资建议。

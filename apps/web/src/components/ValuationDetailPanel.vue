@@ -106,7 +106,6 @@ const kpis = computed(() => {
       value: `${formatNumber(data.valuation.pe)} / ${formatNumber(data.valuation.pb)}`,
     },
     { label: "税后股息率", value: formatPercent(data.valuation.dividend_yield_after_tax) },
-    { label: "目标仓位", value: formatPercent(data.position.target_pct, 0) },
   ];
 });
 
@@ -180,7 +179,7 @@ const reportSections = computed(() => query.data.value?.report_detail.sections ?
         </NCard>
       </header>
 
-      <NGrid responsive="screen" cols="2 m:3 l:6" :x-gap="16" :y-gap="16">
+      <NGrid responsive="screen" cols="1 s:2 m:3 l:5" :x-gap="16" :y-gap="16">
         <NGridItem v-for="kpi in kpis" :key="kpi.label">
           <NCard size="small">
             <NStatistic :label="kpi.label" :value="kpi.value" />

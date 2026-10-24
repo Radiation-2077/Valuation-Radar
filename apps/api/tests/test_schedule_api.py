@@ -75,7 +75,18 @@ def test_job_debug_and_clear_history(
     storage.mkdir()
     stdout_path = storage / "codex.stdout.jsonl"
     stderr_path = storage / "codex.stderr.log"
-    stdout_path.write_text('{"type":"item.completed"}\n', encoding="utf-8")
+    stdout_path.write_text(
+        "\n".join(
+            [
+                '{"type":"turn.started"}',
+                '{"type":"item.started","item":{"type":"command_execution","command":"curl -s https://example.com"}}',
+                '{"type":"item.completed","item":{"type":"agent_message","text":"行情数据已完成交叉核验"}}',
+                '{"type":"turn.completed","usage":{"input_tokens":1200,"cached_input_tokens":900,"output_tokens":80,"reasoning_output_tokens":20}}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     stderr_path.write_text("live stderr\n", encoding="utf-8")
     settings = Settings(storage_root=storage)
 
@@ -149,10 +160,21 @@ def test_job_debug_and_clear_history(
         assert debug.status_code == 200
         payload = debug.json()
         assert payload["events"][0]["message"] == "Codex 子进程已启动"
-        assert payload["stdout"] == '{"type":"item.completed"}\n'
-        assert payload["stderr"] == "live stderr\n"
+        assert payload["current_action"] == "Codex 执行完成"
+        assert any(
+            item["message"] == "行情数据已完成交叉核验"
+            for item in payload["codex_events"]
+        )
+        assert "stdout" not in payload
+        assert "stderr" not in payload
         assert payload["ai_runs"][0]["model"] == "test-model"
         assert payload["ai_runs"][0]["exit_code"] == 2
+        assert payload["ai_runs"][0]["token_usage"] == {
+            "input_tokens": 1200,
+            "cached_input_tokens": 900,
+            "output_tokens": 80,
+            "reasoning_output_tokens": 20,
+        }
 
         with Session(engine) as session:
             active = session.get(JobRun, active_job_id)

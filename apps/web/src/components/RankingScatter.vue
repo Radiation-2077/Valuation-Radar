@@ -6,6 +6,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import type { RankingItem } from "@/api/types";
+import { chartThemeColors, observeChartTheme } from "@/lib/chart-theme";
 
 use([ScatterChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -20,27 +21,28 @@ const emit = defineEmits<{
 const chartElement = ref<HTMLDivElement>();
 let chart: ECharts | undefined;
 let resizeObserver: ResizeObserver | undefined;
-
-const bandColors: Record<string, string> = {
-  S: "#57d6b1",
-  A: "#80c7ff",
-  B: "#e8b86d",
-  C: "#ee8c78",
-  D: "#9a7880",
-};
+let stopThemeObserver: (() => void) | undefined;
 
 type ScatterDatum = [number, number, RankingItem];
 
 function render() {
   if (!chart || !props.items.length) return;
+  const theme = chartThemeColors();
+  const bandColors: Record<string, string> = {
+    S: theme.accent,
+    A: theme.blue,
+    B: theme.warm,
+    C: theme.red,
+    D: "#9a7880",
+  };
   chart.setOption({
     animationDuration: 500,
     grid: { left: 54, right: 28, top: 28, bottom: 52 },
     tooltip: {
       trigger: "item",
-      backgroundColor: "#0c1c2a",
-      borderColor: "rgba(158,190,210,.25)",
-      textStyle: { color: "#dce7ef" },
+      backgroundColor: theme.labelBackground,
+      borderColor: theme.border,
+      textStyle: { color: theme.labelText },
       formatter: (params: { data: ScatterDatum }) => {
         const item = params.data[2];
         return [
@@ -56,15 +58,16 @@ function render() {
       nameLocation: "middle",
       nameGap: 32,
       min: 0,
-      splitLine: { lineStyle: { color: "rgba(158,190,210,.10)" } },
-      axisLabel: { color: "#718797", formatter: "{value}%" },
-      axisLine: { lineStyle: { color: "rgba(158,190,210,.22)" } },
+      nameTextStyle: { color: theme.muted },
+      splitLine: { lineStyle: { color: theme.border } },
+      axisLabel: { color: theme.muted, formatter: "{value}%" },
+      axisLine: { lineStyle: { color: theme.border } },
     },
     yAxis: {
       name: "预期年化",
-      nameTextStyle: { color: "#718797" },
-      splitLine: { lineStyle: { color: "rgba(158,190,210,.10)" } },
-      axisLabel: { color: "#718797", formatter: "{value}%" },
+      nameTextStyle: { color: theme.muted },
+      splitLine: { lineStyle: { color: theme.border } },
+      axisLabel: { color: theme.muted, formatter: "{value}%" },
     },
     series: [
       {
@@ -80,7 +83,7 @@ function render() {
           11 + Math.max(0, Math.min(9, (value[2].safety_margin_pct ?? 0) / 5)),
         itemStyle: {
           opacity: 0.88,
-          borderColor: "#07131f",
+          borderColor: theme.labelBackground,
           borderWidth: 2,
           color: (params: { data: ScatterDatum }) =>
             bandColors[params.data[2].score.band] ?? "#80c7ff",
@@ -89,7 +92,7 @@ function render() {
           show: true,
           position: "top",
           distance: 6,
-          color: "#b6c7d3",
+          color: theme.text,
           fontSize: 11,
           formatter: (params: { data: ScatterDatum }) =>
             `${params.data[2].name}${params.data[2].market}`,
@@ -109,6 +112,9 @@ onMounted(() => {
   });
   resizeObserver = new ResizeObserver(() => chart?.resize());
   resizeObserver.observe(chartElement.value);
+  stopThemeObserver = observeChartTheme(() => {
+    render();
+  });
   render();
 });
 
@@ -116,6 +122,7 @@ watch(() => props.items, render, { deep: true });
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect();
+  stopThemeObserver?.();
   chart?.dispose();
 });
 </script>

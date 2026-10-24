@@ -117,7 +117,6 @@ class MarketSummaryOut(BaseModel):
     expected_return: dict[str, Any]
     max_drawdown_pct: float | None
     downside: dict[str, Any]
-    target_pct: float | None
     position: dict[str, Any]
     gauges: dict[str, Any]
     verdict: str
@@ -183,6 +182,23 @@ class InstrumentListOut(BaseModel):
     items: list[InstrumentOut]
 
 
+class InstrumentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    code: str | None = Field(default=None, min_length=5, max_length=30)
+    asset_type: Literal["stock", "etf"] = "stock"
+
+
+class InstrumentCreateOut(BaseModel):
+    instrument_id: int
+    job_id: int
+    name: str
+    market: str | None
+    code: str | None
+    currency: str | None
+    asset_type: str
+    status: str
+
+
 class ScheduleOut(BaseModel):
     enabled: bool
     frequency: str
@@ -238,6 +254,13 @@ class JobEventOut(BaseModel):
     message: str
 
 
+class TokenUsageOut(BaseModel):
+    input_tokens: int = 0
+    cached_input_tokens: int = 0
+    output_tokens: int = 0
+    reasoning_output_tokens: int = 0
+
+
 class AiRunDebugOut(BaseModel):
     id: int
     status: str
@@ -250,14 +273,21 @@ class AiRunDebugOut(BaseModel):
     metadata: dict[str, Any]
     started_at: datetime
     finished_at: datetime | None
+    token_usage: TokenUsageOut | None = None
+
+
+class CodexMilestoneOut(BaseModel):
+    sequence: int
+    kind: str
+    message: str
 
 
 class JobDebugOut(BaseModel):
     job: JobOut
     events: list[JobEventOut]
     ai_runs: list[AiRunDebugOut]
-    stdout: str
-    stderr: str
+    current_action: str
+    codex_events: list[CodexMilestoneOut]
 
 
 class ClearJobsOut(BaseModel):

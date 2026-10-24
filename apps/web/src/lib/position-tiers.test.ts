@@ -11,10 +11,49 @@ describe("position tier helpers", () => {
         { title: "第 3 档 · HK$46 以下", body: "加 30% 完成建仓" },
       ]),
     ).toEqual([
-      { tier: "第 1 档", price: "HK$51.55", allocation: 40, active: true },
-      { tier: "第 2 档", price: "HK$48", allocation: 30, active: false },
-      { tier: "第 3 档", price: "HK$46", allocation: 30, active: false },
+      {
+        tier: "第 1 档",
+        price: "HK$51.55",
+        allocation: 40,
+        active: true,
+        triggerType: "",
+        condition: "",
+      },
+      {
+        tier: "第 2 档",
+        price: "HK$48",
+        allocation: 30,
+        active: false,
+        triggerType: "",
+        condition: "",
+      },
+      {
+        tier: "第 3 档",
+        price: "HK$46",
+        allocation: 30,
+        active: false,
+        triggerType: "",
+        condition: "",
+      },
     ]);
+  });
+
+  it("uses the explicit plan allocation instead of a percentage in the condition", () => {
+    expect(
+      parsePositionTiers([
+        {
+          title: "第 2 档 · evidence · ¥46",
+          body: "价格较首笔回调 10%，计划买入 30%",
+          triggerType: "evidence",
+          condition: "财报确认逻辑未恶化",
+        },
+      ])[0],
+    ).toMatchObject({
+      price: "¥46",
+      allocation: 30,
+      triggerType: "证据确认",
+      condition: "财报确认逻辑未恶化",
+    });
   });
 
   it("treats a final cumulative position as the remaining tranche", () => {

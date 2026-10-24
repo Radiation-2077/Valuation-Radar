@@ -27,7 +27,7 @@ import {
   useMessage,
   type DataTableColumns,
 } from "naive-ui";
-import { computed, h, reactive, ref, watch } from "vue";
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import {
@@ -95,6 +95,9 @@ const refreshMutation = useMutation({
     await queryClient.invalidateQueries({ queryKey: ["jobs"] });
     message.success("行情刷新任务已加入队列");
   },
+  onError: (error: Error) => {
+    message.error(error.message || "行情刷新任务创建失败");
+  },
 });
 const reviewMutation = useMutation({
   mutationFn: ({ reportId, decision }: { reportId: number; decision: "approve" | "reject" }) =>
@@ -134,6 +137,18 @@ const latestJobTime = computed(() => {
 });
 const debugJobId = ref<number | null>(null);
 const expandedRowKeys = computed(() => (debugJobId.value === null ? [] : [debugJobId.value]));
+const clock = ref(Date.now());
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  clockTimer = setInterval(() => {
+    clock.value = Date.now();
+  }, 1_000);
+});
+
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer);
+});
 
 const frequencyOptions = [
   { label: "每个交易日", value: "trading_daily" },
@@ -174,6 +189,14 @@ function jobTypeLabel(value: string): string {
   return value === "valuation_refresh" ? "Codex 重估" : "行情刷新";
 }
 
+function instrumentLabel(job: Job): string {
+  if (job.job_type !== "valuation_refresh") return "—";
+  const instrument = job.details.instrument;
+  return typeof instrument === "string" && instrument.trim()
+    ? instrument
+    : "—";
+}
+
 function phaseLabel(value: string): string {
   const labels: Record<string, string> = {
     queued: "排队",
@@ -193,24 +216,57 @@ function phaseLabel(value: string): string {
   return labels[value] ?? value;
 }
 
-const jobColumns = computed<DataTableColumns<Job>>(() => [
+function serverTime(value: string): number {
+  return new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`).getTime();
+}
+
+function durationLabel(job: Job, now = clock.value): string {
+  if (!job.started_at) return job.status === "queued" ? "等待中" : "—";
+  const end = job.finished_at ? serverTime(job.finished_at) : now;
+  const seconds = Math.max(0, Math.floor((end - serverTime(job.started_at)) / 1_000));
+  if (seconds < 60) return `${seconds} 秒`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  if (minutes < 60) return `${minutes} 分 ${remaining} 秒`;
+  return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`;
+}
+
+const jobColumns = computed<DataTableColumns<Job>>(() => {
+  const currentTime = clock.value;
+  return [
   {
     type: "expand",
+    width: 40,
     renderExpand: renderDebugExpand,
   },
   {
-    title: "任务",
+    title: "ID",
     key: "id",
-    render: (job) => `#${job.id} · ${jobTypeLabel(job.job_type)}`,
+    width: 80,
+    render: (job) => `#${job.id}`,
+  },
+  {
+    title: "任务",
+    key: "job_type",
+    width: 130,
+    render: (job) => jobTypeLabel(job.job_type),
+  },
+  {
+    title: "标的",
+    key: "instrument",
+    width: 110,
+    render: instrumentLabel,
   },
   {
     title: "触发",
     key: "trigger",
+    width: 70,
     render: (job) => (job.trigger === "manual" ? "手动" : "定时"),
   },
   {
     title: "状态",
     key: "status",
+    width: 100,
     render: (job) =>
       h(
         NTag,
@@ -221,51 +277,30 @@ const jobColumns = computed<DataTableColumns<Job>>(() => [
   {
     title: "阶段",
     key: "phase",
+    width: 100,
     render: (job) => phaseLabel(job.phase),
   },
   {
     title: "行情写入",
     key: "quotes_saved",
+    width: 240,
     render: quoteWriteLabel,
   },
   {
     title: "开始",
     key: "started_at",
+    width: 145,
     render: (job) => formatDateTime(job.started_at ?? job.created_at),
   },
   {
     title: "耗时",
     key: "duration",
-    render: (job) => {
-      if (!job.started_at || !job.finished_at) return "—";
-      const seconds = Math.max(
-        1,
-        Math.round(
-          (new Date(`${job.finished_at}Z`).getTime() -
-            new Date(`${job.started_at}Z`).getTime()) /
-            1_000,
-        ),
-      );
-      return `${seconds} 秒`;
-    },
-  },
-  {
-    title: "调试",
-    key: "debug",
-    width: 96,
+    width: 120,
     render: (job) =>
-      h(
-        NButton,
-        {
-          size: "tiny",
-          secondary: true,
-          type: debugJobId.value === job.id ? "primary" : "default",
-          onClick: () => toggleDebug(job.id),
-        },
-        { default: () => (debugJobId.value === job.id ? "收起 Debug" : "Debug 信息") },
-      ),
+      h("span", { "data-job-duration": job.id }, durationLabel(job, currentTime)),
   },
-]);
+  ];
+});
 
 type WorkflowStatus = "wait" | "process" | "finish" | "error";
 
@@ -397,12 +432,15 @@ function clearAllJobs() {
   clearMutation.mutate();
 }
 
-function toggleDebug(jobId: number) {
-  debugJobId.value = debugJobId.value === jobId ? null : jobId;
-}
-
 function updateExpandedRowKeys(keys: Array<string | number>) {
-  debugJobId.value = keys.length ? Number(keys[0]) : null;
+  if (!keys.length) {
+    debugJobId.value = null;
+    return;
+  }
+  const numericKeys = keys.map(Number);
+  debugJobId.value =
+    numericKeys.find((key) => key !== debugJobId.value) ??
+    numericKeys[numericKeys.length - 1];
 }
 
 function renderDebugExpand(job: Job) {
@@ -477,7 +515,7 @@ function openMarket(id: number) {
             </NSpace>
 
           <NForm label-placement="top" :show-feedback="false">
-            <NGrid responsive="screen" cols="1 s:2" :x-gap="16" :y-gap="4">
+            <NGrid class="schedule-form-grid" responsive="screen" cols="1 s:2" :x-gap="20" :y-gap="12">
               <NGridItem>
                 <NFormItem label="更新频率">
                   <NSelect
@@ -570,9 +608,6 @@ function openMarket(id: number) {
               {{ workflowErrors.join("；") }}
             </NAlert>
           </NSpace>
-          <NP depth="3">
-            当前时区：{{ scheduleQuery.data.value.timezone }}。计划时间按上海时区计算。
-          </NP>
         </NCard>
         </NGridItem>
       </NGrid>
@@ -582,7 +617,6 @@ function openMarket(id: number) {
           <NSpace class="card-heading" align="center" justify="space-between">
             <NH2>最近任务</NH2>
             <NSpace align="center">
-              <NTag :bordered="false" size="small">每 3 秒自动刷新</NTag>
               <NPopconfirm @positive-click="clearAllJobs">
                 <template #trigger>
                   <NButton

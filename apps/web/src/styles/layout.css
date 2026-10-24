@@ -10,6 +10,8 @@
 
 .app-layout .n-layout-header {
   height: 64px;
+  position: relative;
+  z-index: 2000;
 }
 
 .app-scrollbar {
@@ -87,6 +89,9 @@
 
 .detail-drawer {
   width: min(1120px, 94vw) !important;
+  top: 64px !important;
+  height: calc(100dvh - 64px) !important;
+  box-shadow: -24px 0 64px rgba(0, 0, 0, 0.48);
 }
 
 @media (max-width: 720px) {
