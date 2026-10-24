@@ -68,7 +68,7 @@ const revaluationMutation = useMutation({
   mutationFn: (instrumentId: number) => requestRevaluation(instrumentId),
   onSuccess: async () => {
     await queryClient.invalidateQueries({ queryKey: ["jobs"] });
-    message.success("Codex 重估任务已加入队列，完成后进入待复核");
+    message.success("Codex 估值任务已加入队列，完成后进入待复核");
   },
 });
 

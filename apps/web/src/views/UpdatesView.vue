@@ -186,7 +186,7 @@ function statusType(status: string): "default" | "success" | "warning" | "error"
 }
 
 function jobTypeLabel(value: string): string {
-  return value === "valuation_refresh" ? "Codex 重估" : "行情刷新";
+  return value === "valuation_refresh" ? "Codex 估值" : "行情刷新";
 }
 
 function instrumentLabel(job: Job): string {
@@ -571,7 +571,7 @@ function openMarket(id: number) {
             </NButton>
           </NSpace>
           <NP depth="3">
-            自动更新会刷新行情、宏观缓存和当前排名。完整 Codex 重估按独立策略运行，不会未经校验覆盖当前估值。
+            自动更新会刷新行情、宏观缓存和当前排名。完整 Codex 估值按独立策略运行，不会未经校验覆盖当前估值。
           </NP>
           </NSpace>
         </NCard>

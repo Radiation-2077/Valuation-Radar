@@ -38,7 +38,7 @@ test("shows schedule controls and update history", async ({ page }) => {
 
   const codexRow = page
     .locator(".n-data-table-tr")
-    .filter({ hasText: "Codex 重估" })
+    .filter({ hasText: "Codex 估值" })
     .first();
   const expandButton = codexRow.locator(".n-data-table-expand-trigger");
   const columnWidthsBefore = await page
@@ -129,7 +129,7 @@ test("shows live elapsed time and stable parallel debug streams", async ({ page 
   });
 
   await page.goto("/updates");
-  await expect(page.getByText("Codex 重估", { exact: true })).toBeVisible();
+  await expect(page.getByText("Codex 估值", { exact: true })).toBeVisible();
   await expect(page.getByText("#999", { exact: true })).toBeVisible();
   await expect(page.getByText("测试标的", { exact: true })).toBeVisible();
   await expect(page.getByText("测试标的 ·")).toHaveCount(0);
