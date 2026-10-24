@@ -17,6 +17,7 @@ from app.domain.scoring import (
     score_context,
 )
 from app.models import (
+    Instrument,
     QuoteObservation,
     RankingEntry,
     RankingRun,
@@ -103,7 +104,11 @@ class RankingService:
         reports = (
             session.scalars(
                 select(ValuationReport)
-                .where(ValuationReport.status == "published")
+                .join(Instrument, Instrument.id == ValuationReport.instrument_id)
+                .where(
+                    ValuationReport.status == "published",
+                    Instrument.archived_at.is_(None),
+                )
                 .options(
                     selectinload(ValuationReport.instrument),
                     selectinload(ValuationReport.markets).selectinload(ValuationMarket.listing),

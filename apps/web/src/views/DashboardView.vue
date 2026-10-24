@@ -22,13 +22,14 @@ import {
   NText,
   type DataTableColumns,
 } from "naive-ui";
-import { AddOutline, FunnelOutline } from "@vicons/ionicons5";
+import { AddOutline, FunnelOutline, LibraryOutline } from "@vicons/ionicons5";
 import { computed, h, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { fetchRanking } from "@/api/client";
 import type { ProfileCode, RankingItem, RankingResponse } from "@/api/types";
 import AddInstrumentModal from "@/components/AddInstrumentModal.vue";
+import InstrumentLibraryDrawer from "@/components/InstrumentLibraryDrawer.vue";
 import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
 import RankingScatter from "@/components/RankingScatter.vue";
 import TopPickCard from "@/components/TopPickCard.vue";
@@ -57,6 +58,7 @@ const path = ref<string | null>(null);
 const industry = ref<string | null>(null);
 const filtersOpen = ref(false);
 const addInstrumentOpen = ref(false);
+const instrumentLibraryOpen = ref(false);
 const selectedValuationId = ref<number | null>(null);
 const detailOpen = ref(false);
 const slideDirection = ref<"left" | "right">("left");
@@ -322,7 +324,12 @@ async function handleInstrumentCreated() {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["ranking"] }),
     queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+    queryClient.invalidateQueries({ queryKey: ["instruments"] }),
   ]);
+}
+
+async function handleInstrumentChanged() {
+  await queryClient.invalidateQueries({ queryKey: ["ranking"] });
 }
 
 function openValuation(id: number) {
@@ -371,6 +378,12 @@ function rowProps(row: RankingItem) {
             <NIcon :component="AddOutline" />
           </template>
           添加标的
+        </NButton>
+        <NButton size="medium" secondary @click="instrumentLibraryOpen = true">
+          <template #icon>
+            <NIcon :component="LibraryOutline" />
+          </template>
+          标的库
         </NButton>
         <NPopover
           v-model:show="filtersOpen"
@@ -591,6 +604,10 @@ function rowProps(row: RankingItem) {
     <AddInstrumentModal
       v-model:show="addInstrumentOpen"
       @created="handleInstrumentCreated"
+    />
+    <InstrumentLibraryDrawer
+      v-model:show="instrumentLibraryOpen"
+      @changed="handleInstrumentChanged"
     />
   </NSpace>
 </template>

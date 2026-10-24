@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import re
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session, selectinload
 
-from app.models import Instrument, JobRun, Listing
+from app.models import AiRun, Instrument, JobRun, Listing, ValuationReport
+from app.services.ranking import RankingService
 from app.services.schedule import queue_job
 
 _PREFIXED_CODE = re.compile(r"^(SH|SZ|BJ|HK)(\d{5,6})$")
@@ -15,6 +18,24 @@ _SUFFIXED_CODE = re.compile(r"^(\d{5,6})\.(SH|SZ|BJ|HK)$")
 
 class InstrumentConflictError(ValueError):
     pass
+
+
+class InstrumentBusyError(ValueError):
+    pass
+
+
+class InstrumentStateError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class InstrumentPurgeResult:
+    instrument_id: int
+    name: str
+    deleted_listings: int
+    deleted_reports: int
+    deleted_jobs: int
+    job_ids: tuple[int, ...]
 
 
 def normalize_listing(code: str, asset_type: str) -> tuple[str, str, str]:
@@ -71,9 +92,13 @@ def create_instrument_and_queue(
             select(Listing).where(
                 Listing.market == market,
                 Listing.code == normalized_code,
-            )
+            ).options(selectinload(Listing.instrument))
         )
         if existing_listing is not None:
+            if existing_listing.instrument.archived_at is not None:
+                raise InstrumentConflictError(
+                    f"{market} {normalized_code} 已归档，请在标的库中恢复"
+                )
             raise InstrumentConflictError(
                 f"{market} {normalized_code} 已存在，无需重复添加"
             )
@@ -81,6 +106,8 @@ def create_instrument_and_queue(
         select(Instrument).where(Instrument.name == normalized_name)
     )
     if existing_name is not None:
+        if existing_name.archived_at is not None:
+            raise InstrumentConflictError(f"标的名 {normalized_name} 已归档，请在标的库中恢复")
         raise InstrumentConflictError(f"标的名 {normalized_name} 已存在")
 
     instrument = Instrument(
@@ -111,3 +138,118 @@ def create_instrument_and_queue(
     )
     job.details = {**(job.details or {}), "instrument": instrument.name}
     return instrument, listing, job
+
+
+def archive_instrument(
+    session: Session,
+    instrument_id: int,
+    *,
+    reason: str | None = None,
+) -> Instrument:
+    instrument = _get_instrument(session, instrument_id)
+    if instrument.archived_at is not None:
+        return instrument
+    _ensure_no_active_jobs(session, instrument_id)
+
+    instrument.archived_at = datetime.now(UTC).replace(tzinfo=None)
+    instrument.archive_reason = (reason or "手动移出标的库").strip() or "手动移出标的库"
+    instrument.enabled = False
+    for listing in instrument.listings:
+        listing.enabled = False
+    session.flush()
+    RankingService().rebuild(session)
+    return instrument
+
+
+def restore_instrument(session: Session, instrument_id: int) -> Instrument:
+    instrument = _get_instrument(session, instrument_id)
+    if instrument.archived_at is None:
+        return instrument
+
+    instrument.archived_at = None
+    instrument.archive_reason = ""
+    instrument.enabled = True
+    for listing in instrument.listings:
+        listing.enabled = True
+    session.flush()
+    RankingService().rebuild(session)
+    return instrument
+
+
+def purge_instrument(
+    session: Session,
+    instrument_id: int,
+    *,
+    confirmation: str,
+) -> InstrumentPurgeResult:
+    instrument = _get_instrument(session, instrument_id)
+    if instrument.archived_at is None:
+        raise InstrumentStateError("请先将标的移出标的库，再执行彻底删除")
+    if confirmation.strip() != instrument.name:
+        raise InstrumentStateError("确认名称与标的不一致")
+    _ensure_no_active_jobs(session, instrument_id)
+
+    scope = f"instrument:{instrument_id}"
+    job_ids = tuple(
+        session.scalars(
+            select(JobRun.id)
+            .where(JobRun.scope == scope)
+            .order_by(JobRun.id)
+        ).all()
+    )
+    deleted_listings = (
+        session.scalar(
+            select(func.count())
+            .select_from(Listing)
+            .where(Listing.instrument_id == instrument_id)
+        )
+        or 0
+    )
+    deleted_reports = (
+        session.scalar(
+            select(func.count())
+            .select_from(ValuationReport)
+            .where(ValuationReport.instrument_id == instrument_id)
+        )
+        or 0
+    )
+    name = instrument.name
+
+    session.execute(delete(AiRun).where(AiRun.instrument_id == instrument_id))
+    session.execute(delete(JobRun).where(JobRun.scope == scope))
+    session.delete(instrument)
+    session.flush()
+    RankingService().rebuild(session)
+    session.flush()
+    return InstrumentPurgeResult(
+        instrument_id=instrument_id,
+        name=name,
+        deleted_listings=deleted_listings,
+        deleted_reports=deleted_reports,
+        deleted_jobs=len(job_ids),
+        job_ids=job_ids,
+    )
+
+
+def _get_instrument(session: Session, instrument_id: int) -> Instrument:
+    instrument = session.scalar(
+        select(Instrument)
+        .where(Instrument.id == instrument_id)
+        .options(selectinload(Instrument.listings))
+    )
+    if instrument is None:
+        raise LookupError(f"标的 {instrument_id} 不存在")
+    return instrument
+
+
+def _ensure_no_active_jobs(session: Session, instrument_id: int) -> None:
+    active = session.scalar(
+        select(func.count())
+        .select_from(JobRun)
+        .where(
+            JobRun.scope == f"instrument:{instrument_id}",
+            JobRun.status.in_(("queued", "running")),
+        )
+    )
+    if active:
+        raise InstrumentBusyError("该标的仍有排队中或执行中的任务，请先取消或等待完成")

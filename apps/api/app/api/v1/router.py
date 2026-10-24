@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -17,9 +18,11 @@ from app.schemas.api import (
     AiRunDebugOut,
     ClearJobsOut,
     CodexMilestoneOut,
+    InstrumentArchiveOut,
     InstrumentCreate,
     InstrumentCreateOut,
     InstrumentListOut,
+    InstrumentPurgeOut,
     JobCreate,
     JobDebugOut,
     JobEventOut,
@@ -39,8 +42,13 @@ from app.schemas.api import (
 )
 from app.services.codex_activity import build_codex_activity, extract_codex_usage
 from app.services.instruments import (
+    InstrumentBusyError,
     InstrumentConflictError,
+    InstrumentStateError,
+    archive_instrument,
     create_instrument_and_queue,
+    purge_instrument,
+    restore_instrument,
 )
 from app.services.queries import (
     get_ranking,
@@ -160,6 +168,82 @@ def create_instrument(
         asset_type=instrument.asset_type,
         status=job.status,
     )
+
+
+@router.delete(
+    "/instruments/{instrument_id}",
+    response_model=InstrumentArchiveOut,
+)
+def archive(
+    instrument_id: int,
+    session: SessionDep,
+    reason: Annotated[str | None, Query(max_length=200)] = None,
+) -> InstrumentArchiveOut:
+    try:
+        instrument = archive_instrument(session, instrument_id, reason=reason)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except InstrumentBusyError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    session.commit()
+    return InstrumentArchiveOut(
+        instrument_id=instrument.id,
+        name=instrument.name,
+        status="archived",
+        archived_at=instrument.archived_at,
+        archive_reason=instrument.archive_reason,
+    )
+
+
+@router.post(
+    "/instruments/{instrument_id}/restore",
+    response_model=InstrumentArchiveOut,
+)
+def restore(instrument_id: int, session: SessionDep) -> InstrumentArchiveOut:
+    try:
+        instrument = restore_instrument(session, instrument_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    session.commit()
+    return InstrumentArchiveOut(
+        instrument_id=instrument.id,
+        name=instrument.name,
+        status="active",
+        archived_at=instrument.archived_at,
+        archive_reason=instrument.archive_reason,
+    )
+
+
+@router.delete(
+    "/instruments/{instrument_id}/purge",
+    response_model=InstrumentPurgeOut,
+)
+def purge(
+    instrument_id: int,
+    session: SessionDep,
+    confirmation: Annotated[str, Query(min_length=1, max_length=100)],
+) -> InstrumentPurgeOut:
+    try:
+        result = purge_instrument(
+            session,
+            instrument_id,
+            confirmation=confirmation,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except (InstrumentBusyError, InstrumentStateError) as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    session.commit()
+    _remove_staging_for_jobs(result.job_ids)
+    return InstrumentPurgeOut(
+        instrument_id=result.instrument_id,
+        name=result.name,
+        deleted_listings=result.deleted_listings,
+        deleted_reports=result.deleted_reports,
+        deleted_jobs=result.deleted_jobs,
+    )
+
+
 @router.get("/schedule", response_model=ScheduleOut)
 def get_schedule(session: SessionDep) -> ScheduleOut:
     schedule = get_or_create_schedule(session)
@@ -300,6 +384,11 @@ def request_revaluation(
     instrument = session.get(Instrument, instrument_id)
     if instrument is None:
         raise HTTPException(status_code=404, detail={"message": "标的不存在"})
+    if instrument.archived_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "标的已归档，请先恢复后再重新估值"},
+        )
     job, _ = queue_job(
         session,
         job_type="valuation_refresh",
@@ -445,3 +534,15 @@ def _review_out(report: ValuationReport) -> ReviewOut:
             for market in report.markets
         ],
     )
+
+
+def _remove_staging_for_jobs(job_ids: tuple[int, ...]) -> None:
+    root = get_settings().staging_dir.resolve()
+    for job_id in job_ids:
+        target = (root / f"job-{job_id}").resolve()
+        if target.parent != root or not target.is_dir():
+            continue
+        try:
+            shutil.rmtree(target)
+        except OSError:
+            continue

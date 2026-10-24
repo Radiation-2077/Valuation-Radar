@@ -166,6 +166,13 @@ class ValuationDetailOut(BaseModel):
     report_detail: dict[str, Any]
 
 
+class InstrumentListingOut(BaseModel):
+    market: str
+    code: str
+    currency: str
+    enabled: bool
+
+
 class InstrumentOut(BaseModel):
     id: int
     name: str
@@ -174,7 +181,11 @@ class InstrumentOut(BaseModel):
     industry: str
     verdict: str
     enabled: bool
+    archived_at: datetime | None
+    archive_reason: str
     markets: list[str]
+    listings: list[InstrumentListingOut]
+    report_count: int
     latest_analysis_date: date | None
 
 
@@ -197,6 +208,22 @@ class InstrumentCreateOut(BaseModel):
     currency: str | None
     asset_type: str
     status: str
+
+
+class InstrumentArchiveOut(BaseModel):
+    instrument_id: int
+    name: str
+    status: Literal["archived", "active"]
+    archived_at: datetime | None
+    archive_reason: str
+
+
+class InstrumentPurgeOut(BaseModel):
+    instrument_id: int
+    name: str
+    deleted_listings: int
+    deleted_reports: int
+    deleted_jobs: int
 
 
 class ScheduleOut(BaseModel):

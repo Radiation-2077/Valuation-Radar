@@ -46,6 +46,8 @@ def run_valuation_refresh(
     instrument = session.get(Instrument, instrument_id)
     if instrument is None:
         raise ValueError(f"标的 {instrument_id} 不存在")
+    if instrument.archived_at is not None:
+        raise ValueError(f"标的 {instrument.name} 已归档，不能重新估值")
     _record_job_event(session, job, "valuing", "准备估值目录、上一版数据卡与行情证据")
 
     staging = settings.staging_dir / f"job-{job.id}" / _safe_name(instrument.name)

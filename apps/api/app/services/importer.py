@@ -191,6 +191,8 @@ def _import_card(
     if instrument is None:
         instrument = Instrument(name=str(card["name"]))
         session.add(instrument)
+    elif instrument.archived_at is not None:
+        raise CardValidationError(f"标的 {instrument.name} 已归档，不能导入新的估值")
     if apply_metadata:
         apply_instrument_metadata(instrument, card)
     session.flush()

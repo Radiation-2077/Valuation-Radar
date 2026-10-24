@@ -70,6 +70,53 @@ def test_create_instrument_queues_valuation(tmp_path: Path) -> None:
             json={"name": "无效代码", "code": "ABC", "asset_type": "stock"},
         )
         assert invalid.status_code == 422
+
+        instrument_id = payload["instrument_id"]
+        blocked = client.delete(f"/api/v1/instruments/{instrument_id}")
+        assert blocked.status_code == 409
+        assert "任务" in blocked.json()["detail"]["message"]
+
+        with Session(engine) as session:
+            job = session.get(JobRun, payload["job_id"])
+            assert job is not None
+            job.status = "failed"
+            session.commit()
+
+        archived = client.delete(f"/api/v1/instruments/{instrument_id}")
+        assert archived.status_code == 200
+        assert archived.json()["status"] == "archived"
+        assert archived.json()["archived_at"] is not None
+
+        listed = client.get("/api/v1/instruments").json()["items"]
+        archived_item = next(item for item in listed if item["id"] == instrument_id)
+        assert archived_item["enabled"] is False
+        assert archived_item["archive_reason"] == "手动移出标的库"
+        assert archived_item["listings"][0]["enabled"] is False
+
+        revaluation = client.post(f"/api/v1/instruments/{instrument_id}/revaluations")
+        assert revaluation.status_code == 409
+
+        restored = client.post(f"/api/v1/instruments/{instrument_id}/restore")
+        assert restored.status_code == 200
+        assert restored.json()["status"] == "active"
+        assert restored.json()["archived_at"] is None
+
+        client.delete(f"/api/v1/instruments/{instrument_id}")
+        rejected_purge = client.delete(
+            f"/api/v1/instruments/{instrument_id}/purge",
+            params={"confirmation": "错误名称"},
+        )
+        assert rejected_purge.status_code == 409
+
+        purged = client.delete(
+            f"/api/v1/instruments/{instrument_id}/purge",
+            params={"confirmation": "测试银行"},
+        )
+        assert purged.status_code == 200
+        assert purged.json()["deleted_listings"] == 1
+        assert purged.json()["deleted_jobs"] == 1
+        with Session(engine) as session:
+            assert session.get(JobRun, payload["job_id"]) is None
     finally:
         app.dependency_overrides.clear()
 

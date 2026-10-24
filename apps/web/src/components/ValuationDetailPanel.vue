@@ -19,7 +19,8 @@ import {
   NText,
   useMessage,
 } from "naive-ui";
-import { computed, ref, watch, watchEffect } from "vue";
+import { computed, onBeforeUnmount, ref, watch, watchEffect } from "vue";
+import { useRoute } from "vue-router";
 
 import { fetchValuation, requestRevaluation } from "@/api/client";
 import type { ProfileCode } from "@/api/types";
@@ -33,6 +34,7 @@ import {
   marketLabels,
   pathLabels,
 } from "@/lib/format";
+import { routeDocumentTitle, valuationDocumentTitle } from "@/lib/page-title";
 
 const props = defineProps<{
   valuationMarketId: number;
@@ -43,6 +45,7 @@ const emit = defineEmits<{
 }>();
 
 const queryClient = useQueryClient();
+const route = useRoute();
 const message = useMessage();
 const activeId = ref(props.valuationMarketId);
 const valuationId = computed(() => activeId.value);
@@ -70,9 +73,14 @@ const revaluationMutation = useMutation({
 });
 
 watchEffect(() => {
-  if (query.data.value) {
-    document.title = `${query.data.value.name} ${query.data.value.market} · 估值雷达`;
-  }
+  const valuation = query.data.value;
+  document.title = valuation
+    ? valuationDocumentTitle(valuation.name, valuation.market)
+    : routeDocumentTitle(route);
+});
+
+onBeforeUnmount(() => {
+  document.title = routeDocumentTitle(route);
 });
 
 watch(

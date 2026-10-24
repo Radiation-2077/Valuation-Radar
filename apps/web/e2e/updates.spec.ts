@@ -1,5 +1,20 @@
 import { expect, test } from "@playwright/test";
 
+test("uses readable execution workflow text in light mode", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/updates");
+
+  const firstStep = page.locator(".schedule-summary .n-step").first();
+  await expect(firstStep.locator(".n-step-content-header__title")).toHaveCSS(
+    "color",
+    "rgb(32, 52, 63)",
+  );
+  await expect(firstStep.locator(".n-step-content__description")).toHaveCSS(
+    "color",
+    "rgb(63, 89, 102)",
+  );
+});
+
 test("shows schedule controls and update history", async ({ page }) => {
   await page.goto("/updates");
 

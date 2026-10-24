@@ -3,8 +3,12 @@ import type {
   Job,
   JobDebug,
   JobList,
+  Instrument,
   InstrumentCreatePayload,
   InstrumentCreateResult,
+  InstrumentLifecycleResult,
+  InstrumentList,
+  InstrumentPurgeResult,
   RankingFilters,
   RankingResponse,
   ReviewDecision,
@@ -136,6 +140,37 @@ export async function createInstrument(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchInstruments(): Promise<InstrumentList> {
+  return request<InstrumentList>("/api/v1/instruments");
+}
+
+export async function archiveInstrument(
+  instrumentId: number,
+): Promise<InstrumentLifecycleResult> {
+  return request<InstrumentLifecycleResult>(`/api/v1/instruments/${instrumentId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function restoreInstrument(
+  instrumentId: number,
+): Promise<InstrumentLifecycleResult> {
+  return request<InstrumentLifecycleResult>(
+    `/api/v1/instruments/${instrumentId}/restore`,
+    { method: "POST" },
+  );
+}
+
+export async function purgeInstrument(
+  instrument: Pick<Instrument, "id" | "name">,
+): Promise<InstrumentPurgeResult> {
+  const query = new URLSearchParams({ confirmation: instrument.name });
+  return request<InstrumentPurgeResult>(
+    `/api/v1/instruments/${instrument.id}/purge?${query.toString()}`,
+    { method: "DELETE" },
+  );
 }
 
 export async function fetchReviews(): Promise<ReviewList> {

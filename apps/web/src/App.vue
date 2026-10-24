@@ -37,6 +37,8 @@ import {
 } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 
+import BrandLogo from "@/components/BrandLogo.vue";
+import { routeDocumentTitle } from "@/lib/page-title";
 import { darkThemeOverrides, lightThemeOverrides } from "@/theme";
 
 const route = useRoute();
@@ -84,6 +86,14 @@ watch(
   },
 );
 
+watch(
+  () => route.name,
+  () => {
+    document.title = routeDocumentTitle(route);
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   prefersDark.addEventListener("change", handleSystemThemeChange);
 });
@@ -121,7 +131,7 @@ function toggleTheme() {
             <div class="header-layout">
               <RouterLink to="/">
                 <NSpace align="center" class="brand">
-                  <span class="brand-mark">估</span>
+                  <BrandLogo class="brand-mark" />
                   <span class="brand-copy">
                     <strong>估值雷达</strong>
                     <small>VALUATION RADAR</small>

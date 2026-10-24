@@ -41,7 +41,11 @@ def refresh_market_data(
     listings = session.scalars(
         select(Listing)
         .join(Instrument, Instrument.id == Listing.instrument_id)
-        .where(Listing.enabled.is_(True), Instrument.enabled.is_(True))
+        .where(
+            Listing.enabled.is_(True),
+            Instrument.enabled.is_(True),
+            Instrument.archived_at.is_(None),
+        )
         .options(selectinload(Listing.instrument))
         .order_by(Listing.market, Listing.code)
     ).all()

@@ -206,6 +206,49 @@ export interface InstrumentCreateResult {
   status: string;
 }
 
+export interface InstrumentListing {
+  market: string;
+  code: string;
+  currency: string;
+  enabled: boolean;
+}
+
+export interface Instrument {
+  id: number;
+  name: string;
+  asset_type: string;
+  path: string;
+  industry: string;
+  verdict: string;
+  enabled: boolean;
+  archived_at: string | null;
+  archive_reason: string;
+  markets: string[];
+  listings: InstrumentListing[];
+  report_count: number;
+  latest_analysis_date: string | null;
+}
+
+export interface InstrumentList {
+  items: Instrument[];
+}
+
+export interface InstrumentLifecycleResult {
+  instrument_id: number;
+  name: string;
+  status: "active" | "archived";
+  archived_at: string | null;
+  archive_reason: string;
+}
+
+export interface InstrumentPurgeResult {
+  instrument_id: number;
+  name: string;
+  deleted_listings: number;
+  deleted_reports: number;
+  deleted_jobs: number;
+}
+
 export interface Schedule {
   enabled: boolean;
   frequency: "trading_daily" | "weekly" | "manual";

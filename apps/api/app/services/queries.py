@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domain.card_fields import display_label
@@ -27,6 +27,7 @@ from app.models import (
 from app.schemas.api import (
     CycleOut,
     FreshnessOut,
+    InstrumentListingOut,
     InstrumentListOut,
     InstrumentOut,
     MarketSummaryOut,
@@ -55,7 +56,11 @@ def get_ranking(
     entries = (
         session.scalars(
             select(RankingEntry)
+            .join(ValuationMarket, ValuationMarket.id == RankingEntry.valuation_market_id)
+            .join(ValuationReport, ValuationReport.id == ValuationMarket.report_id)
+            .join(Instrument, Instrument.id == ValuationReport.instrument_id)
             .where(RankingEntry.run_id == run.id)
+            .where(Instrument.archived_at.is_(None))
             .options(
                 selectinload(RankingEntry.valuation_market)
                 .selectinload(ValuationMarket.report)
@@ -348,11 +353,19 @@ def list_instruments(session: Session) -> InstrumentListOut:
             .order_by(ValuationReport.analysis_date.desc())
             .limit(1)
         ).all()
-        markets = session.scalars(
-            select(Listing.market)
+        listings = session.scalars(
+            select(Listing)
             .where(Listing.instrument_id == instrument.id)
             .order_by(Listing.market)
         ).all()
+        report_count = (
+            session.scalar(
+                select(func.count())
+                .select_from(ValuationReport)
+                .where(ValuationReport.instrument_id == instrument.id)
+            )
+            or 0
+        )
         items.append(
             InstrumentOut(
                 id=instrument.id,
@@ -362,7 +375,19 @@ def list_instruments(session: Session) -> InstrumentListOut:
                 industry=instrument.industry,
                 verdict=instrument.verdict,
                 enabled=instrument.enabled,
-                markets=list(markets),
+                archived_at=instrument.archived_at,
+                archive_reason=instrument.archive_reason,
+                markets=[listing.market for listing in listings],
+                listings=[
+                    InstrumentListingOut(
+                        market=listing.market,
+                        code=listing.code,
+                        currency=listing.currency,
+                        enabled=listing.enabled,
+                    )
+                    for listing in listings
+                ],
+                report_count=report_count,
                 latest_analysis_date=reports[0].analysis_date if reports else None,
             )
         )

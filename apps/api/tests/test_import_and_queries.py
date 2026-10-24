@@ -4,19 +4,32 @@ import json
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.base import Base
-from app.models import Instrument
+from app.db.session import create_engine_for_url
+from app.models import (
+    Instrument,
+    Listing,
+    RankingEntry,
+    ValuationMarket,
+    ValuationReport,
+)
 from app.services.importer import (
     CardValidationError,
     import_candidate_card,
     import_legacy_cards,
     validate_card,
 )
+from app.services.instruments import (
+    archive_instrument,
+    purge_instrument,
+    restore_instrument,
+)
 from app.services.queries import get_ranking, get_valuation_detail
+from app.services.ranking import latest_run
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CONTRACT_EXAMPLE = (
@@ -37,7 +50,7 @@ def write_contract_card(directory: Path) -> Path:
 
 
 def test_imports_contract_card_and_serves_ranking(tmp_path: Path) -> None:
-    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
+    engine = create_engine_for_url(f"sqlite:///{tmp_path / 'test.db'}")
     Base.metadata.create_all(engine)
     settings = Settings(storage_root=tmp_path / "storage")
     data_dir = tmp_path / "cards"
@@ -84,6 +97,37 @@ def test_imports_contract_card_and_serves_ranking(tmp_path: Path) -> None:
         )
         assert second.skipped_reports == 1
         assert second.instruments == 1
+
+        archive_instrument(session, ranking.top_three[0].instrument_id)
+        session.commit()
+        archived_run = latest_run(session, profile="balanced")
+        assert archived_run is not None
+        archived_ranking = get_ranking(session, profile="balanced")
+        assert archived_ranking.counts["all"] == 0
+
+        restore_instrument(session, ranking.top_three[0].instrument_id)
+        session.commit()
+        restored_run = latest_run(session, profile="balanced")
+        assert restored_run is not None
+        assert restored_run.id > archived_run.id
+        restored_ranking = get_ranking(session, profile="balanced")
+        assert restored_ranking.counts["all"] == 2
+
+        archive_instrument(session, ranking.top_three[0].instrument_id)
+        purged = purge_instrument(
+            session,
+            ranking.top_three[0].instrument_id,
+            confirmation=ranking.top_three[0].name,
+        )
+        session.commit()
+        assert purged.deleted_reports == 1
+        assert purged.deleted_listings == 2
+        assert session.scalar(select(func.count()).select_from(Instrument)) == 0
+        assert session.scalar(select(func.count()).select_from(Listing)) == 0
+        assert session.scalar(select(func.count()).select_from(ValuationReport)) == 0
+        assert session.scalar(select(func.count()).select_from(ValuationMarket)) == 0
+        assert session.scalar(select(func.count()).select_from(RankingEntry)) == 0
+        assert get_ranking(session, profile="balanced").counts["all"] == 0
 
 
 def test_schema_1_2_candidate_persists_presentation(tmp_path: Path) -> None:

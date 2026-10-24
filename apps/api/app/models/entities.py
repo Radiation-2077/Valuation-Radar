@@ -54,6 +54,8 @@ class Instrument(TimestampMixin, Base):
     thesis: Mapped[str] = mapped_column(Text, default="")
     confidence: Mapped[str] = mapped_column(String(20), default="中")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    archive_reason: Mapped[str] = mapped_column(String(200), default="")
 
     listings: Mapped[list[Listing]] = relationship(
         back_populates="instrument",

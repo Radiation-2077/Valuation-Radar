@@ -21,6 +21,7 @@ storage/app.db-*
 storage/artifacts/
 storage/backups/
 storage/logs/
+storage/samples/
 storage/staging/
 
 # Local configuration
