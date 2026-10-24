@@ -30,6 +30,12 @@ test("switches risk profile and opens a valuation detail", async ({ page }) => {
   await expect(page.locator(".n-spin")).toHaveCount(0);
   await expect(page).toHaveURL(/profile=aggressive/);
   await expect(aggressiveButton).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.locator(".top3-card .n-tag").filter({ hasText: "以预期收益为主" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".top3-card .n-tag").filter({ hasText: "收益 40%" }),
+  ).toBeVisible();
 
   const firstCard = page.locator(".top-card").first();
   await expect(firstCard).toContainText("宁德时代");
@@ -364,15 +370,39 @@ test("naive scrollbar keeps page width stable between routes", async ({ page }) 
 
 test("filtered top three keeps gold silver bronze positions", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "筛选" }).click();
-  await page.locator(".filter-popover .n-select").first().click();
-  await page.locator(".n-base-select-option").filter({ hasText: "H 股" }).click();
-  await page.keyboard.press("Escape");
+  const filterTrigger = page
+    .locator(".toolbar")
+    .getByRole("button", { name: /筛选/ });
+  const selectMarket = async (label: "A 股" | "H 股") => {
+    await filterTrigger.click();
+    await page.locator(".filter-popover .n-select").first().click();
+    await page.getByText(label, { exact: true }).click();
+    await page.keyboard.press("Escape");
+    await filterTrigger.click();
+    await expect(page.locator(".filter-popover")).toBeHidden();
+    await expect(page.locator(".n-spin")).toHaveCount(0);
+  };
 
-  await expect(page.locator(".top-card.rank-1")).toHaveCount(1);
-  await expect(page.locator(".top-card.rank-2")).toHaveCount(1);
-  await expect(page.locator(".top-card.rank-3")).toHaveCount(1);
+  await selectMarket("H 股");
+  await expect(page.locator(".top-card")).toHaveCount(3);
+  await expect(page.locator(".top-card")).toContainText([".HK", ".HK", ".HK"]);
+  expect(
+    await page.locator(".top-card").evaluateAll((cards) =>
+      cards.every((card) => !card.textContent?.includes(".SH")),
+    ),
+  ).toBe(true);
+
+  await selectMarket("A 股");
+  await expect(page.locator(".top-card")).toContainText([".SH", ".SH", ".SH"]);
+  expect(
+    await page.locator(".top-card").evaluateAll((cards) =>
+      cards.every((card) => !card.textContent?.includes(".HK")),
+    ),
+  ).toBe(true);
+
+  await selectMarket("H 股");
+  await expect(page.locator(".top-card")).toHaveCount(3);
+  await expect(page.locator(".top-card")).toContainText([".HK", ".HK", ".HK"]);
   await expect(page.locator(".top-card.rank-1 .top-rank")).toHaveText("01");
   await expect(page.locator(".top-card.rank-2 .top-rank")).toHaveText("02");
-  await expect(page.locator(".top-card.rank-3 .top-rank")).toHaveText("03");
 });

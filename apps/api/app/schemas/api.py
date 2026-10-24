@@ -73,6 +73,8 @@ class RankingItemOut(BaseModel):
 class RankingResponse(BaseModel):
     profile: str
     profile_label: str
+    profile_description: str
+    profile_weights: dict[str, float]
     algorithm_version: str
     main_board: list[RankingItemOut]
     etfs: list[RankingItemOut]

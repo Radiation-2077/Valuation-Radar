@@ -73,6 +73,14 @@ def test_imports_contract_card_and_serves_ranking(tmp_path: Path) -> None:
         assert ranking.counts["main_board"] == 2
         assert len(ranking.top_three) == 2
         assert ranking.top_three[0].rank == 1
+        assert ranking.profile_label == "均衡"
+        assert ranking.profile_description == "默认基准"
+        assert ranking.profile_weights == {
+            "margin": 0.30,
+            "base": 0.25,
+            "risk": 0.20,
+            "stability": 0.25,
+        }
 
         detail = get_valuation_detail(
             session,

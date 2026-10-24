@@ -33,6 +33,29 @@ describe("rich report text", () => {
     ]);
   });
 
+  it("renders bare LaTeX symbols inside explanation text", () => {
+    const text =
+      "其中 M_{H} 为H股总市值，S_{\\mathrm{HKD/CNY}}为汇率，\\overline{E}_{D}为正常化盈利。";
+    const math = parseInlineRichText(text).filter(
+      (segment) => segment.type === "inline_math",
+    );
+
+    expect(math).toEqual([
+      { type: "inline_math", value: "M_{H}" },
+      { type: "inline_math", value: "S_{\\mathrm{HKD/CNY}}" },
+      { type: "inline_math", value: "\\overline{E}_{D}" },
+    ]);
+  });
+
+  it("does not treat code identifiers or file paths as formulas", () => {
+    const text =
+      "东方财富 RPT_VALUEANALYSIS_DET、RP T_F10_FINANCE_*；缓存 common/fx_rates.json 和 common/treasury10y.json。";
+
+    expect(parseInlineRichText(text)).toEqual([
+      { type: "text", value: text },
+    ]);
+  });
+
   it("renders bold text, code and inline KaTeX", () => {
     const wrapper = mount(RichText, {
       props: {
@@ -61,6 +84,26 @@ describe("rich report text", () => {
     expect(wrapper.text()).toContain("代入数据");
     expect(wrapper.text()).toContain("指每股现金分红");
     expect(wrapper.text()).toContain("指A股价格");
+  });
+
+  it("renders bare symbols instead of leaking raw LaTeX in explanations", () => {
+    const wrapper = mount(FormulaBlock, {
+      props: {
+        block: {
+          type: "formula",
+          latex:
+            "PE_{\\mathrm{norm}}=\\frac{M_{H}S_{\\mathrm{HKD/CNY}}}{\\overline{E}_{D}}",
+          substitution:
+            "PE_{\\mathrm{norm}}=1{,}098.89\\times0.8506\\div117.48=8.0\\text{倍}",
+          explanation:
+            "其中 M_{H} 为H股总市值，S_{\\mathrm{HKD/CNY}}为汇率，\\overline{E}_{D}为正常化盈利。",
+        },
+      },
+    });
+
+    expect(wrapper.findAll(".math-formula").length).toBe(5);
+    expect(wrapper.text()).toContain("其中");
+    expect(wrapper.text()).toContain("为H股总市值");
   });
 
   it("renders structured bullet content", () => {

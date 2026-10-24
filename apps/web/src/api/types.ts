@@ -54,6 +54,13 @@ export interface Freshness {
 export interface RankingResponse {
   profile: ProfileCode;
   profile_label: string;
+  profile_description: string;
+  profile_weights: {
+    margin: number;
+    base: number;
+    risk: number;
+    stability: number;
+  };
   algorithm_version: string;
   main_board: RankingItem[];
   etfs: RankingItem[];

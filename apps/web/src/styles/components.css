@@ -822,8 +822,13 @@
 .math-formula--display {
   display: block;
   width: 100%;
+  padding: 0.65em 0;
   overflow-x: auto;
   text-align: center;
+}
+
+.math-formula--display .katex-display {
+  margin: 0.2em 0;
 }
 
 .math-formula .katex {

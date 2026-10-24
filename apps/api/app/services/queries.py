@@ -133,6 +133,13 @@ def get_ranking(
     return RankingResponse(
         profile=profile,
         profile_label=profile_definition.label,
+        profile_description=profile_definition.description,
+        profile_weights={
+            "margin": profile_definition.margin,
+            "base": profile_definition.base,
+            "risk": profile_definition.risk,
+            "stability": profile_definition.stability,
+        },
         algorithm_version=run.algorithm_version,
         main_board=main_board,
         etfs=etfs,

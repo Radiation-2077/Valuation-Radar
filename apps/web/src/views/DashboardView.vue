@@ -102,6 +102,7 @@ const industryOptions = computed(() =>
 );
 
 watch(marketOptions, (options) => {
+  if (!query.data.value) return;
   if (market.value && !options.some((option) => option.value === market.value)) {
     market.value = null;
   }
@@ -389,7 +390,7 @@ function rowProps(row: RankingItem) {
           v-model:show="filtersOpen"
           trigger="click"
           placement="bottom-end"
-          :width="420"
+          :width="340"
         >
           <template #trigger>
             <NButton
@@ -467,9 +468,21 @@ function rowProps(row: RankingItem) {
         <NSpace vertical :size="20">
           <NSpace class="card-heading" align="center" justify="space-between" :wrap="true">
             <NH2>性价比Top3</NH2>
-            <NTag :bordered="false">
-              {{ query.data.value.profile_label }}权重 · 算法 {{ query.data.value.algorithm_version }}
-            </NTag>
+            <NSpace align="center" :size="8" :wrap="true">
+              <NTag :bordered="false">
+                {{ query.data.value.profile_label }} ·
+                {{ query.data.value.profile_description }}
+              </NTag>
+              <NTag :bordered="false">
+                边际 {{ formatPercent(query.data.value.profile_weights.margin * 100, 0) }}
+                · 收益 {{ formatPercent(query.data.value.profile_weights.base * 100, 0) }}
+                · 抗跌 {{ formatPercent(query.data.value.profile_weights.risk * 100, 0) }}
+                · 稳定 {{ formatPercent(query.data.value.profile_weights.stability * 100, 0) }}
+              </NTag>
+              <NTag :bordered="false">
+                算法 {{ query.data.value.algorithm_version }}
+              </NTag>
+            </NSpace>
           </NSpace>
           <NEmpty
             v-if="!query.data.value.top_three.length"
