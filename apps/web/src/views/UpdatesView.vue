@@ -12,6 +12,8 @@ import {
   NGridItem,
   NH1,
   NH2,
+  NIcon,
+  NModal,
   NPopconfirm,
   NP,
   NSelect,
@@ -27,6 +29,7 @@ import {
   useMessage,
   type DataTableColumns,
 } from "naive-ui";
+import { EyeOutline, RefreshOutline, TrashOutline } from "@vicons/ionicons5";
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
@@ -34,13 +37,20 @@ import {
   clearJobs,
   createRefreshJob,
   decideReview,
+  deleteJob,
+  deleteRejectedReview,
   fetchJobs,
+  fetchRejectedReviews,
   fetchReviews,
   fetchSchedule,
+  pauseJob,
+  requestRevaluation,
+  resumeJob,
   updateSchedule,
 } from "@/api/client";
-import type { Job, Schedule, SchedulePatch } from "@/api/types";
+import type { Job, Review, Schedule, SchedulePatch } from "@/api/types";
 import JobDebugPanel from "@/components/JobDebugPanel.vue";
+import ReviewPreviewModal from "@/components/ReviewPreviewModal.vue";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 
 const queryClient = useQueryClient();
@@ -56,6 +66,11 @@ const reviewsQuery = useQuery({
   queryKey: ["reviews"],
   queryFn: fetchReviews,
   refetchInterval: 5_000,
+});
+const rejectedReviewsQuery = useQuery({
+  queryKey: ["reviews", "rejected"],
+  queryFn: fetchRejectedReviews,
+  refetchInterval: 10_000,
 });
 
 const form = reactive<SchedulePatch>({
@@ -105,10 +120,55 @@ const reviewMutation = useMutation({
   onSuccess: async (result) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["reviews"] }),
+      queryClient.invalidateQueries({ queryKey: ["reviews", "rejected"] }),
       queryClient.invalidateQueries({ queryKey: ["ranking"] }),
       queryClient.invalidateQueries({ queryKey: ["valuation"] }),
     ]);
+    previewReview.value = null;
     message.success(result.ranking_rebuilt ? "候选估值已发布并重算排名" : "候选估值已拒绝");
+  },
+});
+const deleteReviewMutation = useMutation({
+  mutationFn: deleteRejectedReview,
+  onSuccess: async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["reviews", "rejected"] }),
+      queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+    ]);
+    message.success("已删除拒绝候选");
+  },
+  onError: (error: Error) => {
+    message.error(error.message || "拒绝候选删除失败");
+  },
+});
+const revaluationMutation = useMutation({
+  mutationFn: requestRevaluation,
+  onSuccess: async (job) => {
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success(`Codex 估值任务 #${job.id} 已加入队列`);
+  },
+  onError: (error: Error) => {
+    message.error(error.message || "Codex 估值任务创建失败");
+  },
+});
+const resumeMutation = useMutation({
+  mutationFn: resumeJob,
+  onSuccess: async (job) => {
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success(`任务 #${job.id} 已恢复并重新排队`);
+  },
+  onError: (error: Error) => {
+    message.error(error.message || "任务恢复失败");
+  },
+});
+const pauseMutation = useMutation({
+  mutationFn: pauseJob,
+  onSuccess: async (job) => {
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success(`任务 #${job.id} 已暂停`);
+  },
+  onError: (error: Error) => {
+    message.error(error.message || "任务暂停失败");
   },
 });
 const clearMutation = useMutation({
@@ -122,17 +182,51 @@ const clearMutation = useMutation({
     message.error(error.message);
   },
 });
+const deleteJobMutation = useMutation({
+  mutationFn: deleteJob,
+  onSuccess: async (result) => {
+    if (debugJobId.value === result.job_id) {
+      debugJobId.value = null;
+    }
+    deleteJobTarget.value = null;
+    await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    message.success(
+      result.terminated
+        ? `任务 #${result.job_id} 已终止并删除`
+        : `任务 #${result.job_id} 已删除`,
+    );
+  },
+  onError: (error: Error) => {
+    message.error(error.message || "任务删除失败");
+  },
+});
 
 const jobs = computed(() => jobsQuery.data.value?.items ?? []);
 const reviews = computed(() => reviewsQuery.data.value?.items ?? []);
+const rejectedReviews = computed(
+  () => rejectedReviewsQuery.data.value?.items ?? [],
+);
+const previewReview = ref<Review | null>(null);
+const previewMode = ref<"pending" | "rejected">("pending");
+const reviewDecisionLoading = computed<"approve" | "reject" | null>(() =>
+  reviewMutation.isPending.value
+    ? reviewMutation.variables.value?.decision ?? null
+    : null,
+);
+const deleteJobTarget = ref<Job | null>(null);
 const activeJob = computed(() =>
-  jobs.value.find((job) => ["queued", "running"].includes(job.status)),
+  jobs.value.find((job) => ["queued", "running", "cancelling"].includes(job.status)),
 );
 const latestSucceeded = computed(() =>
   jobs.value.find((job) => ["succeeded", "partial"].includes(job.status)),
 );
+const latestJob = computed(() => {
+  return [...jobs.value].sort(
+    (left, right) => jobActivityTime(right) - jobActivityTime(left),
+  )[0];
+});
 const latestJobTime = computed(() => {
-  const latest = jobs.value[0];
+  const latest = latestJob.value;
   return latest?.finished_at ?? latest?.started_at ?? latest?.created_at ?? null;
 });
 const debugJobId = ref<number | null>(null);
@@ -173,6 +267,9 @@ function jobLabel(status: string): string {
     partial: "部分完成",
     failed: "失败",
     cancelled: "已取消",
+    interrupted: "已中断",
+    paused: "已暂停",
+    cancelling: "终止中",
   };
   return labels[status] ?? status;
 }
@@ -181,6 +278,7 @@ function statusType(status: string): "default" | "success" | "warning" | "error"
   if (status === "succeeded") return "success";
   if (status === "partial") return "warning";
   if (status === "failed") return "error";
+  if (["interrupted", "paused", "cancelling"].includes(status)) return "warning";
   if (["running", "queued"].includes(status)) return "info";
   return "default";
 }
@@ -209,9 +307,14 @@ function phaseLabel(value: string): string {
     validating: "校验候选",
     candidate_ready: "候选已入库",
     awaiting_review: "待复核",
+    review_approved: "已同意",
+    review_rejected: "已拒绝",
     completed: "完成",
     failed: "失败",
     cancelled: "取消",
+    interrupted: "中断",
+    paused: "暂停",
+    cancelling: "终止中",
   };
   return labels[value] ?? value;
 }
@@ -220,15 +323,94 @@ function serverTime(value: string): number {
   return new Date(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`).getTime();
 }
 
-function durationLabel(job: Job, now = clock.value): string {
-  if (!job.started_at) return job.status === "queued" ? "等待中" : "—";
-  const end = job.finished_at ? serverTime(job.finished_at) : now;
-  const seconds = Math.max(0, Math.floor((end - serverTime(job.started_at)) / 1_000));
-  if (seconds < 60) return `${seconds} 秒`;
-  const minutes = Math.floor(seconds / 60);
-  const remaining = seconds % 60;
-  if (minutes < 60) return `${minutes} 分 ${remaining} 秒`;
-  return `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`;
+function jobActivityTime(job: Job): number {
+  const value = job.finished_at ?? job.started_at ?? job.created_at;
+  return serverTime(value);
+}
+
+function legacyExecutionSeconds(job: Job): number | null {
+  const events = job.details.debug_events;
+  if (!Array.isArray(events)) return null;
+  const terminalPhases = new Set([
+    "awaiting_review",
+    "cancelled",
+    "completed",
+    "failed",
+    "interrupted",
+    "paused",
+    "review_approved",
+    "review_rejected",
+  ]);
+  let startedAt: number | null = null;
+  let total = 0;
+  let sawAttempt = false;
+  for (const event of events) {
+    if (
+      typeof event !== "object" ||
+      event === null ||
+      !("at" in event) ||
+      !("phase" in event)
+    ) {
+      continue;
+    }
+    const phase = typeof event.phase === "string" ? event.phase : "";
+    const at = typeof event.at === "string" ? serverTime(event.at) : NaN;
+    if (!Number.isFinite(at)) continue;
+    if (
+      "message" in event &&
+      event.message === "任务开始执行"
+    ) {
+      startedAt = at;
+      sawAttempt = true;
+      continue;
+    }
+    if (startedAt !== null && terminalPhases.has(phase)) {
+      total += Math.max(0, (at - startedAt) / 1_000);
+      startedAt = null;
+    }
+  }
+  return sawAttempt ? total : null;
+}
+
+function durationLabel(
+  job: Job,
+  now = clock.value,
+  withCumulativePrefix = true,
+): string {
+  const savedSeconds = detailNumber(job, "execution_seconds");
+  const legacySeconds =
+    savedSeconds === null ? legacyExecutionSeconds(job) : null;
+  let totalSeconds =
+    savedSeconds ??
+    legacySeconds ??
+    (job.started_at && job.finished_at
+      ? Math.max(
+          0,
+          (serverTime(job.finished_at) - serverTime(job.started_at)) / 1_000,
+        )
+      : 0);
+  if (job.status === "running" && job.started_at) {
+    totalSeconds += Math.max(
+      0,
+      (now - serverTime(job.started_at)) / 1_000,
+    );
+  }
+  if (totalSeconds <= 0) return job.status === "queued" ? "等待中" : "—";
+  const seconds = Math.floor(totalSeconds);
+  const cumulative =
+    savedSeconds !== null ||
+    legacySeconds !== null ||
+    Number(job.details.resume_count ?? 0) > 0;
+  let label: string;
+  if (seconds < 60) {
+    label = `${seconds} 秒`;
+  } else {
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+    if (minutes < 60) label = `${minutes} 分 ${remaining} 秒`;
+    else label = `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`;
+  }
+  return cumulative && withCumulativePrefix ? `累计 ${label}` : label;
 }
 
 const jobColumns = computed<DataTableColumns<Job>>(() => {
@@ -293,11 +475,72 @@ const jobColumns = computed<DataTableColumns<Job>>(() => {
     render: (job) => formatDateTime(job.started_at ?? job.created_at),
   },
   {
-    title: "耗时",
+    title: "累计耗时",
     key: "duration",
     width: 120,
     render: (job) =>
       h("span", { "data-job-duration": job.id }, durationLabel(job, currentTime)),
+  },
+  {
+    title: "操作",
+    key: "actions",
+    width: 88,
+    render: (job) => {
+      if (job.job_type !== "valuation_refresh") {
+        return h("span", { class: "job-action-empty" }, "—");
+      }
+      if (["queued", "running"].includes(job.status)) {
+        return h(
+          NButton,
+          {
+            size: "small",
+            secondary: true,
+            type: "warning",
+            "aria-label": `暂停任务 #${job.id}`,
+            loading:
+              pauseMutation.isPending.value &&
+              pauseMutation.variables.value === job.id,
+            onClick: () => pauseMutation.mutate(job.id),
+          },
+          { default: () => "暂停" },
+        );
+      }
+      if (!["failed", "cancelled", "interrupted", "paused"].includes(job.status)) {
+        return h("span", { class: "job-action-empty" }, "—");
+      }
+      return h(
+        NButton,
+        {
+          size: "small",
+          secondary: true,
+          type: "primary",
+          "aria-label": `恢复任务 #${job.id}`,
+          loading:
+            resumeMutation.isPending.value &&
+            resumeMutation.variables.value === job.id,
+          onClick: () => resumeMutation.mutate(job.id),
+        },
+        { default: () => "恢复" },
+      );
+    },
+  },
+  {
+    title: "删除",
+    key: "delete",
+    width: 58,
+    render: (job) =>
+      h(
+        NButton,
+        {
+          quaternary: true,
+          circle: true,
+          size: "small",
+          type: "error",
+          "aria-label": `删除任务 #${job.id}`,
+          onClick: () => requestDeleteJob(job),
+        },
+        { icon: () => h(NIcon, { component: TrashOutline }) },
+      ),
   },
   ];
 });
@@ -310,16 +553,63 @@ interface WorkflowStep {
   status: WorkflowStatus;
 }
 
-const workflowJob = computed(() => activeJob.value ?? jobs.value[0]);
-const workflowErrors = computed(() => {
+const workflowJob = computed(() => activeJob.value ?? latestJob.value);
+interface WorkflowNotice {
+  type: "error" | "warning" | "info";
+  title: string;
+  message: string;
+}
+const workflowNotice = computed<WorkflowNotice | null>(() => {
   const job = workflowJob.value;
-  if (!job) return [];
+  if (!job) return null;
   const errors = job.details.errors;
   const items = Array.isArray(errors)
     ? errors.filter((item): item is string => typeof item === "string")
     : [];
-  if (items.length) return items;
-  return job.error ? [job.error] : [];
+  const detail = items.length ? items.join("；") : job.error;
+  if (job.status === "failed") {
+    return {
+      type: "error",
+      title: "任务执行失败",
+      message: detail || "任务执行失败，请查看任务日志。",
+    };
+  }
+  if (job.status === "interrupted") {
+    const phase = job.details.failed_phase;
+    const phaseText = typeof phase === "string" ? phaseLabel(phase) : "执行";
+    return {
+      type: "warning",
+      title:
+        job.details.interruption_kind === "service_restart"
+          ? "服务重启导致任务中断"
+          : "任务执行中断",
+      message: `任务在${phaseText}阶段中断，累计执行 ${durationLabel(job, clock.value, false)}；可点击“恢复”继续。`,
+    };
+  }
+  if (job.status === "paused") {
+    const phase = job.details.paused_from_phase;
+    const phaseText = typeof phase === "string" ? phaseLabel(phase) : "当前";
+    return {
+      type: "warning",
+      title: "任务已暂停",
+      message: `任务在${phaseText}阶段暂停，累计执行 ${durationLabel(job, clock.value, false)}；可点击“恢复”继续。`,
+    };
+  }
+  if (job.status === "cancelled") {
+    return {
+      type: "warning",
+      title: "任务已取消",
+      message: detail || "任务已取消。",
+    };
+  }
+  if (job.status === "partial" && items.length) {
+    return {
+      type: "warning",
+      title: "任务部分完成",
+      message: items.join("；"),
+    };
+  }
+  return null;
 });
 const workflowSteps = computed<WorkflowStep[]>(() => {
   const job = workflowJob.value;
@@ -341,13 +631,16 @@ const workflowSteps = computed<WorkflowStep[]>(() => {
       ? valuationStepDescriptions(job)
       : marketStepDescriptions(job);
   const currentIndex = workflowIndex(job);
-  const failed = ["failed", "cancelled"].includes(job.status);
+  const failed = ["failed", "cancelled", "interrupted"].includes(job.status);
+  const paused = job.status === "paused";
   const completed = ["succeeded", "partial"].includes(job.status);
 
   return titles.map((title, index) => {
     let status: WorkflowStatus = "wait";
     if (completed || index < currentIndex) status = "finish";
-    if (!completed && index === currentIndex) status = failed ? "error" : "process";
+    if (!completed && !paused && index === currentIndex) {
+      status = failed ? "error" : "process";
+    }
     return { title, description: descriptions[index], status };
   });
 });
@@ -405,7 +698,11 @@ function valuationStepDescriptions(job: Job): string[] {
 
 function workflowIndex(job: Job): number {
   const phase =
-    typeof job.details.failed_phase === "string" ? job.details.failed_phase : job.phase;
+    typeof job.details.failed_phase === "string"
+      ? job.details.failed_phase
+      : typeof job.details.paused_from_phase === "string"
+        ? job.details.paused_from_phase
+        : job.phase;
   if (job.job_type === "valuation_refresh") {
     if (phase === "valuing") return 1;
     if (["validating", "candidate_ready"].includes(phase)) return 2;
@@ -430,6 +727,32 @@ function runNow() {
 
 function clearAllJobs() {
   clearMutation.mutate();
+}
+
+function requestDeleteJob(job: Job) {
+  deleteJobTarget.value = job;
+}
+
+function closeDeleteJob() {
+  if (deleteJobMutation.isPending.value) return;
+  deleteJobTarget.value = null;
+}
+
+function confirmDeleteJob() {
+  const job = deleteJobTarget.value;
+  if (!job) return;
+  deleteJobMutation.mutate(job.id);
+}
+
+function openReviewPreview(review: Review, mode: "pending" | "rejected") {
+  previewReview.value = review;
+  previewMode.value = mode;
+}
+
+function decidePreview(decision: "approve" | "reject") {
+  const review = previewReview.value;
+  if (!review) return;
+  reviewMutation.mutate({ reportId: review.report_id, decision });
 }
 
 function updateExpandedRowKeys(keys: Array<string | number>) {
@@ -601,11 +924,11 @@ function openMarket(id: number) {
               />
             </NSteps>
             <NAlert
-              v-if="workflowErrors.length"
-              :type="workflowJob?.status === 'failed' ? 'error' : 'warning'"
-              :title="workflowJob?.status === 'failed' ? '最近任务失败' : '任务存在部分告警'"
+              v-if="workflowNotice"
+              :type="workflowNotice.type"
+              :title="workflowNotice.title"
             >
-              {{ workflowErrors.join("；") }}
+              {{ workflowNotice.message }}
             </NAlert>
           </NSpace>
         </NCard>
@@ -680,20 +1003,16 @@ function openMarket(id: number) {
             </NSpace>
             <NSpace>
               <NButton
-                type="primary"
+                type="info"
                 size="small"
-                :loading="reviewMutation.isPending.value"
-                @click="reviewMutation.mutate({ reportId: review.report_id, decision: 'approve' })"
-              >
-                批准并发布
-              </NButton>
-              <NButton
                 secondary
-                size="small"
-                :disabled="reviewMutation.isPending.value"
-                @click="reviewMutation.mutate({ reportId: review.report_id, decision: 'reject' })"
+                :aria-label="`预览 ${review.name}`"
+                @click="openReviewPreview(review, 'pending')"
               >
-                拒绝候选
+                <template #icon>
+                  <NIcon :component="EyeOutline" />
+                </template>
+                预览
               </NButton>
             </NSpace>
             </NSpace>
@@ -702,6 +1021,176 @@ function openMarket(id: number) {
         <NEmpty v-else description="没有待复核候选" />
         </NSpace>
       </NCard>
+
+      <NCard
+        v-if="rejectedReviews.length"
+        class="review-panel rejected-review-panel"
+        :bordered="false"
+      >
+        <NSpace vertical :size="16">
+          <NSpace class="card-heading" align="center" justify="space-between">
+            <NH2>已拒绝候选</NH2>
+            <NTag :bordered="false" size="small">
+              {{ rejectedReviews.length }} 个最近版本
+            </NTag>
+          </NSpace>
+          <NSpace vertical :size="12">
+            <NCard
+              v-for="review in rejectedReviews"
+              :key="review.report_id"
+              size="small"
+              :bordered="false"
+            >
+              <NSpace vertical :size="12">
+                <NSpace align="center" justify="space-between">
+                  <NSpace vertical :size="4">
+                    <NText strong>{{ review.name }}</NText>
+                    <NText depth="3">
+                      {{ formatDateTime(review.generated_at) }} · 置信度
+                      {{ review.confidence }}
+                    </NText>
+                  </NSpace>
+                  <NTag type="error" :bordered="false">已拒绝</NTag>
+                </NSpace>
+                <NP>{{ review.thesis }}</NP>
+                <NSpace align="center" justify="space-between">
+                  <NSpace>
+                    <NButton
+                      v-for="market in review.markets"
+                      :key="market.valuation_market_id"
+                      size="tiny"
+                      tertiary
+                      @click="openMarket(market.valuation_market_id)"
+                    >
+                      {{ market.market }} · {{ market.code }} · {{ market.verdict }}
+                    </NButton>
+                  </NSpace>
+                  <NSpace>
+                    <NButton
+                      size="small"
+                      secondary
+                      :aria-label="`预览 ${review.name}`"
+                      @click="openReviewPreview(review, 'rejected')"
+                    >
+                      <template #icon>
+                        <NIcon :component="EyeOutline" />
+                      </template>
+                      预览
+                    </NButton>
+                    <NPopconfirm
+                      positive-text="开始估值"
+                      negative-text="取消"
+                      @positive-click="
+                        revaluationMutation.mutate(review.instrument_id)
+                      "
+                    >
+                      <template #trigger>
+                        <NButton
+                          size="small"
+                          secondary
+                          :aria-label="`重新估值 ${review.name}`"
+                          :loading="
+                            revaluationMutation.isPending.value &&
+                            revaluationMutation.variables.value ===
+                              review.instrument_id
+                          "
+                        >
+                          <template #icon>
+                            <NIcon :component="RefreshOutline" />
+                          </template>
+                          重新估值
+                        </NButton>
+                      </template>
+                      将重新调用 Codex 生成候选估值，完成后进入待复核。
+                    </NPopconfirm>
+                    <NPopconfirm
+                      positive-text="删除"
+                      negative-text="取消"
+                      @positive-click="
+                        deleteReviewMutation.mutate(review.report_id)
+                      "
+                    >
+                      <template #trigger>
+                        <NButton
+                          size="small"
+                          type="error"
+                          secondary
+                          :aria-label="`删除已拒绝候选 ${review.name}`"
+                          :loading="
+                            deleteReviewMutation.isPending.value &&
+                            deleteReviewMutation.variables.value ===
+                              review.report_id
+                          "
+                        >
+                          <template #icon>
+                            <NIcon :component="TrashOutline" />
+                          </template>
+                          删除
+                        </NButton>
+                      </template>
+                      永久删除该已拒绝候选及其估值明细？
+                    </NPopconfirm>
+                  </NSpace>
+                </NSpace>
+              </NSpace>
+            </NCard>
+          </NSpace>
+        </NSpace>
+      </NCard>
     </template>
+
+    <NModal
+      :show="Boolean(deleteJobTarget)"
+      preset="card"
+      title="确认删除任务"
+      :bordered="false"
+      :mask-closable="!deleteJobMutation.isPending.value"
+      :close-on-esc="!deleteJobMutation.isPending.value"
+      :closable="!deleteJobMutation.isPending.value"
+      style="width: min(520px, 92vw)"
+      @update:show="(show: boolean) => { if (!show) closeDeleteJob(); }"
+    >
+      <NSpace v-if="deleteJobTarget" vertical :size="14">
+        <NText>
+          将删除任务 #{{ deleteJobTarget.id }} ·
+          {{ instrumentLabel(deleteJobTarget) }}。
+        </NText>
+        <NAlert
+          v-if="['queued', 'running'].includes(deleteJobTarget.status)"
+          type="warning"
+          title="任务正在执行"
+          :bordered="false"
+        >
+          确认后会立即终止 Codex 子进程，并删除该任务记录。此操作不可恢复。
+        </NAlert>
+        <NText type="error" strong>此操作不可恢复，确定永久删除吗？</NText>
+      </NSpace>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton
+            :disabled="deleteJobMutation.isPending.value"
+            @click="closeDeleteJob"
+          >
+            取消
+          </NButton>
+          <NButton
+            type="error"
+            :loading="deleteJobMutation.isPending.value"
+            @click="confirmDeleteJob"
+          >
+            确认删除
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
+
+    <ReviewPreviewModal
+      v-if="previewReview"
+      :review="previewReview"
+      :mode="previewMode"
+      :decision-loading="reviewDecisionLoading"
+      @close="previewReview = null"
+      @decide="decidePreview"
+    />
   </div>
 </template>

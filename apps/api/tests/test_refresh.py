@@ -135,6 +135,8 @@ def test_worker_treats_unchanged_quotes_as_success(
         assert job.phase == "completed"
         details = dict(job.details)
         events = details.pop("debug_events")
+        execution_seconds = details.pop("execution_seconds")
+        assert execution_seconds >= 0
         assert details == {
             "listings": 29,
             "quotes_fetched": 29,

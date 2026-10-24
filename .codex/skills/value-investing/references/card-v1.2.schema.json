@@ -216,6 +216,13 @@
           "asset_type": {
             "const": "etf"
           },
+          "markets": {
+            "items": {
+              "required": [
+                "etf_metrics"
+              ]
+            }
+          },
           "model_modules": {
             "items": {
               "enum": [
@@ -464,6 +471,9 @@
         "valuation": {
           "$ref": "#/$defs/valuation"
         },
+        "etf_metrics": {
+          "$ref": "#/$defs/etfMetrics"
+        },
         "safety_margin_pct": {
           "type": "number"
         },
@@ -509,6 +519,116 @@
           "type": "number",
           "minimum": 0,
           "maximum": 100
+        }
+      }
+    },
+    "etfMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index_code",
+        "index_name",
+        "weight_method",
+        "weight_as_of",
+        "weight_source",
+        "coverage_pct",
+        "pb_as_of",
+        "pb_source",
+        "nav",
+        "nav_date",
+        "nav_source",
+        "premium_discount_pct",
+        "constituents",
+        "representative_pb"
+      ],
+      "properties": {
+        "index_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "index_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight_method": {
+          "const": "top10_market_cap_weighted_harmonic"
+        },
+        "weight_as_of": {
+          "type": "string",
+          "format": "date"
+        },
+        "weight_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "coverage_pct": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "pb_as_of": {
+          "type": "string",
+          "format": "date"
+        },
+        "pb_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nav": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "nav_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "nav_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "premium_discount_pct": {
+          "type": "number"
+        },
+        "constituents": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/etfConstituent"
+          }
+        },
+        "representative_pb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "etfConstituent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "name",
+        "weight_pct",
+        "pb"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight_pct": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "pb": {
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       }
     },

@@ -1,5 +1,6 @@
 import type {
   ClearJobsResult,
+  DeleteJobResult,
   Job,
   JobDebug,
   JobList,
@@ -12,6 +13,7 @@ import type {
   RankingFilters,
   RankingResponse,
   ReviewDecision,
+  ReviewDeleteResult,
   ReviewList,
   Schedule,
   SchedulePatch,
@@ -107,6 +109,12 @@ export async function clearJobs(): Promise<ClearJobsResult> {
   });
 }
 
+export async function deleteJob(jobId: number): Promise<DeleteJobResult> {
+  return request<DeleteJobResult>(`/api/v1/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
 function idempotencyKey(prefix: string): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return `${prefix}-${globalThis.crypto.randomUUID()}`;
@@ -129,6 +137,18 @@ export async function requestRevaluation(instrumentId: number): Promise<Job> {
   return request<Job>(`/api/v1/instruments/${instrumentId}/revaluations`, {
     method: "POST",
     headers: { "Idempotency-Key": idempotencyKey("revaluation") },
+  });
+}
+
+export async function resumeJob(jobId: number): Promise<Job> {
+  return request<Job>(`/api/v1/jobs/${jobId}/resume`, {
+    method: "POST",
+  });
+}
+
+export async function pauseJob(jobId: number): Promise<Job> {
+  return request<Job>(`/api/v1/jobs/${jobId}/pause`, {
+    method: "POST",
   });
 }
 
@@ -177,11 +197,23 @@ export async function fetchReviews(): Promise<ReviewList> {
   return request<ReviewList>("/api/v1/reviews");
 }
 
+export async function fetchRejectedReviews(): Promise<ReviewList> {
+  return request<ReviewList>("/api/v1/reviews/rejected?limit=20");
+}
+
 export async function decideReview(
   reportId: number,
   decision: "approve" | "reject",
 ): Promise<ReviewDecision> {
   return request<ReviewDecision>(`/api/v1/reviews/${reportId}/${decision}`, {
     method: "POST",
+  });
+}
+
+export async function deleteRejectedReview(
+  reportId: number,
+): Promise<ReviewDeleteResult> {
+  return request<ReviewDeleteResult>(`/api/v1/reviews/${reportId}`, {
+    method: "DELETE",
   });
 }

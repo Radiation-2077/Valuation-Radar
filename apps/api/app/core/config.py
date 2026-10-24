@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'storage' / 'app.db'}"
     legacy_data_dir: Path = PROJECT_ROOT.parent / "data"
     legacy_reports_dir: Path = PROJECT_ROOT.parent
-    legacy_common_dir: Path = PROJECT_ROOT.parent / "common"
+    legacy_common_dir: Path | None = None
     timezone: str = "Asia/Shanghai"
     codex_binary: str = "codex"
     codex_timeout_seconds: int = 1_200
@@ -33,11 +33,16 @@ class Settings(BaseSettings):
     def staging_dir(self) -> Path:
         return self.storage_root / "staging"
 
+    @property
+    def common_dir(self) -> Path:
+        return self.legacy_common_dir or self.storage_root / "common"
+
     def ensure_storage(self) -> None:
         for path in (
             self.storage_root,
             self.staging_dir,
             self.storage_root / "backups",
+            self.storage_root / "common",
             self.storage_root / "logs",
         ):
             path.mkdir(parents=True, exist_ok=True)

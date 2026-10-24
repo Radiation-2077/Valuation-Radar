@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -18,6 +19,7 @@ from app.schemas.api import (
     AiRunDebugOut,
     ClearJobsOut,
     CodexMilestoneOut,
+    DeleteJobOut,
     InstrumentArchiveOut,
     InstrumentCreate,
     InstrumentCreateOut,
@@ -32,6 +34,7 @@ from app.schemas.api import (
     ProfileOut,
     RankingResponse,
     ReviewDecisionOut,
+    ReviewDeleteOut,
     ReviewListOut,
     ReviewMarketOut,
     ReviewOut,
@@ -50,6 +53,12 @@ from app.services.instruments import (
     purge_instrument,
     restore_instrument,
 )
+from app.services.job_events import append_job_event
+from app.services.job_lifecycle import (
+    accumulate_execution_seconds,
+    pause_valuation_job,
+    resume_valuation_job,
+)
 from app.services.queries import (
     get_ranking,
     get_valuation_detail,
@@ -57,6 +66,8 @@ from app.services.queries import (
 )
 from app.services.reviews import (
     approve_review,
+    delete_rejected_review,
+    list_rejected_reports,
     list_review_reports,
     reject_review,
 )
@@ -269,7 +280,7 @@ def list_jobs(
     jobs = session.scalars(
         select(JobRun).order_by(JobRun.id.desc()).limit(limit)
     ).all()
-    return JobListOut(items=[_job_out(job) for job in jobs])
+    return JobListOut(items=[_job_out(job, session) for job in jobs])
 
 
 @router.delete("/jobs", response_model=ClearJobsOut)
@@ -277,7 +288,7 @@ def clear_jobs(session: SessionDep) -> ClearJobsOut:
     active = session.scalar(
         select(func.count())
         .select_from(JobRun)
-        .where(JobRun.status.in_(("queued", "running")))
+        .where(JobRun.status.in_(("queued", "running", "cancelling")))
     )
     if active:
         raise HTTPException(
@@ -288,6 +299,42 @@ def clear_jobs(session: SessionDep) -> ClearJobsOut:
     session.execute(delete(JobRun))
     session.commit()
     return ClearJobsOut(deleted=deleted)
+
+
+@router.delete("/jobs/{job_id}", response_model=DeleteJobOut)
+def delete_job(job_id: int, session: SessionDep) -> DeleteJobOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    terminated = job.status in {"queued", "running", "cancelling"}
+    was_running = job.status in {"running", "cancelling"}
+    if job.status in {"queued", "running"}:
+        job.status = "cancelling"
+        append_job_event(job, "cancelling", "收到删除请求，正在终止任务")
+        session.commit()
+
+    if terminated and was_running:
+        for _ in range(80):
+            with Session(bind=session.get_bind()) as monitor:
+                live = monitor.get(JobRun, job_id)
+                if live is None or live.status not in {"running", "cancelling"}:
+                    break
+            time.sleep(0.25)
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "任务暂停请求已发出，但进程尚未退出，请稍后重试删除"},
+            )
+
+    session.expire_all()
+    job = session.get(JobRun, job_id)
+    if job is None:
+        return DeleteJobOut(job_id=job_id, deleted=True, terminated=terminated)
+    session.execute(delete(AiRun).where(AiRun.job_id == job_id))
+    session.delete(job)
+    session.commit()
+    _remove_staging_for_jobs((job_id,))
+    return DeleteJobOut(job_id=job_id, deleted=True, terminated=terminated)
 
 
 @router.post("/jobs", response_model=JobOut, status_code=202)
@@ -306,7 +353,7 @@ def create_job(
     )
     session.commit()
     session.refresh(job)
-    return _job_out(job)
+    return _job_out(job, session)
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)
@@ -314,7 +361,7 @@ def get_job(job_id: int, session: SessionDep) -> JobOut:
     job = session.get(JobRun, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail={"message": "任务不存在"})
-    return _job_out(job)
+    return _job_out(job, session)
 
 
 @router.get("/jobs/{job_id}/debug", response_model=JobDebugOut)
@@ -347,7 +394,7 @@ def get_job_debug(job_id: int, session: SessionDep) -> JobDebugOut:
     if latest is None:
         current_action = _job_current_action(job)
     return JobDebugOut(
-        job=_job_out(job),
+        job=_job_out(job, session),
         events=events,
         ai_runs=[_ai_run_debug_out(run, storage_root) for run in ai_runs],
         current_action=current_action,
@@ -363,12 +410,47 @@ def cancel_job(job_id: int, session: SessionDep) -> JobOut:
     if job is None:
         raise HTTPException(status_code=404, detail={"message": "任务不存在"})
     if job.status in {"queued", "running"}:
+        finished_at = datetime.now(UTC).replace(tzinfo=None)
+        if job.status == "running":
+            accumulate_execution_seconds(job, finished_at)
         job.status = "cancelled"
         job.phase = "cancelled"
-        job.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        job.finished_at = finished_at
         session.commit()
         session.refresh(job)
-    return _job_out(job)
+    return _job_out(job, session)
+
+
+@router.post(
+    "/jobs/{job_id}/resume",
+    response_model=JobOut,
+    status_code=202,
+)
+def resume_job(job_id: int, session: SessionDep) -> JobOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    try:
+        job = resume_valuation_job(session, job)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    return _job_out(job, session)
+
+
+@router.post("/jobs/{job_id}/pause", response_model=JobOut)
+def pause_job(job_id: int, session: SessionDep) -> JobOut:
+    job = session.get(JobRun, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail={"message": "任务不存在"})
+    try:
+        job = pause_valuation_job(session, job)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    return _job_out(job, session)
 
 
 @router.post(
@@ -400,12 +482,25 @@ def request_revaluation(
     job.details = {**(job.details or {}), "instrument": instrument.name}
     session.commit()
     session.refresh(job)
-    return _job_out(job)
+    return _job_out(job, session)
 
 
 @router.get("/reviews", response_model=ReviewListOut)
 def reviews(session: SessionDep) -> ReviewListOut:
     return ReviewListOut(items=[_review_out(report) for report in list_review_reports(session)])
+
+
+@router.get("/reviews/rejected", response_model=ReviewListOut)
+def rejected_reviews(
+    session: SessionDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ReviewListOut:
+    return ReviewListOut(
+        items=[
+            _review_out(report)
+            for report in list_rejected_reports(session, limit=limit)
+        ]
+    )
 
 
 @router.post("/reviews/{report_id}/approve", response_model=ReviewDecisionOut)
@@ -426,6 +521,15 @@ def reject(report_id: int, session: SessionDep) -> ReviewDecisionOut:
     return ReviewDecisionOut(report_id=report.id, status=report.status, ranking_rebuilt=False)
 
 
+@router.delete("/reviews/{report_id}", response_model=ReviewDeleteOut)
+def delete_rejected(report_id: int, session: SessionDep) -> ReviewDeleteOut:
+    try:
+        delete_rejected_review(session, report_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
+    return ReviewDeleteOut(report_id=report_id, deleted=True)
+
+
 def _schedule_out(schedule: ScheduleSetting) -> ScheduleOut:
     return ScheduleOut(
         enabled=schedule.enabled,
@@ -442,19 +546,32 @@ def _schedule_out(schedule: ScheduleSetting) -> ScheduleOut:
     )
 
 
-def _job_out(job: JobRun) -> JobOut:
+def _job_out(job: JobRun, session: Session | None = None) -> JobOut:
+    phase = job.phase
+    details = dict(job.details or {})
+    if session is not None and job.job_type == "valuation_refresh":
+        report_id = details.get("report_id")
+        if isinstance(report_id, int):
+            report = session.get(ValuationReport, report_id)
+            if report is not None:
+                details["review_status"] = report.status
+                if job.phase == "awaiting_review":
+                    phase = {
+                        "published": "review_approved",
+                        "rejected": "review_rejected",
+                    }.get(report.status, job.phase)
     return JobOut(
         id=job.id,
         job_type=job.job_type,
         trigger=job.trigger,
         scope=job.scope,
         status=job.status,
-        phase=job.phase,
+        phase=phase,
         scheduled_for=job.scheduled_for,
         started_at=job.started_at,
         finished_at=job.finished_at,
         error=job.error,
-        details=job.details,
+        details=details,
         created_at=job.created_at,
     )
 
@@ -504,6 +621,11 @@ def _job_current_action(job: JobRun) -> str:
         "loading_macro": "正在更新宏观缓存",
         "rebuilding_ranking": "正在重算排名",
         "finalizing": "正在整理任务结果",
+        "awaiting_review": "等待人工复核",
+        "interrupted": "任务因服务重启中断，可恢复执行",
+        "paused": "任务已暂停，可恢复执行",
+        "review_approved": "候选估值已批准并发布",
+        "review_rejected": "候选估值已拒绝",
         "completed": "任务已完成",
         "failed": "任务失败",
         "cancelled": "任务已取消",

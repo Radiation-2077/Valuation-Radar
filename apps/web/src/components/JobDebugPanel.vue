@@ -21,7 +21,7 @@ import {
 import { computed, nextTick, ref, watch } from "vue";
 
 import { fetchJobDebug } from "@/api/client";
-import type { AiRunDebug, CodexMilestone, TokenUsage } from "@/api/types";
+import type { CodexMilestone, TokenUsage } from "@/api/types";
 import { formatDateTime } from "@/lib/format";
 
 const props = defineProps<{
@@ -109,11 +109,62 @@ function detailMetric(key: string): string {
   return "—";
 }
 
+interface CodexSessionSummary {
+  attemptCount: number;
+  status: string;
+  cliVersion: string;
+  exitCode: number | null;
+  threadId: string | null;
+  tokenUsage: TokenUsage | null;
+}
+
+const codexSession = computed<CodexSessionSummary | null>(() => {
+  const runs = debugQuery.data.value?.ai_runs ?? [];
+  if (!runs.length) return null;
+  const latest = runs[runs.length - 1];
+  const tokenUsage = runs.some((run) => run.token_usage)
+    ? {
+        input_tokens: runs.reduce(
+          (total, run) => total + (run.token_usage?.input_tokens ?? 0),
+          0,
+        ),
+        cached_input_tokens: runs.reduce(
+          (total, run) => total + (run.token_usage?.cached_input_tokens ?? 0),
+          0,
+        ),
+        output_tokens: runs.reduce(
+          (total, run) => total + (run.token_usage?.output_tokens ?? 0),
+          0,
+        ),
+        reasoning_output_tokens: runs.reduce(
+          (total, run) => total + (run.token_usage?.reasoning_output_tokens ?? 0),
+          0,
+        ),
+      }
+    : null;
+  const latestThreadId = [...runs]
+    .reverse()
+    .map((run) => run.metadata.thread_id)
+    .find((value): value is string => typeof value === "string" && value.length > 0);
+  const latestCli = [...runs]
+    .reverse()
+    .map((run) => run.cli_version)
+    .find((value) => value.length > 0);
+  return {
+    attemptCount: runs.length,
+    status: latest.status,
+    cliVersion: latestCli ?? "",
+    exitCode: latest.exit_code,
+    threadId: latestThreadId ?? null,
+    tokenUsage,
+  };
+});
+
 function tokenCount(
-  run: AiRunDebug,
+  session: CodexSessionSummary,
   key: keyof TokenUsage,
 ): string {
-  const value = run.token_usage?.[key];
+  const value = session.tokenUsage?.[key];
   return typeof value === "number" ? value.toLocaleString("zh-CN") : "—";
 }
 
@@ -241,36 +292,47 @@ function tokenCount(
 
       <template v-if="isCodexJob">
         <NCard
-          v-for="run in debugQuery.data.value.ai_runs"
-          :key="run.id"
+          v-if="codexSession"
           size="small"
           :bordered="false"
         >
           <NSpace vertical :size="10">
             <NSpace align="center" justify="space-between">
-              <NText strong>Codex 运行 #{{ run.id }}</NText>
-              <NTag size="small" :bordered="false" :type="eventType(run.status)">
-                {{ run.status }}
+              <NSpace align="center" :size="8">
+                <NText strong>Codex 会话</NText>
+                <NTag size="small" :bordered="false">
+                  共 {{ codexSession.attemptCount }} 次执行
+                </NTag>
+              </NSpace>
+              <NTag
+                size="small"
+                :bordered="false"
+                :type="eventType(codexSession.status)"
+              >
+                {{ codexSession.status }}
               </NTag>
             </NSpace>
             <NDescriptions :column="2" size="small" label-placement="top">
               <NDescriptionsItem label="CLI">
-                {{ run.cli_version || "—" }}
+                {{ codexSession.cliVersion || "—" }}
               </NDescriptionsItem>
-              <NDescriptionsItem label="退出码">
-                {{ run.exit_code ?? "运行中" }}
+              <NDescriptionsItem label="最近退出码">
+                {{ codexSession.exitCode ?? "运行中" }}
+              </NDescriptionsItem>
+              <NDescriptionsItem label="会话 ID">
+                {{ codexSession.threadId || "历史会话未保存 ID" }}
               </NDescriptionsItem>
               <NDescriptionsItem label="输入 Token">
-                {{ tokenCount(run, "input_tokens") }}
+                {{ tokenCount(codexSession, "input_tokens") }}
               </NDescriptionsItem>
               <NDescriptionsItem label="缓存输入">
-                {{ tokenCount(run, "cached_input_tokens") }}
+                {{ tokenCount(codexSession, "cached_input_tokens") }}
               </NDescriptionsItem>
               <NDescriptionsItem label="输出 Token">
-                {{ tokenCount(run, "output_tokens") }}
+                {{ tokenCount(codexSession, "output_tokens") }}
               </NDescriptionsItem>
               <NDescriptionsItem label="推理 Token">
-                {{ tokenCount(run, "reasoning_output_tokens") }}
+                {{ tokenCount(codexSession, "reasoning_output_tokens") }}
               </NDescriptionsItem>
             </NDescriptions>
           </NSpace>

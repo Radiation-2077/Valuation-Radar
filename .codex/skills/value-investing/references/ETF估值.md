@@ -24,6 +24,49 @@
 
 $$PE分位 = \frac{当前PE在历史PE中的排名}{历史数据总数} \times 100\%$$
 
+### 组合倍数：先聚合，再比较
+
+ETF 是一组按市值权重持有的资产。允许使用前十大成分估算代表 PB，但不能对成分股 PB 做算术平均，否则高 PB、低净资产权重的成分股会被严重放大。先按前十大权重归一化，再使用调和平均：
+
+$$
+PB_{top10} = \frac{C}{\sum_i \frac{w_i}{PB_i}}
+$$
+
+其中 `w_i` 是前十大成分股权重（%），`C` 是这些权重合计，也就是 `coverage_pct`；`PB_i` 是该成分股在 PB 估值日的 PB。该结果是前十大代表值，不是全指数精确值，报告必须保留覆盖率并说明口径。
+
+错误示例：两只股票权重均为 50%、PB 分别为 0.5 和 8.0。
+
+- 错误：`0.5×0.5 + 0.5×8.0 = 4.25`
+- 正确：`1 / (0.5÷0.5 + 0.5÷8.0) ≈ 0.94`
+
+组合总市值 ÷ 组合总净资产正是加权调和平均。另一个容易混淆的概念是 ETF 折溢价：`(ETF价格 ÷ 基金净值 - 1) × 100%`。ETF 价格低于净值只说明二级市场折价，不代表底层组合 PB 小于 1；反过来，ETF 溢价也不能证明底层 PB 大于 1。
+
+每张 ETF 卡必须在 `markets[]` 写入可审计的 `etf_metrics`：
+
+```json
+{
+  "index_code": "EXAMPLE",
+  "index_name": "示例指数",
+  "weight_method": "top10_market_cap_weighted_harmonic",
+  "weight_as_of": "2026-09-30",
+  "weight_source": "中证指数官方 closeweight",
+  "coverage_pct": 88.0,
+  "pb_as_of": "2026-10-23",
+  "pb_source": "腾讯港股快照 PB 字段",
+  "nav": 1.0,
+  "nav_date": "2026-10-23",
+  "nav_source": "基金净值接口",
+  "premium_discount_pct": 0.0,
+  "constituents": [
+    {"code": "00001.HK", "name": "示例股票甲", "weight_pct": 50.0, "pb": 0.5},
+    {"code": "00002.HK", "name": "示例股票乙", "weight_pct": 38.0, "pb": 8.0}
+  ],
+  "representative_pb": 0.8415
+}
+```
+
+最多记录前十大成分，`coverage_pct` 必须等于所列权重合计。`pb_as_of` 和 `nav_date` 必须与 `markets[].price_date` 同日。`scorecard.py validate` 会复算前十大归一化调和平均、净值折溢价，并拒绝算术平均或覆盖率不一致的卡。
+
 | PE/PB 分位 | 含义 | 操作方向 |
 |:---|:---|:---|
 | < 20% | 估值处于历史低位 | 📈 重点关注 |

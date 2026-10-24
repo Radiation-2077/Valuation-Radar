@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,21 @@ EXAMPLE_PATH = (
     / "examples"
     / "card-v1.2.example.json"
 )
+SCORECARD_PATH = (
+    PROJECT_ROOT
+    / ".codex"
+    / "skills"
+    / "value-investing"
+    / "scripts"
+    / "scorecard.py"
+)
+SCORECARD_SPEC = importlib.util.spec_from_file_location(
+    "value_investing_scorecard",
+    SCORECARD_PATH,
+)
+assert SCORECARD_SPEC is not None and SCORECARD_SPEC.loader is not None
+SCORECARD = importlib.util.module_from_spec(SCORECARD_SPEC)
+SCORECARD_SPEC.loader.exec_module(SCORECARD)
 
 
 @pytest.fixture(scope="module")
@@ -123,6 +139,41 @@ def lifecycle_block(card: dict[str, Any]) -> dict[str, Any]:
         for block in section(card, "cycle")["blocks"]
         if block["type"] == "industry_lifecycle"
     )
+
+
+def add_etf_metrics(card: dict[str, Any]) -> tuple[float, float]:
+    market = card["markets"][0]
+    constituents = [
+        {"code": "00001.HK", "name": "示例股票甲", "weight_pct": 40.0, "pb": 0.7},
+        {"code": "00002.HK", "name": "示例股票乙", "weight_pct": 30.0, "pb": 0.8},
+        {"code": "00003.HK", "name": "示例股票丙", "weight_pct": 20.0, "pb": 1.0},
+        {"code": "00004.HK", "name": "示例股票丁", "weight_pct": 10.0, "pb": 8.0},
+    ]
+    weight_sum = sum(item["weight_pct"] for item in constituents)
+    harmonic_pb = weight_sum / sum(
+        item["weight_pct"] / item["pb"] for item in constituents
+    )
+    arithmetic_pb = sum(
+        item["weight_pct"] * item["pb"] for item in constituents
+    ) / weight_sum
+    market["valuation"]["pb"] = round(harmonic_pb, 4)
+    market["etf_metrics"] = {
+        "index_code": "EXAMPLE",
+        "index_name": "示例指数",
+        "weight_method": "top10_market_cap_weighted_harmonic",
+        "weight_as_of": market["price_date"],
+        "weight_source": "测试权重",
+        "coverage_pct": weight_sum,
+        "pb_as_of": market["price_date"],
+        "pb_source": "测试 PB",
+        "nav": market["price"],
+        "nav_date": market["price_date"],
+        "nav_source": "测试净值",
+        "premium_discount_pct": 0.0,
+        "constituents": constituents,
+        "representative_pb": round(harmonic_pb, 4),
+    }
+    return arithmetic_pb, harmonic_pb
 
 
 def make_cyclical_without_cycle_chart(card: dict[str, Any]) -> None:
@@ -240,10 +291,132 @@ def test_contract_fixture_matrix(
         market="CN",
         code="510300",
     )
+    add_etf_metrics(etf)
 
     for card in (example, stable, cyclical, etf):
         validator.validate(card)
         validate_v1_2_card(card)
+
+
+def test_etf_aggregate_pb_rejects_arithmetic_mean(
+    validator: Draft202012Validator,
+    example: dict[str, Any],
+) -> None:
+    valid = single_market_card(
+        example,
+        path="etf",
+        asset_type="etf",
+        module="index_percentile",
+        market="CN",
+        code="510300",
+    )
+    arithmetic_pb, harmonic_pb = add_etf_metrics(valid)
+    validator.validate(valid)
+    validate_v1_2_card(valid)
+    assert not SCORECARD.semantic_errors(valid)
+
+    card = copy.deepcopy(valid)
+    card["markets"][0]["valuation"]["pb"] = round(arithmetic_pb, 4)
+    card["markets"][0]["etf_metrics"]["representative_pb"] = round(arithmetic_pb, 4)
+
+    assert not list(validator.iter_errors(card))
+    with pytest.raises(CardContractError, match="算术平均"):
+        validate_v1_2_card(card)
+    assert any(
+        "算术平均" in error for error in SCORECARD.semantic_errors(card)
+    )
+    assert arithmetic_pb > harmonic_pb + 0.1
+
+
+def test_etf_card_requires_metrics(
+    validator: Draft202012Validator,
+    example: dict[str, Any],
+) -> None:
+    card = single_market_card(
+        example,
+        path="etf",
+        asset_type="etf",
+        module="index_percentile",
+        market="CN",
+        code="510300",
+    )
+    errors = list(validator.iter_errors(card))
+    assert errors
+    assert any("etf_metrics" in error.message for error in errors)
+
+
+def test_etf_top10_partial_coverage_is_supported(
+    validator: Draft202012Validator,
+    example: dict[str, Any],
+) -> None:
+    card = single_market_card(
+        example,
+        path="etf",
+        asset_type="etf",
+        module="index_percentile",
+        market="CN",
+        code="510300",
+    )
+    add_etf_metrics(card)
+    metrics = card["markets"][0]["etf_metrics"]
+    metrics["constituents"][3]["weight_pct"] = 8.0
+    coverage = sum(item["weight_pct"] for item in metrics["constituents"])
+    harmonic_pb = coverage / sum(
+        item["weight_pct"] / item["pb"] for item in metrics["constituents"]
+    )
+    metrics["coverage_pct"] = coverage
+    metrics["representative_pb"] = round(harmonic_pb, 4)
+    card["markets"][0]["valuation"]["pb"] = round(harmonic_pb, 4)
+
+    validator.validate(card)
+    validate_v1_2_card(card)
+    assert not SCORECARD.semantic_errors(card)
+    assert coverage < 100
+
+
+def test_etf_metrics_require_coverage_consistency(
+    validator: Draft202012Validator,
+    example: dict[str, Any],
+) -> None:
+    card = single_market_card(
+        example,
+        path="etf",
+        asset_type="etf",
+        module="index_percentile",
+        market="CN",
+        code="510300",
+    )
+    add_etf_metrics(card)
+    card["markets"][0]["etf_metrics"]["constituents"][0]["weight_pct"] = 20.0
+
+    assert not list(validator.iter_errors(card))
+    with pytest.raises(CardContractError, match="coverage_pct"):
+        validate_v1_2_card(card)
+    assert any("coverage_pct" in error for error in SCORECARD.semantic_errors(card))
+
+
+def test_etf_metrics_reject_nav_mismatch(
+    validator: Draft202012Validator,
+    example: dict[str, Any],
+) -> None:
+    card = single_market_card(
+        example,
+        path="etf",
+        asset_type="etf",
+        module="index_percentile",
+        market="CN",
+        code="510300",
+    )
+    add_etf_metrics(card)
+    card["markets"][0]["etf_metrics"]["nav"] *= 0.9
+
+    assert not list(validator.iter_errors(card))
+    with pytest.raises(CardContractError, match="premium_discount_pct"):
+        validate_v1_2_card(card)
+    assert any(
+        "premium_discount_pct" in error
+        for error in SCORECARD.semantic_errors(card)
+    )
 
 
 @pytest.mark.parametrize(

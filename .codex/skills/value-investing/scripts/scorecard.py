@@ -265,7 +265,7 @@ def semantic_errors(card: dict) -> list[str]:
             errors.extend(dashboard_errors(section))
 
     for market in markets:
-        errors.extend(market_errors(market, sections))
+        errors.extend(market_errors(card, market, sections))
     return errors
 
 
@@ -325,10 +325,14 @@ def cross_errors(section: dict) -> list[str]:
     return errors
 
 
-def market_errors(market: dict, sections: list[dict]) -> list[str]:
+def market_errors(card: dict, market: dict, sections: list[dict]) -> list[str]:
     name = market["market"]
     sections = [section for section in sections if section["market"] == name]
     errors: list[str] = []
+    if card["path"] == "etf":
+        errors.extend(etf_metrics_errors(market))
+    elif market.get("etf_metrics") is not None:
+        errors.append(f"{name} 仅 ETF 可以包含 etf_metrics")
     expected = market["expected_return"]
     if (
         abs(
@@ -402,6 +406,67 @@ def market_errors(market: dict, sections: list[dict]) -> list[str]:
             errors.append(f"{name} 仪表盘估值分位不一致")
         if gauges.get("certainty", {}).get("value") != market["certainty"]:
             errors.append(f"{name} 仪表盘确定性不一致")
+    return errors
+
+
+def etf_metrics_errors(market: dict) -> list[str]:
+    name = market["market"]
+    metrics = market.get("etf_metrics")
+    if not isinstance(metrics, dict):
+        return [f"{name} ETF 缺少 etf_metrics"]
+
+    errors: list[str] = []
+    constituents = metrics["constituents"]
+    weight_sum = sum(item["weight_pct"] for item in constituents)
+    if abs(weight_sum - float(metrics["coverage_pct"])) > 0.1:
+        errors.append(
+            f"{name} ETF 前十大成分权重合计必须等于 coverage_pct"
+        )
+
+    representative_pb = float(metrics["representative_pb"])
+    if abs(representative_pb - float(market["valuation"]["pb"])) > 0.02:
+        errors.append(
+            f"{name} valuation.pb 必须等于 etf_metrics.representative_pb"
+        )
+
+    harmonic_pb = weight_sum / sum(
+        item["weight_pct"] / item["pb"] for item in constituents
+    )
+    weighted_pb_sum = sum(
+        item["weight_pct"] * item["pb"] for item in constituents
+    )
+    arithmetic_candidates = {
+        round(weighted_pb_sum / weight_sum, 6),
+        round(weighted_pb_sum / 100, 6),
+    }
+    tolerance = max(0.01, harmonic_pb * 0.01)
+    if abs(representative_pb - harmonic_pb) > tolerance:
+        arithmetic_pb = min(
+            arithmetic_candidates,
+            key=lambda value: abs(representative_pb - value),
+        )
+        if abs(representative_pb - arithmetic_pb) <= tolerance:
+            errors.append(
+                f"{name} ETF 前十大代表 PB 使用了算术平均 {arithmetic_pb:.3f}；"
+                f"归一化市值权重必须使用调和平均 {harmonic_pb:.3f}"
+            )
+        else:
+            errors.append(
+                f"{name} ETF 前十大代表 PB 与成分复算不一致："
+                f"填报 {representative_pb:.3f}，调和平均 {harmonic_pb:.3f}"
+            )
+
+    if metrics["pb_as_of"] != market["price_date"]:
+        errors.append(f"{name} etf_metrics.pb_as_of 必须等于 price_date")
+    if metrics["nav_date"] != market["price_date"]:
+        errors.append(f"{name} etf_metrics.nav_date 必须等于 price_date")
+    expected_premium = (
+        float(market["price"]) / float(metrics["nav"]) - 1
+    ) * 100
+    if abs(expected_premium - float(metrics["premium_discount_pct"])) > 0.05:
+        errors.append(
+            f"{name} etf_metrics.premium_discount_pct 与 price/nav 不一致"
+        )
     return errors
 
 

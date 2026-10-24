@@ -12,8 +12,16 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import JobRun
 from app.services.job_events import append_job_event
+from app.services.job_lifecycle import (
+    accumulate_execution_seconds,
+    recover_interrupted_jobs,
+)
 from app.services.refresh import RefreshSummary, refresh_market_data
-from app.services.revaluation import run_valuation_refresh
+from app.services.revaluation import (
+    ValuationPaused,
+    ValuationStopped,
+    run_valuation_refresh,
+)
 from app.services.schedule import scheduler_tick
 
 
@@ -39,7 +47,7 @@ def process_next_job() -> bool:
             nonlocal current_phase
             current_phase = phase
             live = session.get(JobRun, job_id)
-            if live is None or live.status == "cancelled":
+            if live is None or live.status in {"cancelled", "paused"}:
                 return
             if live.phase != phase:
                 append_job_event(live, phase, _phase_message(phase))
@@ -75,12 +83,29 @@ def process_next_job() -> bool:
             else:
                 raise ValueError(f"暂不支持任务类型：{job.job_type}")
             job.finished_at = datetime.now(UTC).replace(tzinfo=None)
+            accumulate_execution_seconds(job, job.finished_at)
             session.commit()
             print(json.dumps({"job_id": job_id, **details}, ensure_ascii=False), flush=True)
+        except ValuationPaused as exc:
+            session.rollback()
+            paused = session.get(JobRun, job_id)
+            if paused is not None:
+                paused.finished_at = datetime.now(UTC).replace(tzinfo=None)
+                session.commit()
+            print(f"job {job_id} paused: {exc}", flush=True)
+        except ValuationStopped as exc:
+            session.rollback()
+            stopped = session.get(JobRun, job_id)
+            if stopped is not None:
+                stopped.status = "cancelled"
+                stopped.phase = "cancelled"
+                stopped.finished_at = datetime.now(UTC).replace(tzinfo=None)
+                session.commit()
+            print(f"job {job_id} stopped: {exc}", flush=True)
         except Exception as exc:
             session.rollback()
             failed = session.get(JobRun, job_id)
-            if failed is not None and failed.status != "cancelled":
+            if failed is not None and failed.status not in {"cancelled", "cancelling"}:
                 failed.status = "failed"
                 failed.phase = current_phase
                 failed.error = str(exc)
@@ -96,6 +121,7 @@ def process_next_job() -> bool:
                 }
                 append_job_event(failed, current_phase, f"任务失败：{exc}")
                 failed.finished_at = datetime.now(UTC).replace(tzinfo=None)
+                accumulate_execution_seconds(failed, failed.finished_at)
                 session.commit()
             print(f"job {job_id} failed: {exc}", flush=True)
         return True
@@ -130,6 +156,10 @@ def _phase_message(phase: str) -> str:
 
 def run_worker(poll_seconds: float = 3.0) -> None:
     print("valuation worker started", flush=True)
+    with SessionLocal() as session:
+        recovered = recover_interrupted_jobs(session)
+    if recovered:
+        print(f"marked {recovered} interrupted jobs for recovery", flush=True)
     while True:
         if not process_next_job():
             time.sleep(poll_seconds)

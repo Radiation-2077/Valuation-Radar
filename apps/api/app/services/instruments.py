@@ -248,7 +248,7 @@ def _ensure_no_active_jobs(session: Session, instrument_id: int) -> None:
         .select_from(JobRun)
         .where(
             JobRun.scope == f"instrument:{instrument_id}",
-            JobRun.status.in_(("queued", "running")),
+            JobRun.status.in_(("queued", "running", "cancelling")),
         )
     )
     if active:

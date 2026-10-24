@@ -321,6 +321,12 @@ class ClearJobsOut(BaseModel):
     deleted: int
 
 
+class DeleteJobOut(BaseModel):
+    job_id: int
+    deleted: bool
+    terminated: bool
+
+
 class ReviewMarketOut(BaseModel):
     valuation_market_id: int
     market: str
@@ -350,3 +356,8 @@ class ReviewDecisionOut(BaseModel):
     report_id: int
     status: str
     ranking_rebuilt: bool
+
+
+class ReviewDeleteOut(BaseModel):
+    report_id: int
+    deleted: bool

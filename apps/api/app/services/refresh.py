@@ -28,6 +28,15 @@ class RefreshSummary:
     latest_quote_at: datetime | None
 
 
+@dataclass(frozen=True)
+class InstrumentQuoteRefresh:
+    listings: int
+    quotes_fetched: int
+    quotes_saved: int
+    quotes_unchanged: int
+    quote_errors: list[str]
+
+
 class QuoteProvider(Protocol):
     def fetch(self, listings: list[ListingRef]) -> QuoteBatch: ...
 
@@ -67,7 +76,7 @@ def refresh_market_data(
 
     if on_phase:
         on_phase("loading_macro")
-    macro_count = load_common_macro(session, settings.legacy_common_dir)
+    macro_count = load_common_macro(session, settings.common_dir)
     session.flush()
     ranking_runs = 0
     data_changed = saved > 0 or macro_count > 0
@@ -90,6 +99,44 @@ def refresh_market_data(
             (quote.observed_at for quote in batch.quotes),
             default=None,
         ),
+    )
+
+
+def refresh_instrument_quotes(
+    session: Session,
+    instrument_id: int,
+    provider: QuoteProvider | None = None,
+) -> InstrumentQuoteRefresh:
+    listings = session.scalars(
+        select(Listing)
+        .join(Instrument, Instrument.id == Listing.instrument_id)
+        .where(
+            Listing.instrument_id == instrument_id,
+            Listing.enabled.is_(True),
+            Instrument.enabled.is_(True),
+            Instrument.archived_at.is_(None),
+        )
+        .order_by(Listing.market, Listing.code)
+    ).all()
+    refs = [
+        ListingRef(listing_id=listing.id, market=listing.market, code=listing.code)
+        for listing in listings
+    ]
+    batch = (provider or TencentQuoteProvider()).fetch(refs)
+    saved = 0
+    unchanged = 0
+    for quote in batch.quotes:
+        if _save_quote(session, quote):
+            saved += 1
+        else:
+            unchanged += 1
+    session.flush()
+    return InstrumentQuoteRefresh(
+        listings=len(listings),
+        quotes_fetched=len(batch.quotes),
+        quotes_saved=saved,
+        quotes_unchanged=unchanged,
+        quote_errors=batch.errors,
     )
 
 

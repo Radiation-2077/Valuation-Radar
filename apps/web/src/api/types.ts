@@ -338,6 +338,12 @@ export interface ClearJobsResult {
   deleted: number;
 }
 
+export interface DeleteJobResult {
+  job_id: number;
+  deleted: boolean;
+  terminated: boolean;
+}
+
 export interface ReviewMarket {
   valuation_market_id: number;
   market: string;
@@ -367,4 +373,9 @@ export interface ReviewDecision {
   report_id: number;
   status: string;
   ranking_rebuilt: boolean;
+}
+
+export interface ReviewDeleteResult {
+  report_id: number;
+  deleted: boolean;
 }

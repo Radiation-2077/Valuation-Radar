@@ -376,6 +376,10 @@ def _market_issues(
     issues: list[str] = []
     market_name = market["market"]
     path = f"markets[{index}]"
+    if card["path"] == "etf":
+        issues.extend(_etf_metrics_issues(market))
+    elif market.get("etf_metrics") is not None:
+        issues.append(f"{path}.etf_metrics 仅允许用于 ETF")
     low = float(market["fair_low"])
     mid = float(market["fair_mid"])
     high = float(market["fair_high"])
@@ -476,6 +480,67 @@ def _market_issues(
         certainty = certainty_gauge["value"] if certainty_gauge is not None else None
         if certainty is None or abs(certainty - market["certainty"]) > 0.1:
             issues.append(f"{market_name} 仪表盘确定性与 markets[] 不一致")
+    return issues
+
+
+def _etf_metrics_issues(market: dict[str, Any]) -> list[str]:
+    path = f"markets[{market['market']}].etf_metrics"
+    metrics = market.get("etf_metrics")
+    if not isinstance(metrics, dict):
+        return [f"{path} 缺失"]
+
+    issues: list[str] = []
+    constituents = metrics["constituents"]
+    weight_sum = sum(float(item["weight_pct"]) for item in constituents)
+    if abs(weight_sum - float(metrics["coverage_pct"])) > 0.1:
+        issues.append(
+            f"{path}.constituents 权重合计必须等于 coverage_pct"
+        )
+
+    representative_pb = float(metrics["representative_pb"])
+    if abs(representative_pb - float(market["valuation"]["pb"])) > 0.02:
+        issues.append(
+            f"{path}.representative_pb 必须与 valuation.pb 一致"
+        )
+
+    harmonic_pb = weight_sum / sum(
+        float(item["weight_pct"]) / float(item["pb"])
+        for item in constituents
+    )
+    weighted_pb_sum = sum(
+        float(item["weight_pct"]) * float(item["pb"])
+        for item in constituents
+    )
+    arithmetic_candidates = {
+        round(weighted_pb_sum / weight_sum, 6),
+        round(weighted_pb_sum / 100, 6),
+    }
+    tolerance = max(0.01, harmonic_pb * 0.01)
+    if abs(representative_pb - harmonic_pb) > tolerance:
+        arithmetic_pb = min(
+            arithmetic_candidates,
+            key=lambda value: abs(representative_pb - value),
+        )
+        if abs(representative_pb - arithmetic_pb) <= tolerance:
+            issues.append(
+                f"{path}.representative_pb 使用了算术平均 {arithmetic_pb:.3f}；"
+                f"前十大归一化市值权重必须使用调和平均 {harmonic_pb:.3f}"
+            )
+        else:
+            issues.append(
+                f"{path}.representative_pb 与成分复算不一致："
+                f"填报 {representative_pb:.3f}，调和平均 {harmonic_pb:.3f}"
+            )
+
+    if metrics["pb_as_of"] != market["price_date"]:
+        issues.append(f"{path}.pb_as_of 必须等于 price_date")
+    if metrics["nav_date"] != market["price_date"]:
+        issues.append(f"{path}.nav_date 必须等于 price_date")
+    expected_premium = (
+        float(market["price"]) / float(metrics["nav"]) - 1
+    ) * 100
+    if abs(expected_premium - float(metrics["premium_discount_pct"])) > 0.05:
+        issues.append(f"{path}.premium_discount_pct 与 price/nav 不一致")
     return issues
 
 
