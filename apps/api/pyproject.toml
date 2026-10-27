@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "valuation-radar-api"
 version = "0.1.0"
 description = "Valuation ranking and reporting API"
-license = { text = "GPL-3.0-or-later" }
+license = { text = "GPL-3.0-only" }
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.14,<2",

@@ -2,7 +2,7 @@
   "name": "valuation-radar",
   "version": "0.1.0",
   "description": "Local-first valuation research and ranking workspace",
-  "license": "GPL-3.0-or-later",
+  "license": "GPL-3.0-only",
   "private": true,
   "packageManager": "pnpm@11.10.0",
   "engines": {

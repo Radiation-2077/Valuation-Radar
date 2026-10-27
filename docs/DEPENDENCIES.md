@@ -101,7 +101,7 @@ Codex 登录信息通常位于 `$CODEX_HOME`（默认 `~/.codex`）中。它不�
 
 ## 6. 许可证与合规边界
 
-- 本项目以 GNU GPL v3.0 或更高版本授权，完整条款见 [LICENSE](../LICENSE)。
+- 本项目仅依据 GNU GPL v3.0（SPDX：`GPL-3.0-only`）授权，不自动适用任何更高版本，完整条款见 [LICENSE](../LICENSE)。
 - Vue、FastAPI、SQLAlchemy、Codex CLI 等第三方组件仍分别受其自身许可证约束。
 - 本仓库采用 GPL 不改变外部行情数据、研究报告、模型输入输出或第三方 API 的使用条款。
 - 使用和二次分发前，应独立审查行情数据再分发权限、模型服务条款以及目标司法辖区的许可要求。

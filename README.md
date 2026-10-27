@@ -4,7 +4,7 @@
 
 本机优先的估值分析工作台。项目把估值数据卡、三套风险偏好排名和估值报告升级为可查询、可追溯、按交易日更新的 Web 应用。
 
-项目以 [GNU General Public License v3.0 or later](LICENSE)（`GPL-3.0-or-later`）开源。第三方依赖、模型服务和行情数据源仍分别适用各自的许可证与服务条款，详见 [依赖说明](docs/DEPENDENCIES.md)。
+项目以 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）开源。第三方依赖、模型服务和行情数据源仍分别适用各自的许可证与服务条款，详见 [依赖说明](docs/DEPENDENCIES.md)。
 
 ## 界面预览
 
@@ -128,4 +128,4 @@ SQLite 历史估值版本
 
 Copyright (C) 2026 估值雷达贡献者。
 
-本项目依据 GNU General Public License v3.0 或任何更高版本授权。你可以按照 [LICENSE](LICENSE) 的条款使用、修改和分发本项目；分发修改版本时需同时满足 GPL 的源代码提供要求。若未另行注明，提交到本项目的贡献也按同一许可证授权。
+本项目仅依据 GNU General Public License v3.0（SPDX：`GPL-3.0-only`）授权，不自动适用任何更高版本。你可以按照 [LICENSE](LICENSE) 的条款使用、修改和分发本项目；分发修改版本时需同时满足 GPL 的源代码提供要求。若未另行注明，提交到本项目的贡献也按同一许可证授权。
