@@ -3,6 +3,7 @@
 }
 
 .brand-mark {
+  display: block;
   width: 40px;
   height: 40px;
   overflow: visible;
@@ -113,6 +114,10 @@
   display: block;
 }
 
+.brand-copy {
+  transform: translateY(3px);
+}
+
 .brand-copy small {
   color: var(--ui-muted);
   font-size: 0.56rem;
@@ -121,8 +126,8 @@
 
 .header-status {
   display: inline-grid;
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border-radius: var(--radius-xs);
   color: var(--ui-accent);
@@ -147,6 +152,11 @@
 }
 
 .theme-toggle {
+  width: 32px;
+  height: 32px;
+}
+
+.mobile-nav-toggle {
   width: 32px;
   height: 32px;
 }

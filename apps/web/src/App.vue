@@ -139,7 +139,7 @@ function navigateFromMenu(key: string) {
           <NLayoutHeader bordered>
             <div class="header-layout">
               <RouterLink to="/">
-                <NSpace align="center" class="brand">
+                <NSpace align="end" class="brand">
                   <BrandLogo class="brand-mark" />
                   <span class="brand-copy">
                     <strong>估值雷达</strong>

@@ -23,6 +23,7 @@
   display: flex;
   align-items: center;
   gap: 28px;
+  height: 100%;
   width: min(var(--content-width), 100%);
   margin: 0 auto;
   padding: 10px var(--space-page);
