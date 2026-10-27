@@ -156,6 +156,8 @@ def run_valuation_refresh(
         binary=settings.codex_binary,
         timeout_seconds=settings.codex_timeout_seconds,
         model=settings.codex_model,
+        debug=settings.codex_debug,
+        trace=settings.codex_trace,
         should_stop=lambda: _job_control_status(session, job.id)
         in {"paused", "cancelling", "cancelled"},
         on_thread_started=lambda thread_id: _record_codex_thread(

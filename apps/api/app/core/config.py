@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -26,8 +27,18 @@ class Settings(BaseSettings):
     codex_binary: str = "codex"
     codex_timeout_seconds: int = 1_200
     codex_model: str | None = None
+    codex_debug: bool = False
+    codex_trace: bool = False
     frontend_dist: Path = PROJECT_ROOT / "apps" / "web" / "dist"
     storage_root: Path = PROJECT_ROOT / "storage"
+
+    @field_validator("storage_root")
+    @classmethod
+    def resolve_storage_root(cls, value: Path) -> Path:
+        path = value.expanduser()
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path.resolve()
 
     @property
     def staging_dir(self) -> Path:
