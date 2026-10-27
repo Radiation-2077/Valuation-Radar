@@ -9,6 +9,7 @@ import {
   NLayoutHeader,
   NMenu,
   NMessageProvider,
+  NPopover,
   NScrollbar,
   NSpace,
   NTooltip,
@@ -20,6 +21,7 @@ import {
 } from "naive-ui";
 import {
   LinkOutline,
+  MenuOutline,
   MoonOutline,
   SunnyOutline,
   SyncOutline,
@@ -62,6 +64,7 @@ const activeThemeOverrides = computed(() =>
   isDark.value ? darkThemeOverrides : lightThemeOverrides,
 );
 const connectionTooltipVisible = ref(false);
+const mobileNavOpen = ref(false);
 const menuOptions = [
   {
     label: "性价比排名",
@@ -81,6 +84,7 @@ const activeMenu = computed(() => {
 watch(
   () => route.fullPath,
   async () => {
+    mobileNavOpen.value = false;
     await nextTick();
     scrollbarRef.value?.scrollTo({ top: 0 });
   },
@@ -114,6 +118,11 @@ function handleSystemThemeChange(event: MediaQueryListEvent) {
 function toggleTheme() {
   themePreference.value = isDark.value ? "light" : "dark";
   localStorage.setItem(themeStorageKey, themePreference.value);
+}
+
+function navigateFromMenu(key: string) {
+  mobileNavOpen.value = false;
+  router.push(key);
 }
 </script>
 
@@ -180,6 +189,37 @@ function toggleTheme() {
                     <NIcon :component="isDark ? SunnyOutline : MoonOutline" :size="20" />
                   </template>
                 </NButton>
+                <div class="mobile-navigation">
+                  <NPopover
+                    v-model:show="mobileNavOpen"
+                    trigger="click"
+                    placement="bottom-end"
+                    :show-arrow="false"
+                    :width="196"
+                  >
+                    <template #trigger>
+                      <NButton
+                        quaternary
+                        circle
+                        class="mobile-nav-toggle"
+                        :aria-label="mobileNavOpen ? '关闭导航菜单' : '打开导航菜单'"
+                        aria-haspopup="menu"
+                        :aria-expanded="mobileNavOpen"
+                      >
+                        <template #icon>
+                          <NIcon :component="MenuOutline" :size="22" />
+                        </template>
+                      </NButton>
+                    </template>
+                    <NMenu
+                      mode="vertical"
+                      aria-label="主导航"
+                      :options="menuOptions"
+                      :value="activeMenu"
+                      @update:value="navigateFromMenu"
+                    />
+                  </NPopover>
+                </div>
               </div>
             </div>
           </NLayoutHeader>

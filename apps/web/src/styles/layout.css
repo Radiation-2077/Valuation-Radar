@@ -33,6 +33,10 @@
   min-width: 0;
 }
 
+.mobile-navigation {
+  display: none;
+}
+
 .page-content {
   width: min(var(--content-width), 100%);
   margin: 0 auto;
@@ -100,8 +104,16 @@
     --space-section: 20px;
   }
 
-  .header-layout .n-menu {
+  .header-menu {
     display: none;
+  }
+
+  .header-actions {
+    margin-left: auto;
+  }
+
+  .mobile-navigation {
+    display: block;
   }
 
   .scatter-chart {
