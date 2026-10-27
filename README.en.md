@@ -145,15 +145,13 @@ Latest quotes only update the current margin of safety and rankings; they never 
 
 Valuation Radar would not be possible without the support of the following people and projects:
 
-- Thanks to Codex for collaborating on valuation workflow design and software development.
-- Thanks to Uncle Liang for the DeepSeek support.
-- Thanks to Vue and Naive UI for providing reliable and approachable frontend foundations.
+- Thanks to [Codex](https://openai.com/codex/) for collaborating on valuation workflow design and software development.
+- Thanks to Uncle Liang for the [DeepSeek](https://www.deepseek.com/) support.
+- Thanks to [Vue](https://vuejs.org/) and [Naive UI](https://www.naiveui.com/) for providing reliable and approachable frontend foundations.
 
 ## Join the development
 
 We welcome anyone interested in value-investing tools, AI-assisted valuation, frontend experience, backend engineering, or documentation to join the development of Valuation Radar. Start with the [Quick Start](docs/en/QUICKSTART.md) and run the project locally, open an Issue to discuss ideas, or submit a focused Pull Request with the necessary tests and documentation.
-
-Before submitting code, run `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`. For UI interaction changes, also run the relevant `pnpm test:e2e` cases.
 
 ## License
 

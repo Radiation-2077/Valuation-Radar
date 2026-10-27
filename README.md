@@ -144,15 +144,13 @@ SQLite 历史估值版本
 
 估值雷达的发展离不开以下个人与项目的支持：
 
-- 感谢 Codex 在估值流程设计和工程开发中的协作支持。
-- 感谢梁叔叔提供 DeepSeek 支持。
-- 感谢 Vue 与 Naive UI 提供可靠、易用的前端基础设施。
+- 感谢 [Codex](https://openai.com/codex/) 在估值流程设计和工程开发中的协作支持。
+- 感谢梁叔叔提供 [DeepSeek](https://www.deepseek.com/) 支持。
+- 感谢 [Vue](https://vuejs.org/) 与 [Naive UI](https://www.naiveui.com/) 提供可靠、易用的前端基础设施。
 
 ## 欢迎加入开发
 
 欢迎所有对价值投资工具、AI 估值、前端体验、后端工程或文档建设感兴趣的朋友加入估值雷达的开发。你可以先阅读 [Quick Start](docs/QUICKSTART.md) 并在本地运行项目，再通过 Issue 讨论需求，或提交聚焦明确、带有必要测试和文档的 Pull Request。
-
-提交代码前建议至少运行 `pnpm lint`、`pnpm typecheck`、`pnpm test` 和 `pnpm build`；涉及页面交互时，请同时运行相关的 `pnpm test:e2e` 用例。
 
 ## 许可证
 
