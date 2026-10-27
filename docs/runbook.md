@@ -1,6 +1,14 @@
+<p align="center">
+  <a href="./runbook.md"><strong>简体中文</strong></a>
+  &nbsp;|&nbsp;
+  <a href="./en/runbook.md">English</a>
+</p>
+
 # 开发运维
 
 本文记录本地开发时的启动、状态检查和常见故障处理。首次安装见 [Quick Start](QUICKSTART.md)，依赖版本见 [依赖说明](DEPENDENCIES.md)，Codex Skill 见 [Codex Skill 安装](CODEX_SKILLS.md)。
+
+> **适用范围：** 当前主要开发和验证目标是 A 股市场与 Linux。文中的 shell 与备份命令主要按 Linux 验证；非 A 股市场及非 Linux 环境尚未经过测试，请自行验证并承担风险。项目基于长线价值投资逻辑，强调以合理或便宜的价格买入好公司并长期持有，不适合短线投机使用。
 
 ## 启动
 

@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="./CODEX_SKILLS.md"><strong>简体中文</strong></a>
+  &nbsp;|&nbsp;
+  <a href="./en/CODEX_SKILLS.md">English</a>
+</p>
+
 # Codex Skill 安装
 
 估值雷达包含两个版本化的项目 Skill：
@@ -8,6 +14,8 @@
 | `investment-ranking` | `.codex/skills/investment-ranking/` | 读取数据卡，生成三套风险偏好的离线排序 JSON |
 
 Codex 的官方 Skill 说明见 <https://developers.openai.com/codex/skills>。本文只说明本地开发时如何让 CLI 和 worker 找到这两个 Skill。
+
+> **适用范围：** 当前主要开发和验证目标是 A 股市场与 Linux。AI 估值逻辑本身不挑市场；非 A 股市场及非 Linux 环境尚未经过测试，请自行验证并承担风险。项目基于长线价值投资逻辑，强调以合理或便宜的价格买入好公司并长期持有，不适合短线投机使用。
 
 ## 1. 项目级 Skill
 

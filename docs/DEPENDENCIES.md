@@ -1,6 +1,14 @@
+<p align="center">
+  <a href="./DEPENDENCIES.md"><strong>简体中文</strong></a>
+  &nbsp;|&nbsp;
+  <a href="./en/DEPENDENCIES.md">English</a>
+</p>
+
 # 依赖说明
 
 本文说明开发估值雷达所需的软件、版本来源、外部服务与许可证边界。版本以仓库文件为准，最后按 2026-10-27 的代码路径核对。从零安装步骤见 [Quick Start](QUICKSTART.md)。
+
+> **适用范围：** 当前主要开发和验证目标是 A 股市场与 Linux。AI 估值逻辑本身不挑市场；非 A 股市场及非 Linux 环境尚未经过测试，请自行验证并承担风险。项目基于长线价值投资逻辑，强调以合理或便宜的价格买入好公司并长期持有，不适合短线投机使用。
 
 ## 1. 支持的运行环境
 

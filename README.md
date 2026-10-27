@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="./README.md"><strong>简体中文</strong></a>
+  &nbsp;|&nbsp;
+  <a href="./README.en.md">English</a>
+</p>
+
 # 估值雷达
 
 估值雷达是一个以 AI 估值能力为核心、带完整 Web 界面的价值投资研究工作台。项目通过 Codex 驱动的估值流程，对个股与 ETF 进行系统化研究与估值，并结合市场行情、风险偏好和预期收益生成多套排名；估值过程、数据依据、候选结果与历史版本均可在 Web 应用中查询、复核和追溯。
@@ -5,6 +11,12 @@
 本机优先的估值分析工作台。项目把估值数据卡、三套风险偏好排名和估值报告升级为可查询、可追溯、按交易日更新的 Web 应用。
 
 项目以 [GNU General Public License v3.0](LICENSE)（`GPL-3.0-only`）开源。第三方依赖、模型服务和行情数据源仍分别适用各自的许可证与服务条款，详见 [依赖说明](docs/DEPENDENCIES.md)。
+
+## 适用市场与环境
+
+当前项目主要在 A 股市场和 Linux 环境中开发和验证。AI 估值逻辑本身不挑市场，但非 A 股市场及非 Linux 环境尚未经过测试；相关组合在逻辑上可能可用，使用前请自行验证并承担风险。
+
+项目基于长线价值投资逻辑，强调以合理或便宜的价格买入好公司并长期持有，不适合短线投机使用。
 
 ## 界面预览
 
@@ -47,8 +59,7 @@
 - 模型（可选）：Codex CLI `exec`，工作目录沙箱，不直接写生产数据库
 
 架构细节见 [docs/architecture.md](docs/architecture.md)，数据卡契约见
-[docs/adr/0002-presentation-contract-v1-2.md](docs/adr/0002-presentation-contract-v1-2.md)
-和 `.codex/skills/value-investing/references/card-v1.2.schema.json`。
+`.codex/skills/value-investing/references/card-v1.2.schema.json`。
 
 视觉样式统一由 `apps/web/src/theme.ts` 和 `apps/web/src/styles/` 管理：主题 token、页面布局和少量品牌组件样式分别集中，不在页面组件中散落自定义视觉规则。
 
@@ -61,6 +72,11 @@
 | [Codex Skill 安装](docs/CODEX_SKILLS.md) | 项目级/全局 Skill 安装、登录与验证 |
 | [开发运维](docs/runbook.md) | 本地状态检查、任务处理与数据库迁移 |
 | [系统架构](docs/architecture.md) | 进程、数据边界与 Codex 估值任务链路 |
+
+## TODO
+
+- [ ] 增加 Web 界面中英文语言切换，覆盖导航、表单、状态、错误提示、日期与数字格式。
+- [ ] 评估估值报告正文与章节标题的双语数据契约和模型输出方案。
 
 ## Quick Start
 
@@ -123,6 +139,20 @@ SQLite 历史估值版本
 - 应用目前没有内置身份认证，只应在本机开发环境使用，不要暴露到公网。
 - 行情、宏观数据和模型输出受外部服务可用性、账户权限及使用条款约束。
 - 所有分析结果仅用于研究，不构成投资建议。
+
+## 鸣谢
+
+估值雷达的发展离不开以下个人与项目的支持：
+
+- 感谢 Codex 在估值流程设计和工程开发中的协作支持。
+- 感谢梁叔叔提供 DeepSeek 支持。
+- 感谢 Vue 与 Naive UI 提供可靠、易用的前端基础设施。
+
+## 欢迎加入开发
+
+欢迎所有对价值投资工具、AI 估值、前端体验、后端工程或文档建设感兴趣的朋友加入估值雷达的开发。你可以先阅读 [Quick Start](docs/QUICKSTART.md) 并在本地运行项目，再通过 Issue 讨论需求，或提交聚焦明确、带有必要测试和文档的 Pull Request。
+
+提交代码前建议至少运行 `pnpm lint`、`pnpm typecheck`、`pnpm test` 和 `pnpm build`；涉及页面交互时，请同时运行相关的 `pnpm test:e2e` 用例。
 
 ## 许可证
 

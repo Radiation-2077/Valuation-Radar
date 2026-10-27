@@ -1,4 +1,12 @@
+<p align="center">
+  <a href="./architecture.md"><strong>简体中文</strong></a>
+  &nbsp;|&nbsp;
+  <a href="./en/architecture.md">English</a>
+</p>
+
 # 系统架构
+
+> **适用范围：** 当前主要开发和验证目标是 A 股市场与 Linux。AI 估值逻辑本身不挑市场；非 A 股市场及非 Linux 环境尚未经过测试，请自行验证并承担风险。项目基于长线价值投资逻辑，强调以合理或便宜的价格买入好公司并长期持有，不适合短线投机使用。
 
 ## 运行单元
 
