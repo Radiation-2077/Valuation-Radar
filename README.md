@@ -1,6 +1,8 @@
 # 估值雷达
 
-本机优先的估值分析工作台。项目把现有估值数据卡、三套风险偏好排名和估值报告升级为可查询、可追溯、按交易日更新的 Web 应用。
+本机优先的估值分析工作台。项目把估值数据卡、三套风险偏好排名和估值报告升级为可查询、可追溯、按交易日更新的 Web 应用。
+
+项目以 [GNU General Public License v3.0 or later](LICENSE)（`GPL-3.0-or-later`）开源。第三方依赖、模型服务和行情数据源仍分别适用各自的许可证与服务条款，详见 [依赖说明](docs/DEPENDENCIES.md)。
 
 ## 界面预览
 
@@ -40,21 +42,30 @@
 - 后端：FastAPI、Pydantic v2、SQLAlchemy 2、Alembic
 - 数据库：SQLite（WAL）
 - 调度：独立 scheduler + 单实例 worker + 数据库任务表
-- 模型：Codex CLI `exec`，工作目录沙箱，不直接写生产数据库
+- 模型（可选）：Codex CLI `exec`，工作目录沙箱，不直接写生产数据库
 
-架构细节见 [docs/architecture.md](docs/architecture.md)，展示与数据卡契约见
-[docs/PRESENTATION_CONTRACT.md](docs/PRESENTATION_CONTRACT.md)，完整阶段计划见
-[docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md)。
+架构细节见 [docs/architecture.md](docs/architecture.md)，数据卡契约见
+[docs/adr/0002-presentation-contract-v1-2.md](docs/adr/0002-presentation-contract-v1-2.md)
+和 `.codex/skills/value-investing/references/card-v1.2.schema.json`。
 
 视觉样式统一由 `apps/web/src/theme.ts` 和 `apps/web/src/styles/` 管理：主题 token、页面布局和少量品牌组件样式分别集中，不在页面组件中散落自定义视觉规则。
 
-## 首次启动
+## 文档导航
 
-前置要求：Python 3.12、Node.js、pnpm、已登录的 Codex CLI。
+| 文档 | 用途 |
+|---|---|
+| [Quick Start](docs/QUICKSTART.md) | 从零安装依赖、初始化数据库并启动本地服务 |
+| [依赖说明](docs/DEPENDENCIES.md) | 开发环境版本、锁文件、外部服务与许可证边界 |
+| [Codex Skill 安装](docs/CODEX_SKILLS.md) | 项目级/全局 Skill 安装、登录与验证 |
+| [开发运维](docs/runbook.md) | 本地状态检查、任务处理与数据库迁移 |
+| [系统架构](docs/architecture.md) | 进程、数据边界与 Codex 估值任务链路 |
+
+## Quick Start
+
+基础界面、数据导入、排名和行情刷新需要 Python 3.12、Node.js 22+、pnpm 11.10 和 SQLite。只有在 Web 中发起 Codex 估值时才需要已安装并登录的 Codex CLI。
 
 ```bash
-cd /home/canon/finacial/valuation-web
-make setup
+pnpm run bootstrap
 pnpm dev
 ```
 
@@ -64,7 +75,7 @@ pnpm dev
 - API：<http://127.0.0.1:8000>
 - OpenAPI：<http://127.0.0.1:8000/docs>
 
-`make setup` 会创建虚拟环境、安装依赖、迁移数据库，并导入上级目录中的 21 张结构化数据卡。新流程不为单个标的保存 HTML。
+完整的系统依赖安装、Codex 登录、Skill 安装、示例数据导入和常见问题见 [Quick Start](docs/QUICKSTART.md)。
 
 ## 常用命令
 
@@ -107,4 +118,12 @@ SQLite 历史估值版本
 - 模型在 `storage/staging/` 隔离目录执行，使用 `workspace-write` 沙箱。
 - Codex 会话由本机 Codex CLI 持久化；任务删除会终止对应进程组并清理任务暂存目录。
 - 新估值的必需数据缺失时立即终止，不生成或发布候选卡；历史卡只做只读兼容。
+- 应用目前没有内置身份认证，只应在本机开发环境使用，不要暴露到公网。
+- 行情、宏观数据和模型输出受外部服务可用性、账户权限及使用条款约束。
 - 所有分析结果仅用于研究，不构成投资建议。
+
+## 许可证
+
+Copyright (C) 2026 估值雷达贡献者。
+
+本项目依据 GNU General Public License v3.0 或任何更高版本授权。你可以按照 [LICENSE](LICENSE) 的条款使用、修改和分发本项目；分发修改版本时需同时满足 GPL 的源代码提供要求。若未另行注明，提交到本项目的贡献也按同一许可证授权。

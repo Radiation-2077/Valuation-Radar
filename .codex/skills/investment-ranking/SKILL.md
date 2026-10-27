@@ -29,7 +29,11 @@ metadata:
 ### 1. 盘点数据卡
 
 ```bash
-python3 /home/canon/.codex/skills/value-investing/scripts/scorecard.py list --dir data
+# 全局安装
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/value-investing/scripts/scorecard.py" list --dir data
+
+# 项目级安装时从仓库根目录执行
+python3 .codex/skills/value-investing/scripts/scorecard.py list --dir data
 ```
 
 确认分析日期、市场代码和数据完整性；任何必需字段缺失立即终止。只使用 schema 1.2 卡；同一标的有多张卡时，`rank.py` 自动选择 `analysis_date + generated_at` 最新的一张。

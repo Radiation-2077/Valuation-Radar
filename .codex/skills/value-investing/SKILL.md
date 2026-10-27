@@ -166,5 +166,5 @@ A+H 标的使用固定 section 契约：
 - [references/联网取数.md](references/联网取数.md) — 取数环境、可复制 curl 命令、接口与字段对照、常见报错
 - [references/本地数据缓存.md](references/本地数据缓存.md) — `common/` 缓存目录、字段格式、24 小时判定与 cache.py 用法
 - [references/数据卡规范.md](references/数据卡规范.md) — `data/` 数据卡 schema、字段口径、与排序 skill 的对接契约、scorecard.py 用法
-- [references/部署指南.md](references/部署指南.md) — 安装到全局、验证、修改与常见问题
+- [references/安装指南.md](references/安装指南.md) — 本地安装、验证、修改与常见问题
 - [references/AH与跨市场估值.md](references/AH与跨市场估值.md) — A+H 两地上市标的的溢价分解、税后股息比较与选市场

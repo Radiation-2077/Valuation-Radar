@@ -15,8 +15,8 @@
 
 ```text
 只读输入
-  ../data/*.json
-  ../common/*.json
+  LEGACY_DATA_DIR/*.json（默认 ../data）
+  LEGACY_COMMON_DIR 或 storage/common/*.json
 
 运行时事实源
   storage/app.db
@@ -54,7 +54,7 @@
 1. API 创建 `valuation_refresh` 任务。
 2. worker 建立 `storage/staging/job-{id}/`。
 3. 复制 `common/`，写入上一版数据卡、最新行情证据和 prompt。
-4. `codex exec` 在隔离目录运行，提示其调用 `value-investing` skill。
+4. `codex exec` 在隔离目录运行，提示其调用 `value-investing` skill；Codex 运行环境必须能看到该项目级或全局 Skill，见 [Codex Skill 安装](CODEX_SKILLS.md)。
 5. Python 校验进程退出码、数据卡 schema、日期与标的名。
 6. 候选报告以 `needs_review` 状态写入数据库。
 7. 人工批准后才变为 `published`，随后重算排名。
